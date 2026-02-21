@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Download, Pencil, Trash2, ShoppingCart, TrendingDown, Gift } from 'lucide-react'
+import { Download, Pencil, Trash2, ShoppingCart, TrendingDown, Gift, Info } from 'lucide-react'
 import { formatQty } from '@/lib/utils'
 import type { Transaction } from '@/types'
 import axios from 'axios'
@@ -120,6 +120,7 @@ export function OperacionesPage() {
     { header: 'Cantidad', accessor: (r) => formatQty(r.quantity), className: 'text-right' },
     { header: 'Precio', accessor: (r) => <MoneyCell value={r.price} />, className: 'text-right' },
     { header: 'Comision', accessor: (r) => <MoneyCell value={r.commission} />, className: 'text-right' },
+    { header: 'Tasas', accessor: (r) => <MoneyCell value={r.tax} />, className: 'text-right' },
     {
       header: '',
       accessor: (r) => (
@@ -187,6 +188,7 @@ export function OperacionesPage() {
       quantity: tx.quantity,
       price: tx.price ?? '',
       commission: tx.commission,
+      tax: tx.tax,
     })
     setError('')
     setDialogOpen(true)
@@ -212,13 +214,19 @@ export function OperacionesPage() {
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Input
-          placeholder="Desde fecha" type="date"
+          placeholder="Buscar nombre o ticker..."
+          className="w-52"
+          value={filters.search ?? ''}
+          onChange={(e) => { setFilters((f) => ({ ...f, search: e.target.value })); setPage(1) }}
+        />
+        <Input
+          placeholder="Desde fecha" type="date" className="w-40"
           onChange={(e) => { setFilters((f) => ({ ...f, from_date: e.target.value })); setPage(1) }}
         />
         <Input
-          placeholder="Hasta fecha" type="date"
+          placeholder="Hasta fecha" type="date" className="w-40"
           onChange={(e) => { setFilters((f) => ({ ...f, to_date: e.target.value })); setPage(1) }}
         />
         <Select onValueChange={(v) => { setFilters((f) => ({ ...f, type: v === 'ALL' ? '' : v })); setPage(1) }}>
@@ -228,6 +236,15 @@ export function OperacionesPage() {
             <SelectItem value="BUY">Compra</SelectItem>
             <SelectItem value="SELL">Venta</SelectItem>
             <SelectItem value="GIFT">Regalo</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select onValueChange={(v) => { setFilters((f) => ({ ...f, account_id: v === 'ALL' ? '' : v })); setPage(1) }}>
+          <SelectTrigger className="w-40"><SelectValue placeholder="Cuenta" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Todas las cuentas</SelectItem>
+            {accountsData?.results.map((a) => (
+              <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -240,7 +257,7 @@ export function OperacionesPage() {
             <DialogTitle>{editingId ? 'Editar Operación' : `Nueva ${TYPE_LABELS[form.type] ?? 'Operación'}`}</DialogTitle>
           </DialogHeader>
           <form
-            className="space-y-3"
+            className="space-y-4"
             onSubmit={(e) => {
               e.preventDefault()
               setError('')
@@ -251,19 +268,26 @@ export function OperacionesPage() {
               }
             }}
           >
-            <Input type="date" required value={form.date ?? ''} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} />
+            <div>
+              <label className="text-sm font-medium">Fecha</label>
+              <Input type="date" required value={form.date ?? ''} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} />
+            </div>
 
             {editingId && (
-              <select className={selectClass} value={form.type ?? ''} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))} required>
-                <option value="BUY">Compra</option>
-                <option value="SELL">Venta</option>
-                <option value="GIFT">Regalo</option>
-              </select>
+              <div>
+                <label className="text-sm font-medium">Tipo</label>
+                <select className={selectClass} value={form.type ?? ''} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))} required>
+                  <option value="BUY">Compra</option>
+                  <option value="SELL">Venta</option>
+                  <option value="GIFT">Regalo</option>
+                </select>
+              </div>
             )}
 
-            <div className="space-y-1">
+            <div>
+              <label className="text-sm font-medium">Activo</label>
               <select className={selectClass} value={form.asset ?? ''} onChange={(e) => handleAssetChange(e.target.value)} required>
-                <option value="" disabled>Activo</option>
+                <option value="" disabled>Seleccionar activo</option>
                 {assetOptions.map((a) => {
                   const pos = positionMap.get(a.id)
                   const suffix = isSell && pos ? ` — ${formatQty(pos.quantity)} uds` : ''
@@ -276,42 +300,93 @@ export function OperacionesPage() {
             </div>
 
             {!isSell && (
-              <select className={selectClass} value={form.account ?? ''} onChange={(e) => setForm((f) => ({ ...f, account: e.target.value }))} required>
-                <option value="" disabled>Cuenta</option>
-                {accountsData?.results.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </select>
+              <div>
+                <label className="text-sm font-medium">Cuenta</label>
+                <select className={selectClass} value={form.account ?? ''} onChange={(e) => setForm((f) => ({ ...f, account: e.target.value }))} required>
+                  <option value="" disabled>Seleccionar cuenta</option>
+                  {accountsData?.results.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
             )}
 
-            <div className="space-y-1">
+            <div>
+              <label className="text-sm font-medium">Cantidad</label>
               <Input
-                type="number" step="any" placeholder="Cantidad" required
+                type="number" step="any" min="0" required
                 value={form.quantity ?? ''}
                 max={selectedPosition ? selectedPosition.quantity : undefined}
                 onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
               />
               {selectedPosition && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground mt-1">
                   Disponible: <strong>{formatQty(selectedPosition.quantity)}</strong> uds
                 </p>
               )}
             </div>
-            <Input type="number" step="any" placeholder="Precio" value={form.price ?? ''} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} />
-            <Input type="number" step="any" placeholder="Comision" value={form.commission ?? '0'} onChange={(e) => setForm((f) => ({ ...f, commission: e.target.value }))} />
+
+            <div>
+              <label className="text-sm font-medium">Precio unitario</label>
+              <Input type="number" step="any" min="0" value={form.price ?? ''} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">Comision</label>
+                <div className="relative">
+                  <Input
+                    type="number" step="any" min="0"
+                    className="pr-7"
+                    value={form.commission ?? '0'}
+                    onChange={(e) => setForm((f) => ({ ...f, commission: e.target.value }))}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">€</span>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium inline-flex items-center gap-1">
+                  Tasas / Impuestos
+                  <span title="FTT / stamp duty / tasas de mercado segun pais">
+                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                  </span>
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number" step="any" min="0"
+                    className="pr-7"
+                    value={form.tax ?? '0'}
+                    onChange={(e) => setForm((f) => ({ ...f, tax: e.target.value }))}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">€</span>
+                </div>
+              </div>
+            </div>
 
             {form.quantity && form.price && (() => {
               const qty = parseFloat(form.quantity) || 0
               const price = parseFloat(form.price) || 0
               const comm = parseFloat(form.commission) || 0
-              const total = qty * price + comm
+              const tax = parseFloat(form.tax) || 0
+              const subtotal = qty * price
+              const total = isSell
+                ? subtotal - comm - tax
+                : subtotal + comm + tax
               return (
-                <p className="text-sm text-muted-foreground">
-                  Total: <strong>{total.toFixed(2)} €</strong>
-                  <span className="ml-2 text-xs">({qty} × {price} + {comm})</span>
-                </p>
+                <div className="rounded-md bg-muted/50 p-3 space-y-1">
+                  <p className="text-sm font-medium">
+                    Total operacion: <strong>{total.toFixed(2)} €</strong>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {qty} × {price}{isSell ? ' −' : ' +'} {comm} comision{tax > 0 ? ` ${isSell ? '−' : '+'} ${tax} tasas` : ''}
+                  </p>
+                </div>
               )
             })()}
+
+            <p className="text-xs text-muted-foreground">
+              La tributacion por plusvalias se calcula en la seccion Fiscal, no aqui.
+            </p>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full" disabled={createMut.isPending || updateMut.isPending}>

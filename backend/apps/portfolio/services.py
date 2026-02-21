@@ -30,7 +30,7 @@ def _process_fifo():
 
         if tx.type == Transaction.TransactionType.BUY:
             price = tx.price or Decimal("0")
-            price_per_unit = price + tx.commission / tx.quantity if tx.quantity else Decimal("0")
+            price_per_unit = price + (tx.commission + tx.tax) / tx.quantity if tx.quantity else Decimal("0")
             lots[aid].append({"qty": tx.quantity, "price_per_unit": price_per_unit, "account_id": tx.account_id})
 
         elif tx.type == Transaction.TransactionType.GIFT:
@@ -55,7 +55,7 @@ def _process_fifo():
                     lots[aid].popleft()
 
             total_cost_basis = cost_basis.quantize(money_exp, rounding=ROUND_HALF_UP)
-            sell_total = (sell_price * tx.quantity - tx.commission).quantize(money_exp, rounding=ROUND_HALF_UP)
+            sell_total = (sell_price * tx.quantity - tx.commission - tx.tax).quantize(money_exp, rounding=ROUND_HALF_UP)
             pnl = (sell_total - total_cost_basis).quantize(money_exp, rounding=ROUND_HALF_UP)
             pnl_pct = (
                 (pnl / total_cost_basis * 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)

@@ -73,8 +73,13 @@ def year_summary():
 
 
 def patrimonio_evolution():
-    from apps.assets.models import AccountSnapshot, PriceSnapshot
+    from apps.assets.models import Asset, AccountSnapshot, PriceSnapshot
     from apps.transactions.models import Transaction
+
+    EQUITY_TYPES = {"STOCK", "ETF", "CRYPTO"}
+
+    # Asset type lookup
+    asset_type_map = dict(Asset.objects.values_list("id", "type"))
 
     # --- Cash evolution (account snapshots) ---
     snapshots = AccountSnapshot.objects.order_by("date").values_list(
@@ -139,16 +144,25 @@ def patrimonio_evolution():
         # Update prices (carry forward from previous months)
         asset_prices.update(monthly_price_updates.get(month, {}))
 
-        # Calculate investment value
+        # Calculate investment value split by category
         total_investments = Decimal("0")
+        total_renta_variable = Decimal("0")
+        total_renta_fija = Decimal("0")
         for asset_id, qty in asset_holdings.items():
             if qty > 0 and asset_id in asset_prices:
-                total_investments += qty * asset_prices[asset_id]
+                value = qty * asset_prices[asset_id]
+                total_investments += value
+                if asset_type_map.get(asset_id) in EQUITY_TYPES:
+                    total_renta_variable += value
+                else:
+                    total_renta_fija += value
 
         result.append({
             "month": month,
             "cash": str(total_cash),
             "investments": str(total_investments),
+            "renta_variable": str(total_renta_variable),
+            "renta_fija": str(total_renta_fija),
         })
 
     return result

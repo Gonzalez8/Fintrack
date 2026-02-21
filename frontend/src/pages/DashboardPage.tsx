@@ -73,6 +73,13 @@ export function DashboardPage() {
     }
   })
 
+  const rvEvolutionData = (patrimonioEvo ?? [])
+    .filter((p) => parseFloat(p.renta_variable) > 0)
+    .map((p) => ({
+      month: p.month,
+      'Renta Variable': parseFloat(p.renta_variable),
+    }))
+
   const totalPnlPct = portfolio && parseFloat(portfolio.total_cost) > 0
     ? ((parseFloat(portfolio.total_unrealized_pnl) / parseFloat(portfolio.total_cost)) * 100).toFixed(2)
     : '0'
@@ -216,6 +223,24 @@ export function DashboardPage() {
                 <Legend />
                 <Area type="monotone" dataKey="Efectivo" stackId="1" fill="#ca8a04" stroke="#ca8a04" fillOpacity={0.6} />
                 <Area type="monotone" dataKey="Inversiones" stackId="1" fill="#2563eb" stroke="#2563eb" fillOpacity={0.6} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {rvEvolutionData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Evolucion Renta Variable</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={rvEvolutionData}>
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip formatter={(v: number) => formatMoney(v)} />
+                <Area type="monotone" dataKey="Renta Variable" fill="#2563eb" stroke="#2563eb" fillOpacity={0.6} />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>

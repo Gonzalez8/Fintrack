@@ -150,6 +150,8 @@ export interface PatrimonioPoint {
   month: string
   cash: string
   investments: string
+  renta_variable: string
+  renta_fija: string
 }
 
 export interface Settings {

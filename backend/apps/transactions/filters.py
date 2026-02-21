@@ -1,4 +1,5 @@
 import django_filters
+from django.db.models import Q
 from .models import Transaction, Dividend, Interest
 
 
@@ -8,10 +9,16 @@ class TransactionFilter(django_filters.FilterSet):
     asset_id = django_filters.UUIDFilter(field_name="asset_id")
     account_id = django_filters.UUIDFilter(field_name="account_id")
     type = django_filters.CharFilter(field_name="type")
+    search = django_filters.CharFilter(method="filter_search")
 
     class Meta:
         model = Transaction
         fields = []
+
+    def filter_search(self, queryset, name, value):
+        return queryset.filter(
+            Q(asset__name__icontains=value) | Q(asset__ticker__icontains=value)
+        )
 
 
 class DividendFilter(django_filters.FilterSet):

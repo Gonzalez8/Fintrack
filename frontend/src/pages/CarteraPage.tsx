@@ -4,6 +4,7 @@ import { portfolioApi } from '@/api/portfolio'
 import { assetsApi } from '@/api/assets'
 import { DataTable, type Column } from '@/components/app/DataTable'
 import { MoneyCell } from '@/components/app/MoneyCell'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatQty, formatPercent, formatMoney } from '@/lib/utils'
@@ -36,18 +37,25 @@ const columns: Column<Position>[] = [
     ),
   },
   { header: 'Cantidad', accessor: (r) => formatQty(r.quantity), className: 'text-right' },
-  { header: 'Precio Medio', accessor: (r) => <MoneyCell value={r.avg_cost} />, className: 'text-right' },
   { header: 'Coste Total', accessor: (r) => <MoneyCell value={r.cost_total} />, className: 'text-right' },
   { header: 'Precio Actual', accessor: (r) => <MoneyCell value={r.current_price} />, className: 'text-right' },
-  { header: 'Valor Mercado', accessor: (r) => <MoneyCell value={r.market_value} />, className: 'text-right' },
+  {
+    header: 'Valor Mercado',
+    accessor: (r) => <span className="font-semibold text-base">{formatMoney(r.market_value)}</span>,
+    className: 'text-right',
+  },
   {
     header: 'P&L',
-    accessor: (r) => (
-      <div className="text-right">
-        <MoneyCell value={r.unrealized_pnl} colored />
-        <div className="text-xs text-muted-foreground">{formatPercent(r.unrealized_pnl_pct)}</div>
-      </div>
-    ),
+    accessor: (r) => {
+      const pnl = parseFloat(r.unrealized_pnl)
+      const color = pnl > 0 ? 'text-green-600' : pnl < 0 ? 'text-red-600' : ''
+      return (
+        <div className="text-right">
+          <span className={`font-semibold text-base ${color}`}>{formatMoney(r.unrealized_pnl)}</span>
+          <div className={`text-xs ${color || 'text-muted-foreground'}`}>{formatPercent(r.unrealized_pnl_pct)}</div>
+        </div>
+      )
+    },
     className: 'text-right',
   },
   { header: 'Peso', accessor: (r) => `${r.weight_pct}%`, className: 'text-right' },
@@ -77,6 +85,11 @@ export function CarteraPage() {
     },
   })
 
+  const totalPnl = parseFloat(data?.total_unrealized_pnl ?? '0')
+  const totalCost = parseFloat(data?.total_cost ?? '0')
+  const totalPnlPct = totalCost > 0 ? ((totalPnl / totalCost) * 100).toFixed(2) : '0'
+  const pnlColor = totalPnl > 0 ? 'text-green-600' : totalPnl < 0 ? 'text-red-600' : ''
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -103,14 +116,32 @@ export function CarteraPage() {
       </div>
 
       {data && (
-        <div className="flex flex-wrap gap-6 text-sm">
-          <div>Coste total: <strong>{formatMoney(data.total_cost)}</strong></div>
-          <div>Inversiones: <strong>{formatMoney(data.total_market_value)}</strong></div>
-          <div>
-            P&L: <strong className={parseFloat(data.total_unrealized_pnl) >= 0 ? 'text-green-600' : 'text-red-600'}>
-              {formatMoney(data.total_unrealized_pnl)}
-            </strong>
-          </div>
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+          <Card>
+            <CardContent className="pt-4 pb-3">
+              <p className="text-xs text-muted-foreground">Valor de Mercado</p>
+              <p className="text-2xl font-bold">{formatMoney(data.total_market_value)}</p>
+            </CardContent>
+          </Card>
+          <Card className={totalPnl >= 0 ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50'}>
+            <CardContent className="pt-4 pb-3">
+              <p className="text-xs text-muted-foreground">P&L No Realizado</p>
+              <p className={`text-2xl font-bold ${pnlColor}`}>{formatMoney(data.total_unrealized_pnl)}</p>
+              <p className={`text-sm ${pnlColor}`}>{formatPercent(totalPnlPct)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3">
+              <p className="text-xs text-muted-foreground">Coste Total</p>
+              <p className="text-lg font-semibold">{formatMoney(data.total_cost)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3">
+              <p className="text-xs text-muted-foreground">Efectivo</p>
+              <p className="text-lg font-semibold">{formatMoney(data.total_cash)}</p>
+            </CardContent>
+          </Card>
         </div>
       )}
 
