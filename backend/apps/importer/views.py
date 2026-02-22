@@ -8,7 +8,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.assets.models import Asset, Account, AccountSnapshot, PortfolioSnapshot, PriceSnapshot, Settings
+from apps.assets.models import Asset, Account, AccountSnapshot, PortfolioSnapshot, PositionSnapshot, PriceSnapshot, Settings
 from apps.assets.serializers import SettingsSerializer
 from apps.transactions.models import Transaction, Dividend, Interest
 
@@ -17,6 +17,7 @@ from .serializers import (
     BackupAccountSerializer,
     BackupAccountSnapshotSerializer,
     BackupPortfolioSnapshotSerializer,
+    BackupPositionSnapshotSerializer,
     BackupPriceSnapshotSerializer,
     BackupTransactionSerializer,
     BackupDividendSerializer,
@@ -40,6 +41,9 @@ class BackupExportView(APIView):
             ).data,
             "portfolio_snapshots": BackupPortfolioSnapshotSerializer(
                 PortfolioSnapshot.objects.all(), many=True
+            ).data,
+            "position_snapshots": BackupPositionSnapshotSerializer(
+                PositionSnapshot.objects.select_related("asset").all(), many=True
             ).data,
             "transactions": BackupTransactionSerializer(
                 Transaction.objects.all(), many=True
@@ -86,6 +90,7 @@ class BackupImportView(APIView):
             "account_snapshots": 0,
             "price_snapshots": 0,
             "portfolio_snapshots": 0,
+            "position_snapshots": 0,
             "transactions": 0,
             "dividends": 0,
             "interests": 0,
@@ -132,6 +137,12 @@ class BackupImportView(APIView):
                     defaults = {k: v for k, v in item.items() if k != "id"}
                     PortfolioSnapshot.objects.update_or_create(id=record_id, defaults=defaults)
                     counts["portfolio_snapshots"] += 1
+
+                for item in payload.get("position_snapshots", []):
+                    record_id = item["id"]
+                    defaults = {k: v for k, v in item.items() if k != "id"}
+                    PositionSnapshot.objects.update_or_create(id=record_id, defaults=defaults)
+                    counts["position_snapshots"] += 1
 
                 for item in payload.get("transactions", []):
                     record_id = item["id"]

@@ -7,16 +7,11 @@ import { MoneyCell } from '@/components/app/MoneyCell'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/app/PageHeader'
 import { formatQty, formatPercent, formatMoney } from '@/lib/utils'
+import { TYPE_BADGE_COLORS } from '@/lib/constants'
 import { RefreshCw } from 'lucide-react'
 import type { Position } from '@/types'
-
-const TYPE_COLORS: Record<string, string> = {
-  STOCK: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  ETF: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  FUND: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
-  CRYPTO: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-}
 
 const columns: Column<Position>[] = [
   {
@@ -31,7 +26,7 @@ const columns: Column<Position>[] = [
   {
     header: 'Tipo',
     accessor: (r) => (
-      <Badge className={TYPE_COLORS[r.asset_type] ?? ''} variant="secondary">
+      <Badge className={TYPE_BADGE_COLORS[r.asset_type] ?? ''} variant="secondary">
         {r.asset_type}
       </Badge>
     ),
@@ -92,28 +87,25 @@ export function CarteraPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Cartera</h2>
-        <div className="flex items-center gap-3">
-          {priceResult && (
-            <span className="text-sm text-muted-foreground">
-              {priceResult.updated} precios actualizados
-              {priceResult.errors.length > 0 && (
-                <span className="text-destructive ml-1">({priceResult.errors.length} errores)</span>
-              )}
-            </span>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { setPriceResult(null); updatePricesMut.mutate() }}
-            disabled={updatePricesMut.isPending}
-          >
-            <RefreshCw className={`mr-2 h-4 w-4 ${updatePricesMut.isPending ? 'animate-spin' : ''}`} />
-            {updatePricesMut.isPending ? 'Actualizando...' : 'Actualizar precios'}
-          </Button>
-        </div>
-      </div>
+      <PageHeader title="Cartera">
+        {priceResult && (
+          <span className="text-sm text-muted-foreground">
+            {priceResult.updated} precios actualizados
+            {priceResult.errors.length > 0 && (
+              <span className="text-destructive ml-1">({priceResult.errors.length} errores)</span>
+            )}
+          </span>
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => { setPriceResult(null); updatePricesMut.mutate() }}
+          disabled={updatePricesMut.isPending}
+        >
+          <RefreshCw className={`mr-2 h-4 w-4 ${updatePricesMut.isPending ? 'animate-spin' : ''}`} />
+          {updatePricesMut.isPending ? 'Actualizando...' : 'Actualizar precios'}
+        </Button>
+      </PageHeader>
 
       {data && (
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">

@@ -1,6 +1,7 @@
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
 
 export interface Column<T> {
   header: string
@@ -14,14 +15,22 @@ interface DataTableProps<T> {
   loading?: boolean
   page?: number
   totalPages?: number
+  totalCount?: number
   onPageChange?: (page: number) => void
+  emptyIcon?: React.ReactNode
+  emptyMessage?: string
 }
 
-export function DataTable<T extends { id?: string }>({
-  columns, data, loading, page = 1, totalPages = 1, onPageChange,
+export function DataTable<T extends Record<string, any>>({
+  columns, data, loading, page = 1, totalPages = 1, totalCount, onPageChange,
+  emptyIcon, emptyMessage = 'Sin datos',
 }: DataTableProps<T>) {
+  const pageSize = 50
+  const showingFrom = totalCount ? (page - 1) * pageSize + 1 : 0
+  const showingTo = totalCount ? Math.min(page * pageSize, totalCount) : data.length
+
   return (
-    <div>
+    <Card className="overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow>
@@ -32,15 +41,22 @@ export function DataTable<T extends { id?: string }>({
         </TableHeader>
         <TableBody>
           {loading ? (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="text-center py-8 text-muted-foreground">
-                Cargando...
-              </TableCell>
-            </TableRow>
+            Array.from({ length: 5 }).map((_, rowIdx) => (
+              <TableRow key={rowIdx}>
+                {columns.map((col, colIdx) => (
+                  <TableCell key={colIdx} className={col.className}>
+                    <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
           ) : data.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={columns.length} className="text-center py-8 text-muted-foreground">
-                Sin datos
+              <TableCell colSpan={columns.length} className="py-12">
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  {emptyIcon ?? <Inbox className="h-10 w-10 stroke-[1.5]" />}
+                  <p className="text-sm">{emptyMessage}</p>
+                </div>
               </TableCell>
             </TableRow>
           ) : (
@@ -59,26 +75,30 @@ export function DataTable<T extends { id?: string }>({
         </TableBody>
       </Table>
       {totalPages > 1 && onPageChange && (
-        <div className="flex items-center justify-end gap-2 py-4">
+        <div className="flex items-center justify-between border-t px-4 py-3">
           <span className="text-sm text-muted-foreground">
-            Pagina {page} de {totalPages}
+            {totalCount
+              ? `Mostrando ${showingFrom}–${showingTo} de ${totalCount}`
+              : `Página ${page} de ${totalPages}`}
           </span>
-          <Button
-            variant="outline" size="icon"
-            disabled={page <= 1}
-            onClick={() => onPageChange(page - 1)}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline" size="icon"
-            disabled={page >= totalPages}
-            onClick={() => onPageChange(page + 1)}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline" size="icon" className="h-8 w-8"
+              disabled={page <= 1}
+              onClick={() => onPageChange(page - 1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline" size="icon" className="h-8 w-8"
+              disabled={page >= totalPages}
+              onClick={() => onPageChange(page + 1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
-    </div>
+    </Card>
   )
 }

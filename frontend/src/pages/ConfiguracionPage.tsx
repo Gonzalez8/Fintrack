@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { PageHeader } from '@/components/app/PageHeader'
 import type { Settings } from '@/types'
 
 export function ConfiguracionPage() {
@@ -57,7 +58,7 @@ export function ConfiguracionPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Configuracion</h2>
+      <PageHeader title="Configuración" />
 
       <Card>
         <CardHeader>
@@ -74,7 +75,7 @@ export function ConfiguracionPage() {
               <Select value={current.cost_basis_method} onValueChange={(v) => setForm((f) => ({ ...f, cost_basis_method: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="WAC">WAC (Media Ponderada)</SelectItem>
+                  <SelectItem value="FIFO">FIFO (Primera entrada, primera salida)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -184,8 +185,8 @@ export function ConfiguracionPage() {
                 <li>Activos: {importResult.assets}</li>
                 <li>Cuentas: {importResult.accounts}</li>
                 <li>Hist. saldos cuentas: {importResult.account_snapshots}</li>
-                <li>Hist. precios activos: {importResult.price_snapshots}</li>
                 <li>Hist. evolución cartera: {importResult.portfolio_snapshots}</li>
+                <li>Hist. posiciones por activo: {importResult.position_snapshots}</li>
                 <li>Transacciones: {importResult.transactions}</li>
                 <li>Dividendos: {importResult.dividends}</li>
                 <li>Intereses: {importResult.interests}</li>

@@ -93,96 +93,81 @@ def rv_evolution():
 
 
 def patrimonio_evolution():
-    from apps.assets.models import Asset, AccountSnapshot, PriceSnapshot
-    from apps.transactions.models import Transaction
+    """Return monthly patrimony evolution using PortfolioSnapshot + AccountSnapshot.
+
+    Investment values come exclusively from PortfolioSnapshot/PositionSnapshot records
+    (created by the scheduler). Cash values come from AccountSnapshot.
+    Missing months carry forward the last known values.
+    """
+    from apps.assets.models import AccountSnapshot, Asset, PortfolioSnapshot, PositionSnapshot
 
     EQUITY_TYPES = {"STOCK", "ETF", "CRYPTO"}
-
-    # Asset type lookup
     asset_type_map = dict(Asset.objects.values_list("id", "type"))
 
-    # --- Cash evolution (account snapshots) ---
-    snapshots = AccountSnapshot.objects.order_by("date").values_list(
-        "account_id", "date", "balance"
-    )
+    # --- Cash: last AccountSnapshot balance per month, carry-forward ---
+    account_balances = {}  # account_id -> latest balance
+    monthly_cash = {}      # "YYYY-MM" -> total cash
 
-    account_balances = {}  # account_id -> latest known balance
-    monthly_cash_updates = defaultdict(dict)  # "YYYY-MM" -> {account_id: balance}
+    for snap in AccountSnapshot.objects.order_by("date").values("account_id", "date", "balance"):
+        month_key = snap["date"].strftime("%Y-%m")
+        account_balances[snap["account_id"]] = snap["balance"]
+        monthly_cash[month_key] = sum(account_balances.values(), Decimal("0"))
 
-    for account_id, date, balance in snapshots:
-        month_key = date.strftime("%Y-%m")
-        monthly_cash_updates[month_key][account_id] = balance
+    # --- Investments: last PortfolioSnapshot per month, carry-forward ---
+    monthly_portfolio = {}  # "YYYY-MM" -> {"batch_id": ..., "total_market_value": ...}
 
-    # --- Investment evolution (transactions + price snapshots) ---
-    transactions = Transaction.objects.order_by("date").values_list(
-        "date", "type", "asset_id", "quantity"
-    )
+    for snap in PortfolioSnapshot.objects.order_by("captured_at").values(
+        "captured_at", "batch_id", "total_market_value"
+    ):
+        month_key = snap["captured_at"].strftime("%Y-%m")
+        monthly_portfolio[month_key] = snap
 
-    # Build monthly cumulative holdings: {asset_id: quantity}
-    holdings = defaultdict(Decimal)  # asset_id -> running qty
-    monthly_holdings_updates = defaultdict(dict)  # "YYYY-MM" -> {asset_id: qty_delta}
-
-    for date, tx_type, asset_id, quantity in transactions:
-        month_key = date.strftime("%Y-%m")
-        if tx_type == "BUY":
-            holdings[asset_id] += quantity
-        elif tx_type in ("SELL", "GIFT"):
-            holdings[asset_id] -= quantity
-        monthly_holdings_updates[month_key][asset_id] = holdings[asset_id]
-
-    # Build price lookup: last snapshot per asset per month
-    price_snapshots = PriceSnapshot.objects.order_by("date").values_list(
-        "asset_id", "date", "price"
-    )
-    monthly_price_updates = defaultdict(dict)  # "YYYY-MM" -> {asset_id: price}
-    for asset_id, date, price in price_snapshots:
-        month_key = date.strftime("%Y-%m")
-        monthly_price_updates[month_key][asset_id] = price
-
-    # Collect all months from both sources
-    all_months = sorted(
-        set(monthly_cash_updates.keys())
-        | set(monthly_holdings_updates.keys())
-        | set(monthly_price_updates.keys())
-    )
-
-    if not all_months:
+    if not monthly_portfolio and not monthly_cash:
         return []
 
-    asset_holdings = defaultdict(Decimal)  # asset_id -> current qty
-    asset_prices = {}  # asset_id -> latest known price
+    # --- Breakdown by type using PositionSnapshot ---
+    selected_batch_ids = {snap["batch_id"] for snap in monthly_portfolio.values()}
+    batch_rv = defaultdict(Decimal)
+    batch_rf = defaultdict(Decimal)
+
+    for pos in PositionSnapshot.objects.filter(batch_id__in=selected_batch_ids).values(
+        "batch_id", "asset_id", "market_value"
+    ):
+        asset_type = asset_type_map.get(pos["asset_id"], "")
+        if asset_type in EQUITY_TYPES:
+            batch_rv[pos["batch_id"]] += pos["market_value"]
+        else:
+            batch_rf[pos["batch_id"]] += pos["market_value"]
+
+    # --- Combine all months with carry-forward ---
+    all_months = sorted(set(monthly_cash.keys()) | set(monthly_portfolio.keys()))
+
+    last_cash = Decimal("0")
+    last_portfolio = None
     result = []
 
     for month in all_months:
-        # Update cash
-        account_balances.update(monthly_cash_updates.get(month, {}))
-        total_cash = sum(account_balances.values(), Decimal("0"))
+        if month in monthly_cash:
+            last_cash = monthly_cash[month]
+        if month in monthly_portfolio:
+            last_portfolio = monthly_portfolio[month]
 
-        # Update holdings
-        asset_holdings.update(monthly_holdings_updates.get(month, {}))
-
-        # Update prices (carry forward from previous months)
-        asset_prices.update(monthly_price_updates.get(month, {}))
-
-        # Calculate investment value split by category
-        total_investments = Decimal("0")
-        total_renta_variable = Decimal("0")
-        total_renta_fija = Decimal("0")
-        for asset_id, qty in asset_holdings.items():
-            if qty > 0 and asset_id in asset_prices:
-                value = qty * asset_prices[asset_id]
-                total_investments += value
-                if asset_type_map.get(asset_id) in EQUITY_TYPES:
-                    total_renta_variable += value
-                else:
-                    total_renta_fija += value
+        if last_portfolio:
+            total_investments = Decimal(str(last_portfolio["total_market_value"]))
+            bid = last_portfolio["batch_id"]
+            rv = batch_rv.get(bid, Decimal("0"))
+            rf = batch_rf.get(bid, Decimal("0"))
+        else:
+            total_investments = Decimal("0")
+            rv = Decimal("0")
+            rf = Decimal("0")
 
         result.append({
             "month": month,
-            "cash": str(total_cash),
+            "cash": str(last_cash),
             "investments": str(total_investments),
-            "renta_variable": str(total_renta_variable),
-            "renta_fija": str(total_renta_fija),
+            "renta_variable": str(rv),
+            "renta_fija": str(rf),
         })
 
     return result

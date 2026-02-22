@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { MoneyCell } from '@/components/app/MoneyCell'
 import { RVEvolutionChart } from '@/components/app/RVEvolutionChart'
 import { formatMoney, formatPercent } from '@/lib/utils'
+import { PageHeader } from '@/components/app/PageHeader'
 import { PieChart, Pie, Cell, BarChart, Bar, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 const COLORS = [
@@ -81,7 +82,7 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Dashboard</h2>
+      <PageHeader title="Dashboard" />
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

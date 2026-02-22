@@ -3,7 +3,7 @@ from apps.assets.services import update_prices
 
 
 class Command(BaseCommand):
-    help = "Fetch latest prices from Yahoo Finance and save PriceSnapshots"
+    help = "Fetch latest prices from Yahoo Finance and update Asset.current_price"
 
     def handle(self, *args, **options):
         results = update_prices()

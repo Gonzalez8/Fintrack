@@ -6,44 +6,16 @@ import { assetsApi, accountsApi } from '@/api/assets'
 import { DataTable, type Column } from '@/components/app/DataTable'
 import { MoneyCell } from '@/components/app/MoneyCell'
 import { NewAssetForm } from '@/components/app/NewAssetForm'
+import { PageHeader } from '@/components/app/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Download, Pencil, Trash2, ShoppingCart, TrendingDown, Gift, Info } from 'lucide-react'
-import { formatQty } from '@/lib/utils'
+import { formatQty, formatErrors } from '@/lib/utils'
+import { TX_TYPE_BADGE_COLORS, TX_TYPE_LABELS } from '@/lib/constants'
 import type { Transaction } from '@/types'
-import axios from 'axios'
-
-const selectClass = 'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
-
-const TYPE_BADGE: Record<string, string> = {
-  BUY: 'bg-green-500/10 text-green-600 dark:text-green-400',
-  SELL: 'bg-red-500/10 text-red-600 dark:text-red-400',
-  GIFT: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-}
-
-const TYPE_LABELS: Record<string, string> = {
-  BUY: 'Compra',
-  SELL: 'Venta',
-  GIFT: 'Regalo',
-}
-
-function formatErrors(err: unknown): string {
-  if (axios.isAxiosError(err) && err.response?.data) {
-    const data = err.response.data
-    if (typeof data === 'string') return data
-    if (typeof data.detail === 'string') return data.detail
-    const messages: string[] = []
-    for (const [field, errs] of Object.entries(data)) {
-      const list = Array.isArray(errs) ? errs.join(', ') : String(errs)
-      messages.push(`${field}: ${list}`)
-    }
-    return messages.join(' | ')
-  }
-  return 'Error desconocido'
-}
 
 export function OperacionesPage() {
   const queryClient = useQueryClient()
@@ -105,7 +77,7 @@ export function OperacionesPage() {
     { header: 'Fecha', accessor: 'date' },
     {
       header: 'Tipo',
-      accessor: (r) => <Badge className={TYPE_BADGE[r.type] ?? ''} variant="secondary">{r.type}</Badge>,
+      accessor: (r) => <Badge className={TX_TYPE_BADGE_COLORS[r.type] ?? ''} variant="secondary">{TX_TYPE_LABELS[r.type] ?? r.type}</Badge>,
     },
     {
       header: 'Activo',
@@ -141,17 +113,14 @@ export function OperacionesPage() {
   const today = new Date().toISOString().slice(0, 10)
   const isSell = form.type === 'SELL'
 
-  // Map asset_id -> position for sell mode
   const positionMap = new Map(
     (portfolioData?.positions ?? []).map((p) => [p.asset_id, p])
   )
 
-  // Assets available in sell mode: only those with positions
   const assetOptions = isSell
     ? (assetsData?.results ?? []).filter((a) => positionMap.has(a.id))
     : (assetsData?.results ?? [])
 
-  // Current selected position (for sell limits)
   const selectedPosition = isSell && form.asset ? positionMap.get(form.asset) : null
 
   const handleAssetChange = (assetId: string) => {
@@ -196,23 +165,20 @@ export function OperacionesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Operaciones</h2>
-        <div className="flex gap-2">
-          <a href="/api/export/transactions.csv" target="_blank" rel="noopener">
-            <Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" />CSV</Button>
-          </a>
-          <Button size="sm" onClick={() => openNew('BUY')}>
-            <ShoppingCart className="mr-2 h-4 w-4" />Compra
-          </Button>
-          <Button size="sm" variant="destructive" onClick={() => openNew('SELL')}>
-            <TrendingDown className="mr-2 h-4 w-4" />Venta
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => openNew('GIFT')}>
-            <Gift className="mr-2 h-4 w-4" />Regalo
-          </Button>
-        </div>
-      </div>
+      <PageHeader title="Operaciones">
+        <a href="/api/export/transactions.csv" target="_blank" rel="noopener">
+          <Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" />CSV</Button>
+        </a>
+        <Button size="sm" onClick={() => openNew('BUY')}>
+          <ShoppingCart className="mr-2 h-4 w-4" />Compra
+        </Button>
+        <Button size="sm" variant="destructive" onClick={() => openNew('SELL')}>
+          <TrendingDown className="mr-2 h-4 w-4" />Venta
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => openNew('GIFT')}>
+          <Gift className="mr-2 h-4 w-4" />Regalo
+        </Button>
+      </PageHeader>
 
       <div className="flex flex-wrap gap-2">
         <Input
@@ -249,12 +215,12 @@ export function OperacionesPage() {
         </Select>
       </div>
 
-      <DataTable columns={columns} data={data?.results ?? []} loading={isLoading} page={page} totalPages={totalPages} onPageChange={setPage} />
+      <DataTable columns={columns} data={data?.results ?? []} loading={isLoading} page={page} totalPages={totalPages} totalCount={data?.count} onPageChange={setPage} />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Editar Operación' : `Nueva ${TYPE_LABELS[form.type] ?? 'Operación'}`}</DialogTitle>
+            <DialogTitle>{editingId ? 'Editar Operación' : `Nueva ${TX_TYPE_LABELS[form.type] ?? 'Operación'}`}</DialogTitle>
           </DialogHeader>
           <form
             className="space-y-4"
@@ -276,38 +242,45 @@ export function OperacionesPage() {
             {editingId && (
               <div>
                 <label className="text-sm font-medium">Tipo</label>
-                <select className={selectClass} value={form.type ?? ''} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))} required>
-                  <option value="BUY">Compra</option>
-                  <option value="SELL">Venta</option>
-                  <option value="GIFT">Regalo</option>
-                </select>
+                <Select value={form.type ?? ''} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BUY">Compra</SelectItem>
+                    <SelectItem value="SELL">Venta</SelectItem>
+                    <SelectItem value="GIFT">Regalo</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
             <div>
               <label className="text-sm font-medium">Activo</label>
-              <select className={selectClass} value={form.asset ?? ''} onChange={(e) => handleAssetChange(e.target.value)} required>
-                <option value="" disabled>Seleccionar activo</option>
-                {assetOptions.map((a) => {
-                  const pos = positionMap.get(a.id)
-                  const suffix = isSell && pos ? ` — ${formatQty(pos.quantity)} uds` : ''
-                  return (
-                    <option key={a.id} value={a.id}>{a.name} {a.ticker ? `(${a.ticker})` : ''}{suffix}</option>
-                  )
-                })}
-              </select>
+              <Select value={form.asset ?? ''} onValueChange={handleAssetChange}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar activo" /></SelectTrigger>
+                <SelectContent>
+                  {assetOptions.map((a) => {
+                    const pos = positionMap.get(a.id)
+                    const suffix = isSell && pos ? ` — ${formatQty(pos.quantity)} uds` : ''
+                    return (
+                      <SelectItem key={a.id} value={a.id}>{a.name} {a.ticker ? `(${a.ticker})` : ''}{suffix}</SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
               {!isSell && !editingId && <NewAssetForm onCreated={(id) => setForm((f) => ({ ...f, asset: id }))} />}
             </div>
 
             {!isSell && (
               <div>
                 <label className="text-sm font-medium">Cuenta</label>
-                <select className={selectClass} value={form.account ?? ''} onChange={(e) => setForm((f) => ({ ...f, account: e.target.value }))} required>
-                  <option value="" disabled>Seleccionar cuenta</option>
-                  {accountsData?.results.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </select>
+                <Select value={form.account ?? ''} onValueChange={(v) => setForm((f) => ({ ...f, account: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar cuenta" /></SelectTrigger>
+                  <SelectContent>
+                    {accountsData?.results.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 

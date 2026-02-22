@@ -8,27 +8,11 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MoneyCell } from '@/components/app/MoneyCell'
+import { PageHeader } from '@/components/app/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Trash2, ChevronDown, ChevronRight, Camera } from 'lucide-react'
+import { ACCOUNT_TYPE_COLORS, ACCOUNT_TYPE_LABELS } from '@/lib/constants'
 import type { Account, AccountSnapshot } from '@/types'
-
-const selectClass = 'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
-
-const ACCOUNT_TYPE_COLORS: Record<string, string> = {
-  OPERATIVA: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  AHORRO: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  INVERSION: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-  DEPOSITOS: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
-  ALTERNATIVOS: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-}
-
-const ACCOUNT_TYPE_LABELS: Record<string, string> = {
-  OPERATIVA: 'Operativa',
-  AHORRO: 'Ahorro',
-  INVERSION: 'Inversion',
-  DEPOSITOS: 'Depositos',
-  ALTERNATIVOS: 'Alternativos',
-}
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10)
@@ -130,7 +114,7 @@ export function CuentasPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Cuentas</h2>
+      <PageHeader title="Cuentas" />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -169,15 +153,14 @@ export function CuentasPage() {
                     />
                   </TableCell>
                   <TableCell>
-                    <select
-                      className={selectClass + ' w-36'}
-                      value={newAccount.type}
-                      onChange={(e) => setNewAccount((p) => ({ ...p, type: e.target.value }))}
-                    >
-                      {Object.entries(ACCOUNT_TYPE_LABELS).map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
-                      ))}
-                    </select>
+                    <Select value={newAccount.type} onValueChange={(v) => setNewAccount((p) => ({ ...p, type: v }))}>
+                      <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(ACCOUNT_TYPE_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell></TableCell>
                   <TableCell>

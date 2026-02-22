@@ -7,15 +7,29 @@ import {
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 
-const links = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/cartera', icon: Briefcase, label: 'Cartera' },
-  { to: '/activos', icon: Landmark, label: 'Activos' },
-  { to: '/cuentas', icon: Wallet, label: 'Cuentas' },
-  { to: '/operaciones', icon: ArrowLeftRight, label: 'Operaciones' },
-  { to: '/dividendos', icon: Coins, label: 'Dividendos' },
-  { to: '/intereses', icon: Percent, label: 'Intereses' },
+const sections = [
+  {
+    label: 'Resumen',
+    links: [
+      { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+      { to: '/cartera', icon: Briefcase, label: 'Cartera' },
+    ],
+  },
+  {
+    label: 'Operaciones',
+    links: [
+      { to: '/activos', icon: Landmark, label: 'Activos' },
+      { to: '/cuentas', icon: Wallet, label: 'Cuentas' },
+      { to: '/operaciones', icon: ArrowLeftRight, label: 'Operaciones' },
+      { to: '/dividendos', icon: Coins, label: 'Dividendos' },
+      { to: '/intereses', icon: Percent, label: 'Intereses' },
+    ],
+  },
+]
+
+const bottomLinks = [
   { to: '/fiscal', icon: FileText, label: 'Fiscal' },
+  { to: '/configuracion', icon: Settings, label: 'Configuración' },
 ]
 
 function useDarkMode() {
@@ -31,6 +45,36 @@ function useDarkMode() {
   }
 
   return { isDark, toggle }
+}
+
+function SidebarLink({ to, icon: Icon, label }: { to: string; icon: typeof LayoutDashboard; label: string }) {
+  return (
+    <NavLink
+      to={to}
+      end={to === '/'}
+      className={({ isActive }) =>
+        `group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
+          isActive
+            ? 'bg-primary/10 text-primary'
+            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+        }`
+      }
+    >
+      {({ isActive }) => (
+        <>
+          <Icon
+            className={`h-4 w-4 shrink-0 transition-colors ${
+              isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+            }`}
+          />
+          {label}
+          {isActive && (
+            <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+          )}
+        </>
+      )}
+    </NavLink>
+  )
 }
 
 export function Sidebar() {
@@ -52,64 +96,22 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-2 pt-3">
-        <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-          Menú
-        </p>
-        {links.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            className={({ isActive }) =>
-              `group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
-                isActive
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <Icon
-                  className={`h-4 w-4 shrink-0 transition-colors ${
-                    isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
-                  }`}
-                />
-                {label}
-                {isActive && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
-                )}
-              </>
-            )}
-          </NavLink>
+        {sections.map((section) => (
+          <div key={section.label} className="mb-3">
+            <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+              {section.label}
+            </p>
+            {section.links.map((link) => (
+              <SidebarLink key={link.to} {...link} />
+            ))}
+          </div>
         ))}
 
         <div className="my-3 h-px bg-border/60" />
 
-        <NavLink
-          to="/configuracion"
-          className={({ isActive }) =>
-            `group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
-              isActive
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            }`
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <Settings
-                className={`h-4 w-4 shrink-0 transition-colors ${
-                  isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
-                }`}
-              />
-              Configuración
-              {isActive && (
-                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
-              )}
-            </>
-          )}
-        </NavLink>
+        {bottomLinks.map((link) => (
+          <SidebarLink key={link.to} {...link} />
+        ))}
       </nav>
 
       {/* Footer */}

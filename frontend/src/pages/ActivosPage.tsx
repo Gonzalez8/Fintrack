@@ -10,6 +10,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MoneyCell } from '@/components/app/MoneyCell'
+import { PageHeader } from '@/components/app/PageHeader'
 import { RefreshCw, Trash2, Plus } from 'lucide-react'
 import type { Asset } from '@/types'
 
@@ -90,7 +91,7 @@ export function ActivosPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Activos</h2>
+      <PageHeader title="Activos" />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4">

@@ -1,11 +1,11 @@
 import math
 import uuid
-from datetime import date
 from decimal import Decimal, InvalidOperation
 
+from django.db import transaction
 from django.utils import timezone
 
-from .models import Asset, PortfolioSnapshot, PriceSnapshot
+from .models import Asset, PortfolioSnapshot, PositionSnapshot
 
 
 def _fetch_batch(tickers, period="5d"):
@@ -48,30 +48,56 @@ def _fetch_batch(tickers, period="5d"):
 
 
 def create_portfolio_snapshot_now() -> None:
-    """Create a PortfolioSnapshot using the current FIFO-computed portfolio value.
+    """Create a PortfolioSnapshot and one PositionSnapshot per open position.
 
-    Called by the background scheduler according to snapshot_frequency.
-    Uses the same calculation engine as the portfolio page to ensure consistency.
+    Wrapped in a single atomic transaction so PortfolioSnapshot and all its
+    PositionSnapshots are always committed together or not at all, regardless
+    of the call site (scheduler, management command, view, test, shell).
     """
     from apps.portfolio.services import calculate_portfolio
 
     data = calculate_portfolio()
-    now = timezone.now()
 
-    PortfolioSnapshot.objects.create(
-        captured_at=now,
-        batch_id=uuid.uuid4(),
-        total_market_value=Decimal(data["total_market_value"]),
-        total_cost=Decimal(data["total_cost"]),
-        total_unrealized_pnl=Decimal(data["total_unrealized_pnl"]),
-    )
+    # Abort if positions exist but total is 0: prices are missing or broken.
+    # Allow 0 only when there are genuinely no open positions (empty portfolio).
+    has_positions = len(data["positions"]) > 0
+    if has_positions and Decimal(data["total_market_value"]) <= 0:
+        return
+
+    now = timezone.now()
+    batch_id = uuid.uuid4()
+
+    with transaction.atomic():
+        PortfolioSnapshot.objects.create(
+            captured_at=now,
+            batch_id=batch_id,
+            total_market_value=Decimal(data["total_market_value"]),
+            total_cost=Decimal(data["total_cost"]),
+            total_unrealized_pnl=Decimal(data["total_unrealized_pnl"]),
+        )
+
+        position_snapshots = [
+            PositionSnapshot(
+                batch_id=batch_id,
+                captured_at=now,
+                asset_id=pos["asset_id"],
+                quantity=Decimal(pos["quantity"]),
+                cost_basis=Decimal(pos["cost_total"]),
+                market_value=Decimal(pos["market_value"]),
+                unrealized_pnl=Decimal(pos["unrealized_pnl"]),
+                unrealized_pnl_pct=Decimal(pos["unrealized_pnl_pct"]),
+            )
+            for pos in data["positions"]
+        ]
+        if position_snapshots:
+            PositionSnapshot.objects.bulk_create(position_snapshots)
 
 
 def update_prices():
     """Fetch latest prices from Yahoo Finance and update Asset.current_price.
 
-    Also saves a PriceSnapshot per asset for historical price tracking.
-    Does NOT create PortfolioSnapshot — that is handled by the background scheduler.
+    Does NOT create any snapshots — snapshot creation is handled exclusively
+    by the background scheduler via create_portfolio_snapshot_now().
     """
     import yfinance as yf
 
@@ -109,9 +135,7 @@ def update_prices():
             except Exception:
                 pass
 
-    batch_id = uuid.uuid4()
     now = timezone.now()
-    today = now.date()
 
     for ticker, asset in ticker_map.items():
         if ticker in prices:
@@ -125,14 +149,6 @@ def update_prices():
                     "current_price", "price_source", "price_status",
                     "price_updated_at", "updated_at",
                 ])
-                PriceSnapshot.objects.create(
-                    asset=asset,
-                    date=today,
-                    price=price,
-                    source="YAHOO",
-                    captured_at=now,
-                    batch_id=batch_id,
-                )
                 results["updated"] += 1
                 results["prices"].append({
                     "ticker": ticker,

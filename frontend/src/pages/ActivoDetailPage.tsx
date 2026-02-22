@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { MoneyCell } from '@/components/app/MoneyCell'
+import { PageHeader } from '@/components/app/PageHeader'
 import { ArrowLeft } from 'lucide-react'
 import type { Asset } from '@/types'
 
@@ -75,12 +76,11 @@ export function ActivoDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <PageHeader title={asset.name}>
         <Button variant="ghost" size="sm" onClick={() => navigate('/activos')}>
           <ArrowLeft className="mr-1 h-4 w-4" /> Volver
         </Button>
-        <h2 className="text-2xl font-bold">{asset.name}</h2>
-      </div>
+      </PageHeader>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

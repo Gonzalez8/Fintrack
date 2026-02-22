@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Table, TableHeader, TableBody, TableFooter, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { MoneyCell } from '@/components/app/MoneyCell'
+import { PageHeader } from '@/components/app/PageHeader'
 import { formatQty, formatPercent, formatMoney } from '@/lib/utils'
 
 export function FiscalPage() {
@@ -87,8 +88,7 @@ export function FiscalPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Fiscal — Declaración de la Renta</h2>
+      <PageHeader title="Fiscal" subtitle="Declaración de la Renta">
         <Select value={year} onValueChange={setYear}>
           <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -97,7 +97,7 @@ export function FiscalPage() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </PageHeader>
 
       {/* Summary cards */}
       <div className="grid gap-4 md:grid-cols-4">

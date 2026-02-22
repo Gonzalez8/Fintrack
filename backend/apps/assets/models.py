@@ -130,9 +130,28 @@ class PortfolioSnapshot(models.Model):
         return f"Portfolio @ {self.captured_at}: {self.total_market_value}"
 
 
+class PositionSnapshot(models.Model):
+    """Per-asset position snapshot linked to a PortfolioSnapshot via batch_id."""
+
+    batch_id = models.UUIDField(db_index=True)
+    captured_at = models.DateTimeField(db_index=True)
+    asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name="position_snapshots")
+    quantity = models.DecimalField(max_digits=20, decimal_places=6)
+    cost_basis = models.DecimalField(max_digits=20, decimal_places=2)
+    market_value = models.DecimalField(max_digits=20, decimal_places=2)
+    unrealized_pnl = models.DecimalField(max_digits=20, decimal_places=2)
+    unrealized_pnl_pct = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        ordering = ["-captured_at"]
+
+    def __str__(self):
+        return f"{self.asset.name} @ {self.captured_at}: {self.market_value}"
+
+
 class Settings(models.Model):
     class CostBasisMethod(models.TextChoices):
-        WAC = "WAC", "Weighted Average Cost"
+        FIFO = "FIFO", "First In, First Out"
 
     class GiftCostMode(models.TextChoices):
         ZERO = "ZERO", "Zero cost"
@@ -140,7 +159,7 @@ class Settings(models.Model):
 
     base_currency = models.CharField(max_length=3, default="EUR")
     cost_basis_method = models.CharField(
-        max_length=10, choices=CostBasisMethod.choices, default=CostBasisMethod.WAC
+        max_length=10, choices=CostBasisMethod.choices, default=CostBasisMethod.FIFO
     )
     gift_cost_mode = models.CharField(
         max_length=10, choices=GiftCostMode.choices, default=GiftCostMode.ZERO
