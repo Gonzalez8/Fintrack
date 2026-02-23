@@ -97,6 +97,16 @@ class BackupImportView(APIView):
             "settings": False,
         }
 
+        def to_defaults(item, fk_fields=()):
+            """Build defaults dict renaming FK fields to field_id so Django ORM
+            accepts UUID strings without needing model instances."""
+            result = {}
+            for k, v in item.items():
+                if k == "id":
+                    continue
+                result[f"{k}_id" if k in fk_fields else k] = v
+            return result
+
         try:
             with db_transaction.atomic():
                 if "settings" in payload:
@@ -110,56 +120,61 @@ class BackupImportView(APIView):
 
                 for item in payload.get("assets", []):
                     record_id = item["id"]
-                    defaults = {k: v for k, v in item.items() if k != "id"}
-                    Asset.objects.update_or_create(id=record_id, defaults=defaults)
+                    Asset.objects.update_or_create(id=record_id, defaults=to_defaults(item))
                     counts["assets"] += 1
 
                 for item in payload.get("accounts", []):
                     record_id = item["id"]
-                    defaults = {k: v for k, v in item.items() if k != "id"}
-                    Account.objects.update_or_create(id=record_id, defaults=defaults)
+                    Account.objects.update_or_create(id=record_id, defaults=to_defaults(item))
                     counts["accounts"] += 1
 
                 for item in payload.get("account_snapshots", []):
                     record_id = item["id"]
-                    defaults = {k: v for k, v in item.items() if k != "id"}
-                    AccountSnapshot.objects.update_or_create(id=record_id, defaults=defaults)
+                    AccountSnapshot.objects.update_or_create(
+                        id=record_id, defaults=to_defaults(item, fk_fields=("account",))
+                    )
                     counts["account_snapshots"] += 1
 
                 for item in payload.get("price_snapshots", []):
                     record_id = item["id"]
-                    defaults = {k: v for k, v in item.items() if k != "id"}
-                    PriceSnapshot.objects.update_or_create(id=record_id, defaults=defaults)
+                    PriceSnapshot.objects.update_or_create(
+                        id=record_id, defaults=to_defaults(item, fk_fields=("asset",))
+                    )
                     counts["price_snapshots"] += 1
 
                 for item in payload.get("portfolio_snapshots", []):
                     record_id = item["id"]
-                    defaults = {k: v for k, v in item.items() if k != "id"}
-                    PortfolioSnapshot.objects.update_or_create(id=record_id, defaults=defaults)
+                    PortfolioSnapshot.objects.update_or_create(
+                        id=record_id, defaults=to_defaults(item)
+                    )
                     counts["portfolio_snapshots"] += 1
 
                 for item in payload.get("position_snapshots", []):
                     record_id = item["id"]
-                    defaults = {k: v for k, v in item.items() if k != "id"}
-                    PositionSnapshot.objects.update_or_create(id=record_id, defaults=defaults)
+                    PositionSnapshot.objects.update_or_create(
+                        id=record_id, defaults=to_defaults(item, fk_fields=("asset",))
+                    )
                     counts["position_snapshots"] += 1
 
                 for item in payload.get("transactions", []):
                     record_id = item["id"]
-                    defaults = {k: v for k, v in item.items() if k != "id"}
-                    Transaction.objects.update_or_create(id=record_id, defaults=defaults)
+                    Transaction.objects.update_or_create(
+                        id=record_id, defaults=to_defaults(item, fk_fields=("asset", "account"))
+                    )
                     counts["transactions"] += 1
 
                 for item in payload.get("dividends", []):
                     record_id = item["id"]
-                    defaults = {k: v for k, v in item.items() if k != "id"}
-                    Dividend.objects.update_or_create(id=record_id, defaults=defaults)
+                    Dividend.objects.update_or_create(
+                        id=record_id, defaults=to_defaults(item, fk_fields=("asset",))
+                    )
                     counts["dividends"] += 1
 
                 for item in payload.get("interests", []):
                     record_id = item["id"]
-                    defaults = {k: v for k, v in item.items() if k != "id"}
-                    Interest.objects.update_or_create(id=record_id, defaults=defaults)
+                    Interest.objects.update_or_create(
+                        id=record_id, defaults=to_defaults(item, fk_fields=("account",))
+                    )
                     counts["interests"] += 1
 
         except Exception as e:
