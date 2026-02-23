@@ -7,8 +7,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/fintrack-backend
-  FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/fintrack-frontend
 
 jobs:
   build-and-push:
@@ -20,6 +18,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set image names (lowercase)
+        run: |
+          echo "BACKEND_IMAGE=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/fintrack-backend" >> $GITHUB_ENV
+          echo "FRONTEND_IMAGE=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/fintrack-frontend" >> $GITHUB_ENV
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
