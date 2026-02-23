@@ -97,12 +97,13 @@ class BackupImportView(APIView):
             "settings": False,
         }
 
-        def to_defaults(item, fk_fields=()):
+        def to_defaults(item, fk_fields=(), exclude=()):
             """Build defaults dict renaming FK fields to field_id so Django ORM
             accepts UUID strings without needing model instances."""
+            skip = {"id"} | set(exclude)
             result = {}
             for k, v in item.items():
-                if k == "id":
+                if k in skip:
                     continue
                 result[f"{k}_id" if k in fk_fields else k] = v
             return result
@@ -143,16 +144,20 @@ class BackupImportView(APIView):
                     counts["price_snapshots"] += 1
 
                 for item in payload.get("portfolio_snapshots", []):
-                    record_id = item["id"]
+                    # Use batch_id (UUID) as the natural key — avoids integer
+                    # sequence conflicts when importing into a fresh database.
                     PortfolioSnapshot.objects.update_or_create(
-                        id=record_id, defaults=to_defaults(item)
+                        batch_id=item["batch_id"],
+                        defaults=to_defaults(item, exclude=("batch_id",)),
                     )
                     counts["portfolio_snapshots"] += 1
 
                 for item in payload.get("position_snapshots", []):
-                    record_id = item["id"]
+                    # batch_id + asset_id uniquely identifies a position snapshot.
                     PositionSnapshot.objects.update_or_create(
-                        id=record_id, defaults=to_defaults(item, fk_fields=("asset",))
+                        batch_id=item["batch_id"],
+                        asset_id=item["asset"],
+                        defaults=to_defaults(item, fk_fields=("asset",), exclude=("batch_id",)),
                     )
                     counts["position_snapshots"] += 1
 
@@ -182,19 +187,5 @@ class BackupImportView(APIView):
                 {"detail": f"Import failed: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        # Reset sequences for tables that use integer PKs so the next
-        # auto-generated ID doesn't collide with the imported rows.
-        from django.db import connection
-        int_pk_tables = [
-            "assets_portfoliosnapshot",
-            "assets_positionsnapshot",
-        ]
-        with connection.cursor() as cursor:
-            for table in int_pk_tables:
-                cursor.execute(
-                    f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), "
-                    f"COALESCE(MAX(id), 1)) FROM {table};"
-                )
 
         return Response({"counts": counts})
