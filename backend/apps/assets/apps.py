@@ -8,9 +8,10 @@ class AssetsConfig(AppConfig):
     name = "apps.assets"
 
     def ready(self):
-        # RUN_MAIN=true is set by Django's auto-reloader in the child (server) process.
-        # This guard prevents the scheduler from starting in the watcher process,
-        # in management commands (migrate, shell, etc.), and in tests.
+        # RUN_MAIN=true is set by Django's auto-reloader (runserver) in the server
+        # process, and by entrypoint.sh before starting Gunicorn (production).
+        # This guard prevents the scheduler from starting in management commands
+        # (migrate, shell, etc.) and in tests.
         if os.environ.get("RUN_MAIN") != "true":
             return
 

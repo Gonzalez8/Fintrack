@@ -21,12 +21,89 @@ Personal investment tracking application. Monitor your portfolio, transactions, 
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui (Radix), React Query, Zustand, Recharts |
 | Infra | Docker Compose |
 
-## Quick Start
+---
+
+## Deployment
+
+### Option A — Production (pre-built images, no source code needed)
+
+Uses the images published on GitHub Container Registry. This is the recommended approach for self-hosting.
+
+**1. Create a working directory and download the compose file:**
 
 ```bash
-git clone <repo-url> && cd Fintrack
-cp .env.example .env          # adjust if needed
-docker compose up              # starts db, backend and frontend
+mkdir fintrack && cd fintrack
+curl -O https://raw.githubusercontent.com/Gonzalez8/Fintrack/main/docker-compose.prod.yml
+curl -O https://raw.githubusercontent.com/Gonzalez8/Fintrack/main/.env.production.example
+cp .env.production.example .env
+```
+
+**2. Edit `.env` with your values:**
+
+```env
+# Database
+DB_NAME=fintrack
+DB_USER=fintrack
+DB_PASSWORD=CHANGE_ME_STRONG_PASSWORD
+
+# Django
+DJANGO_SECRET_KEY=CHANGE_ME_RANDOM_STRING_50_CHARS
+ALLOWED_HOSTS=fintrack.yourdomain.com,localhost
+CORS_ALLOWED_ORIGINS=https://fintrack.yourdomain.com
+CSRF_TRUSTED_ORIGINS=https://fintrack.yourdomain.com
+
+# Port exposed by the container (e.g. 80 or 8000)
+APP_PORT=80
+
+# Initial superuser — created automatically on first start
+DJANGO_SUPERUSER_USERNAME=admin
+DJANGO_SUPERUSER_PASSWORD=CHANGE_ME_STRONG_PASSWORD
+```
+
+**3. Start:**
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env up -d
+```
+
+The superuser is created automatically on first start. No manual scripts needed.
+
+| Service | URL |
+|---|---|
+| App + API | http://localhost (or your domain) |
+| Django Admin | http://localhost/admin/ |
+
+---
+
+### Option B — Portainer (Stack)
+
+1. In Portainer, go to **Stacks → Add stack**.
+2. Paste the contents of [`docker-compose.prod.yml`](docker-compose.prod.yml) into the web editor.
+3. Scroll down to **Environment variables** and add:
+
+| Variable | Value |
+|---|---|
+| `DB_PASSWORD` | your database password |
+| `DJANGO_SECRET_KEY` | a long random string |
+| `ALLOWED_HOSTS` | your domain or `*` |
+| `CSRF_TRUSTED_ORIGINS` | `https://yourdomain.com` |
+| `CORS_ALLOWED_ORIGINS` | `https://yourdomain.com` |
+| `DJANGO_SUPERUSER_USERNAME` | `admin` (or your preferred username) |
+| `DJANGO_SUPERUSER_PASSWORD` | your admin password |
+| `APP_PORT` | `80` |
+
+4. Click **Deploy the stack**.
+
+The backend entrypoint runs migrations and creates the superuser automatically on every start (idempotent — skips if the user already exists).
+
+---
+
+### Option C — Local development (from source)
+
+```bash
+git clone https://github.com/Gonzalez8/Fintrack.git && cd Fintrack
+cp .env.example .env          # defaults work out of the box
+docker compose up
 ```
 
 | Service | URL |
@@ -36,6 +113,27 @@ docker compose up              # starts db, backend and frontend
 | Django Admin | http://localhost:8000/admin/ |
 
 Default user: `admin` / `admin`
+
+---
+
+## Environment Variables Reference
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `DB_NAME` | | `fintrack` | PostgreSQL database name |
+| `DB_USER` | | `fintrack` | PostgreSQL user |
+| `DB_PASSWORD` | **yes** | — | PostgreSQL password |
+| `DJANGO_SECRET_KEY` | **yes** | — | Django secret key (long random string) |
+| `ALLOWED_HOSTS` | | `*` | Comma-separated allowed hostnames |
+| `CORS_ALLOWED_ORIGINS` | | — | Comma-separated allowed origins |
+| `CSRF_TRUSTED_ORIGINS` | | — | Comma-separated trusted origins for CSRF |
+| `APP_PORT` | | `8000` | Host port mapped to the backend container |
+| `DJANGO_SUPERUSER_USERNAME` | | `admin` | Initial admin username |
+| `DJANGO_SUPERUSER_PASSWORD` | | `admin` | Initial admin password |
+
+> **Security note:** Always set strong, unique values for `DB_PASSWORD`, `DJANGO_SECRET_KEY` and `DJANGO_SUPERUSER_PASSWORD` before deploying to a public server.
+
+---
 
 ## Project Structure
 
@@ -86,39 +184,23 @@ docker compose exec frontend npx tsc --noEmit
 ## API
 
 ```
-POST   /api/auth/login/            Login (session)
-POST   /api/auth/logout/           Logout
-GET    /api/auth/me/               Current user
+POST    /api/auth/login/            Login (session)
+POST    /api/auth/logout/           Logout
+GET     /api/auth/me/               Current user
 
-CRUD   /api/assets/                Assets
-POST   /api/assets/update-prices/  Fetch prices (Yahoo Finance)
-CRUD   /api/accounts/              Accounts
-GET/PUT /api/settings/             Settings (singleton)
+CRUD    /api/assets/                Assets
+POST    /api/assets/update-prices/  Fetch prices (Yahoo Finance)
+CRUD    /api/accounts/              Accounts
+GET/PUT /api/settings/              Settings (singleton)
 
-CRUD   /api/transactions/          Transactions
-CRUD   /api/dividends/             Dividends
-CRUD   /api/interests/             Interests
+CRUD    /api/transactions/          Transactions
+CRUD    /api/dividends/             Dividends
+CRUD    /api/interests/             Interests
 
-GET    /api/portfolio/             Positions + realized sales (FIFO)
-GET    /api/reports/yearly/        Year-by-year income summary
-POST   /api/import/xlsx/           Excel import (?dry_run=true)
-GET    /api/export/transactions.csv  CSV export
-```
-
-## Environment Variables
-
-Copy `.env.example` to `.env` and adjust:
-
-```
-DB_NAME=fintrack
-DB_USER=fintrack
-DB_PASSWORD=changeme
-DB_HOST=db
-DB_PORT=5432
-DJANGO_SECRET_KEY=change-me-to-a-random-string
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1,backend
-CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+GET     /api/portfolio/             Positions + realized sales (FIFO)
+GET     /api/reports/yearly/        Year-by-year income summary
+POST    /api/import/xlsx/           Excel import (?dry_run=true)
+GET     /api/export/transactions.csv  CSV export
 ```
 
 ## License

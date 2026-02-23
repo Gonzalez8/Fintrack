@@ -97,6 +97,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('assets', '0010_settings_default_price_source_and_more'),
+        ('transactions', '0001_initial'),
     ]
 
     operations = [

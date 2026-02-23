@@ -6,8 +6,12 @@ COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .
 
-FROM base AS production
-COPY package.json package-lock.json* ./
-RUN npm ci
+FROM base AS build
+COPY package.json ./
+RUN npm install
 COPY . .
 RUN npm run build
+
+FROM alpine:3.20 AS production
+COPY --from=build /app/dist /dist
+CMD ["cp", "-r", "/dist/.", "/output"]

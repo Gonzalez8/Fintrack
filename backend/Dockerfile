@@ -14,4 +14,8 @@ COPY . .
 FROM base AS production
 COPY . .
 RUN python manage.py collectstatic --noinput 2>/dev/null || true
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+# Frontend dist will be mounted at /frontend
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120"]

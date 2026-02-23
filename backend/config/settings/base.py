@@ -28,6 +28,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -108,3 +109,7 @@ CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS[:]
 
 # Session
 SESSION_COOKIE_SAMESITE = "Lax"
+
+# Frontend SPA served by Django in production
+FRONTEND_DIR = os.environ.get("FRONTEND_DIR", "")
+WHITENOISE_ROOT = FRONTEND_DIR if FRONTEND_DIR else None
