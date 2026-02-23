@@ -11,11 +11,11 @@ import os
 User = get_user_model()
 username = os.environ.get('DJANGO_SUPERUSER_USERNAME', 'admin')
 password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', 'admin')
-if not User.objects.filter(username=username).exists():
+if not User.objects.filter(is_superuser=True).exists():
     User.objects.create_superuser(username, '', password)
     print(f'Superuser \"{username}\" created.')
 else:
-    print(f'Superuser \"{username}\" already exists, skipping.')
+    print('Superuser already exists, skipping.')
 "
 
 # RUN_MAIN=true allows the Django scheduler to start under Gunicorn
