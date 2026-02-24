@@ -101,21 +101,6 @@ def sync_account_balance_on_delete(sender, instance, **kwargs):
     )
 
 
-class PriceSnapshot(TimeStampedModel):
-    asset = models.ForeignKey(Asset, on_delete=models.CASCADE, related_name="price_snapshots")
-    date = models.DateField()
-    price = models.DecimalField(max_digits=20, decimal_places=6)
-    source = models.CharField(max_length=10, default="YAHOO")
-    captured_at = models.DateTimeField(null=True, blank=True)
-    batch_id = models.UUIDField(null=True, blank=True, db_index=True)
-
-    class Meta:
-        ordering = ["-captured_at", "-date"]
-
-    def __str__(self):
-        return f"{self.asset.name} @ {self.captured_at or self.date}: {self.price}"
-
-
 class PortfolioSnapshot(models.Model):
     captured_at = models.DateTimeField(db_index=True)
     batch_id = models.UUIDField(db_index=True)

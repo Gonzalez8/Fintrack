@@ -8,7 +8,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.assets.models import Asset, Account, AccountSnapshot, PortfolioSnapshot, PositionSnapshot, PriceSnapshot, Settings
+from apps.assets.models import Asset, Account, AccountSnapshot, PortfolioSnapshot, PositionSnapshot, Settings
 from apps.assets.serializers import SettingsSerializer
 from apps.transactions.models import Transaction, Dividend, Interest
 
@@ -18,7 +18,6 @@ from .serializers import (
     BackupAccountSnapshotSerializer,
     BackupPortfolioSnapshotSerializer,
     BackupPositionSnapshotSerializer,
-    BackupPriceSnapshotSerializer,
     BackupTransactionSerializer,
     BackupDividendSerializer,
     BackupInterestSerializer,
@@ -35,9 +34,6 @@ class BackupExportView(APIView):
             "accounts": BackupAccountSerializer(Account.objects.all(), many=True).data,
             "account_snapshots": BackupAccountSnapshotSerializer(
                 AccountSnapshot.objects.select_related("account").all(), many=True
-            ).data,
-            "price_snapshots": BackupPriceSnapshotSerializer(
-                PriceSnapshot.objects.select_related("asset").all(), many=True
             ).data,
             "portfolio_snapshots": BackupPortfolioSnapshotSerializer(
                 PortfolioSnapshot.objects.all(), many=True
@@ -88,7 +84,6 @@ class BackupImportView(APIView):
             "assets": 0,
             "accounts": 0,
             "account_snapshots": 0,
-            "price_snapshots": 0,
             "portfolio_snapshots": 0,
             "position_snapshots": 0,
             "transactions": 0,
@@ -135,13 +130,6 @@ class BackupImportView(APIView):
                         id=record_id, defaults=to_defaults(item, fk_fields=("account",))
                     )
                     counts["account_snapshots"] += 1
-
-                for item in payload.get("price_snapshots", []):
-                    record_id = item["id"]
-                    PriceSnapshot.objects.update_or_create(
-                        id=record_id, defaults=to_defaults(item, fk_fields=("asset",))
-                    )
-                    counts["price_snapshots"] += 1
 
                 for item in payload.get("portfolio_snapshots", []):
                     # Use batch_id (UUID) as the natural key — avoids integer

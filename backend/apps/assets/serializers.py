@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Asset, Account, AccountSnapshot, PriceSnapshot, Settings
+from .models import Asset, Account, AccountSnapshot, Settings
 
 
 class AssetSerializer(serializers.ModelSerializer):

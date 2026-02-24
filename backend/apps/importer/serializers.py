@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.assets.models import Asset, Account, AccountSnapshot, PortfolioSnapshot, PositionSnapshot, PriceSnapshot, Settings
+from apps.assets.models import Asset, Account, AccountSnapshot, PortfolioSnapshot, PositionSnapshot, Settings
 from apps.transactions.models import Transaction, Dividend, Interest
 
 
@@ -56,13 +56,6 @@ class BackupAccountSnapshotSerializer(serializers.ModelSerializer):
     class Meta:
         model = AccountSnapshot
         fields = ["id", "account", "date", "balance", "note"]
-        extra_kwargs = {"id": {"read_only": False}}
-
-
-class BackupPriceSnapshotSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PriceSnapshot
-        fields = ["id", "asset", "date", "price", "source", "captured_at", "batch_id"]
         extra_kwargs = {"id": {"read_only": False}}
 
 
