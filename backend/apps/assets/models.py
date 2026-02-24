@@ -179,6 +179,12 @@ class Settings(models.Model):
         default=1440,
         help_text="Snapshot frequency in minutes. 0 = disabled. Default 1440 (daily).",
     )
+    data_retention_days = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text="Delete data older than this many days. Null = never delete.",
+    )
 
     class Meta:
         verbose_name_plural = "settings"

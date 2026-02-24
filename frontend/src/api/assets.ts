@@ -1,5 +1,5 @@
 import client from './client'
-import type { Asset, Account, AccountSnapshot, Settings, PaginatedResponse } from '@/types'
+import type { Asset, Account, AccountSnapshot, Settings, StorageInfo, PaginatedResponse } from '@/types'
 
 export const assetsApi = {
   list: (params?: Record<string, string>) =>
@@ -36,6 +36,10 @@ export const snapshotsApi = {
 export const settingsApi = {
   get: () => client.get<Settings>('/settings/'),
   update: (data: Partial<Settings>) => client.put<Settings>('/settings/', data),
+}
+
+export const storageApi = {
+  info: () => client.get<StorageInfo>('/storage-info/'),
 }
 
 export const backupApi = {

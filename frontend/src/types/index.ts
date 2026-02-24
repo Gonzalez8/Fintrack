@@ -174,6 +174,12 @@ export interface Settings {
   price_update_interval: number
   default_price_source: string
   snapshot_frequency: number
+  data_retention_days: number | null
+}
+
+export interface StorageInfo {
+  total_mb: number
+  tables: Array<{ table: string; size_mb: number }>
 }
 
 export interface PaginatedResponse<T> {

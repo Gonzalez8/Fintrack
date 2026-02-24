@@ -134,3 +134,21 @@ class SettingsView(RetrieveUpdateAPIView):
 
     def get_object(self):
         return Settings.load()
+
+
+class StorageInfoView(APIView):
+    def get(self, request):
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT relname, pg_total_relation_size(quote_ident(relname))
+                FROM pg_stat_user_tables
+                ORDER BY 2 DESC
+            """)
+            rows = cursor.fetchall()
+        tables = [
+            {"table": row[0], "size_mb": round(row[1] / (1024 * 1024), 3)}
+            for row in rows
+        ]
+        total_mb = round(sum(t["size_mb"] for t in tables), 3)
+        return Response({"total_mb": total_mb, "tables": tables})

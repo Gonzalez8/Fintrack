@@ -11,5 +11,6 @@ urlpatterns = [
     path("assets/update-prices/", views.UpdatePricesView.as_view(), name="update-prices"),
     path("accounts/bulk-snapshot/", views.BulkSnapshotView.as_view(), name="bulk-snapshot"),
     path("settings/", views.SettingsView.as_view(), name="settings"),
+    path("storage-info/", views.StorageInfoView.as_view(), name="storage-info"),
     path("", include(router.urls)),
 ]

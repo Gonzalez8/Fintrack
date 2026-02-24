@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { settingsApi, backupApi } from '@/api/assets'
+import { settingsApi, backupApi, storageApi } from '@/api/assets'
 import { reportsApi } from '@/api/portfolio'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -60,6 +60,15 @@ export function ConfiguracionPage() {
     queryFn: () => reportsApi.snapshotStatus().then((r) => r.data),
     refetchInterval: 60_000,
   })
+
+  const { data: storageInfo, isLoading: storageLoading } = useQuery({
+    queryKey: ['storage-info'],
+    queryFn: () => storageApi.info().then((r) => r.data),
+    staleTime: 60_000,
+  })
+
+  const [retentionDays, setRetentionDays] = useState<number | null | undefined>(undefined)
+  const currentRetention = retentionDays !== undefined ? retentionDays : (settings?.data_retention_days ?? null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importResult, setImportResult] = useState<Record<string, number | boolean> | null>(null)
@@ -201,6 +210,77 @@ export function ConfiguracionPage() {
               {settingsMut.isPending ? 'Guardando...' : 'Guardar ajustes'}
             </Button>
             {settingsSaved && <span className="text-sm text-green-600">Ajustes guardados correctamente</span>}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Almacenamiento</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4 max-w-xl">
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">Espacio total utilizado por la base de datos.</p>
+              <div className="flex items-baseline gap-1.5">
+                {storageLoading ? (
+                  <span className="text-sm text-muted-foreground">Calculando...</span>
+                ) : (
+                  <>
+                    <span className="text-2xl font-semibold tabular-nums">
+                      {storageInfo ? storageInfo.total_mb.toFixed(2) : '—'}
+                    </span>
+                    <span className="text-sm text-muted-foreground">MB</span>
+                  </>
+                )}
+              </div>
+              {storageInfo && storageInfo.tables.length > 0 && (
+                <div className="mt-3 space-y-1">
+                  {storageInfo.tables
+                    .filter((t) => t.size_mb > 0)
+                    .slice(0, 8)
+                    .map((t) => (
+                      <div key={t.table} className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="font-mono">{t.table}</span>
+                        <span className="tabular-nums">{t.size_mb.toFixed(3)} MB</span>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 border-t">
+              <label className="text-sm font-medium">Retención de datos históricos</label>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                Define cada cuánto tiempo se purgarán los datos históricos (snapshots, historial de precios).
+                La purga automática no está activa aún; esta opción guardará tu preferencia para cuando se implemente.
+              </p>
+              <div className="flex items-center gap-3">
+                <Select
+                  value={currentRetention === null || currentRetention === undefined ? 'never' : String(currentRetention)}
+                  onValueChange={(v) => setRetentionDays(v === 'never' ? null : parseInt(v))}
+                >
+                  <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="never">Nunca eliminar</SelectItem>
+                    <SelectItem value="365">Más antiguos que 1 año</SelectItem>
+                    <SelectItem value="1825">Más antiguos que 5 años</SelectItem>
+                    <SelectItem value="3650">Más antiguos que 10 años</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    settingsMut.mutate({ data_retention_days: currentRetention } as Partial<Settings>)
+                    setRetentionDays(undefined)
+                  }}
+                  disabled={retentionDays === undefined || settingsMut.isPending}
+                >
+                  Guardar
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
