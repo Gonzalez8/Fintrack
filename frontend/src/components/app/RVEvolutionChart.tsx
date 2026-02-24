@@ -133,7 +133,7 @@ export function RVEvolutionChart() {
     <Card className="overflow-hidden">
       <CardContent className="p-0">
         {/* Header */}
-        <div className="flex items-start justify-between px-6 pt-6 pb-4">
+        <div className="flex flex-wrap items-start justify-between gap-y-3 px-4 pt-5 pb-3 sm:px-6 sm:pt-6 sm:pb-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -146,7 +146,7 @@ export function RVEvolutionChart() {
               )}
             </div>
 
-            <p className="text-3xl font-bold tabular-nums leading-none">
+            <p className="text-2xl sm:text-3xl font-bold tabular-nums leading-none">
               {formatMoney(displayValue)}
             </p>
 
@@ -175,7 +175,7 @@ export function RVEvolutionChart() {
           </div>
 
           {/* Range selector */}
-          <div className="flex gap-0.5 bg-muted rounded-lg p-1">
+          <div className="flex shrink-0 gap-0.5 bg-muted rounded-lg p-1">
             {RANGES.map(({ key, label }) => (
               <button
                 key={key}
@@ -183,7 +183,7 @@ export function RVEvolutionChart() {
                   setRange(key)
                   setHover(null)
                 }}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150 ${
+                className={`px-2 py-1 sm:px-3 sm:py-1.5 text-xs font-medium rounded-md transition-all duration-150 ${
                   range === key
                     ? 'bg-background shadow-sm text-foreground'
                     : 'text-muted-foreground hover:text-foreground'

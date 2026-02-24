@@ -84,13 +84,13 @@ export function DashboardPage() {
     <div className="space-y-6">
       <PageHeader title="Dashboard" />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Patrimonio Total</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatMoney(portfolio?.grand_total)}</div>
+            <div className="text-xl sm:text-2xl font-bold">{formatMoney(portfolio?.grand_total)}</div>
             {portfolio && parseFloat(portfolio.total_cash) > 0 && (
               <div className="text-xs text-muted-foreground mt-1">
                 Inversiones: {formatMoney(portfolio.total_market_value)} + Efectivo: {formatMoney(portfolio.total_cash)}
@@ -103,7 +103,7 @@ export function DashboardPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Ingresos {currentYear}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatMoney(currentYearData?.total_net ?? '0')}</div>
+            <div className="text-xl sm:text-2xl font-bold">{formatMoney(currentYearData?.total_net ?? '0')}</div>
             {currentYearData && (
               <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
                 <div>Dividendos: {formatMoney(currentYearData.dividends_net)} · Intereses: {formatMoney(currentYearData.interests_net)}</div>
@@ -112,12 +112,12 @@ export function DashboardPage() {
             )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="sm:col-span-2 md:col-span-1">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">P&L No Realizado</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-xl sm:text-2xl font-bold">
               <MoneyCell value={portfolio?.total_unrealized_pnl} colored />
               <span className="ml-2 text-sm">
                 {formatPercent(totalPnlPct)}
@@ -127,13 +127,13 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Asignación de Patrimonio</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={240}>
               <PieChart>
                 <Pie data={allocationData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ percent }) => `${(percent * 100).toFixed(1)}%`}>
                   {allocationData.map((d, i) => (
@@ -141,7 +141,7 @@ export function DashboardPage() {
                   ))}
                 </Pie>
                 <Tooltip formatter={(v: number) => formatMoney(v)} />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: '11px', width: '100%', boxSizing: 'border-box' }} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -186,14 +186,20 @@ export function DashboardPage() {
             <div className="overflow-x-auto">
               <div style={{ height: Math.max(300, barData.length * 50) }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 30 }}>
-                    <XAxis type="number" tickFormatter={(v: number) => formatMoney(v)} />
-                    <YAxis type="category" dataKey="year" width={50} />
+                  <BarChart data={barData} layout="vertical" margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
+                    <XAxis
+                      type="number"
+                      tickFormatter={(v: number) => v === 0 ? '0' : `${(v / 1000).toFixed(0)}k`}
+                      tick={{ fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis type="category" dataKey="year" width={42} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                     <Tooltip
                       formatter={(v: number) => formatMoney(v)}
                       labelFormatter={(label) => `Año ${label}`}
                     />
-                    <Legend />
+                    <Legend wrapperStyle={{ fontSize: '11px', width: '100%', boxSizing: 'border-box' }} />
                     <Bar dataKey="Dividendos" stackId="income" fill="#2563eb" />
                     <Bar dataKey="Intereses" stackId="income" fill="#16a34a" />
                     <Bar dataKey="Ventas" stackId="income" fill="#f97316" />
@@ -211,12 +217,12 @@ export function DashboardPage() {
             <CardTitle className="text-base">Evolucion del Patrimonio</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={evolutionData}>
-                <XAxis dataKey="month" />
-                <YAxis />
+            <ResponsiveContainer width="100%" height={240}>
+              <AreaChart data={evolutionData} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                <YAxis hide />
                 <Tooltip formatter={(v: number) => formatMoney(v)} />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: '11px', width: '100%', boxSizing: 'border-box' }} />
                 <Area type="monotone" dataKey="Efectivo" stackId="1" fill="#ca8a04" stroke="#ca8a04" fillOpacity={0.6} />
                 <Area type="monotone" dataKey="Inversiones" stackId="1" fill="#2563eb" stroke="#2563eb" fillOpacity={0.6} />
               </AreaChart>

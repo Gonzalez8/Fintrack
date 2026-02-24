@@ -193,7 +193,7 @@ export function CuentasPage() {
 
       {/* Single snapshot dialog */}
       <Dialog open={!!snapshotDialog} onOpenChange={(open) => !open && setSnapshotDialog(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Actualizar saldo — {snapshotDialog?.name}</DialogTitle>
           </DialogHeader>
@@ -227,7 +227,7 @@ export function CuentasPage() {
 
       {/* Bulk snapshot dialog */}
       <Dialog open={showBulk} onOpenChange={(open) => !open && setShowBulk(false)}>
-        <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Snapshot mensual</DialogTitle>
           </DialogHeader>
@@ -307,7 +307,7 @@ function AccountRow({
     <>
       <TableRow>
         <TableCell>
-          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={onToggle}>
+          <Button size="icon" variant="ghost" className="h-9 w-9" onClick={onToggle}>
             {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </Button>
         </TableCell>
@@ -349,8 +349,8 @@ function AccountRow({
                       <TableCell className="text-right"><MoneyCell value={s.balance} /></TableCell>
                       <TableCell className="text-muted-foreground text-sm">{s.note}</TableCell>
                       <TableCell>
-                        <Button size="sm" variant="ghost" onClick={() => { if (confirm('Eliminar snapshot?')) onDeleteSnapshot(s.id) }}>
-                          <Trash2 className="h-3 w-3 text-destructive" />
+                        <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => { if (confirm('Eliminar snapshot?')) onDeleteSnapshot(s.id) }}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </TableCell>
                     </TableRow>

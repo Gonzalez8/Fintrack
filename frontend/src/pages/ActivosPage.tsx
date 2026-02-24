@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { assetsApi } from '@/api/assets'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MoneyCell } from '@/components/app/MoneyCell'
 import { PageHeader } from '@/components/app/PageHeader'
+import { AssetRow, AssetRowSkeleton } from '@/components/app/AssetRow'
+import { FilterSheet } from '@/components/app/FilterSheet'
 import { RefreshCw, Trash2, Plus } from 'lucide-react'
 import type { Asset } from '@/types'
 
@@ -39,10 +41,21 @@ export function ActivosPage() {
   if (typeFilter !== 'ALL') params.type = typeFilter
   if (statusFilter !== 'ALL') params.price_status = statusFilter
 
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['assets-all', search, typeFilter, statusFilter],
     queryFn: () => assetsApi.list(params).then((r) => r.data),
   })
+
+  const activeFilterCount =
+    (search ? 1 : 0) +
+    (typeFilter !== 'ALL' ? 1 : 0) +
+    (statusFilter !== 'ALL' ? 1 : 0)
+
+  const resetFilters = () => {
+    setSearch('')
+    setTypeFilter('ALL')
+    setStatusFilter('ALL')
+  }
 
   const [newOpen, setNewOpen] = useState(false)
   const [newForm, setNewForm] = useState<Partial<Asset>>({ type: 'STOCK', currency: 'EUR', price_mode: 'AUTO' })
@@ -90,38 +103,42 @@ export function ActivosPage() {
   const assets = data?.results ?? []
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Activos" />
+    <div className="space-y-4">
+      <PageHeader title="Activos">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => { setPriceResult(null); updatePricesMut.mutate() }}
+          disabled={updatePricesMut.isPending}
+          aria-label="Actualizar precios"
+        >
+          <RefreshCw className={`h-4 w-4 sm:mr-2 ${updatePricesMut.isPending ? 'animate-spin' : ''}`} />
+          <span className="hidden sm:inline">
+            {updatePricesMut.isPending ? 'Actualizando...' : 'Actualizar precios'}
+          </span>
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => { setNewError(null); setNewOpen(true) }}
+          aria-label="Nuevo activo"
+        >
+          <Plus className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Nuevo activo</span>
+        </Button>
+      </PageHeader>
+
+      {priceResult && (
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium">{priceResult.updated}</span> precios actualizados
+          {priceResult.errors.length > 0 && (
+            <span className="text-destructive ml-1">· {priceResult.errors.length} errores</span>
+          )}
+        </p>
+      )}
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <CardTitle className="text-base">Catalogo de activos</CardTitle>
-          <div className="flex items-center gap-3">
-            {priceResult && (
-              <span className="text-sm text-muted-foreground">
-                {priceResult.updated} actualizados
-                {priceResult.errors.length > 0 && (
-                  <span className="text-destructive ml-1">({priceResult.errors.length} errores)</span>
-                )}
-              </span>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => { setPriceResult(null); updatePricesMut.mutate() }}
-              disabled={updatePricesMut.isPending}
-            >
-              <RefreshCw className={`mr-2 h-4 w-4 ${updatePricesMut.isPending ? 'animate-spin' : ''}`} />
-              {updatePricesMut.isPending ? 'Actualizando...' : 'Actualizar precios'}
-            </Button>
-            <Button size="sm" onClick={() => { setNewError(null); setNewOpen(true) }}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo activo
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex flex-wrap gap-3">
+        <CardContent className="pt-4">
+          <FilterSheet activeCount={activeFilterCount} onReset={resetFilters}>
             <Input
               placeholder="Buscar nombre o ticker..."
               value={search}
@@ -151,81 +168,101 @@ export function ActivosPage() {
                 <SelectItem value="NO_TICKER">Sin ticker</SelectItem>
               </SelectContent>
             </Select>
+          </FilterSheet>
+
+          {/* ── Mobile: lista de filas compactas ── */}
+          <div className="md:hidden mt-4 rounded-xl border bg-card px-3">
+            {isLoading
+              ? Array.from({ length: 5 }).map((_, i) => <AssetRowSkeleton key={i} />)
+              : assets.length === 0
+                ? <p className="py-12 text-center text-sm text-muted-foreground">No hay activos</p>
+                : assets.map((asset) => (
+                    <AssetRow
+                      key={asset.id}
+                      asset={asset}
+                      onClick={() => navigate(`/activos/${asset.id}`)}
+                      onDelete={(id) => deleteAssetMut.mutate(id)}
+                    />
+                  ))
+            }
           </div>
 
-          <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Ticker</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Pais</TableHead>
-                <TableHead className="text-right">Precio</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Actualizado</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {assets.map((asset) => (
-                <TableRow
-                  key={asset.id}
-                  className="cursor-pointer"
-                  onClick={() => navigate(`/activos/${asset.id}`)}
-                >
-                  <TableCell className="font-medium">{asset.name}</TableCell>
-                  <TableCell>{asset.ticker ?? '-'}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{typeLabels[asset.type] ?? asset.type}</Badge>
-                  </TableCell>
-                  <TableCell>{asset.issuer_country ?? '-'}</TableCell>
-                  <TableCell className="text-right">
-                    <MoneyCell value={asset.current_price} />
-                  </TableCell>
-                  <TableCell>
-                    {asset.price_status && (
-                      <Badge variant={statusVariant(asset.price_status)}>
-                        {asset.price_status}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {asset.price_updated_at
-                      ? new Date(asset.price_updated_at).toLocaleDateString('es-ES', {
-                          day: '2-digit', month: '2-digit', year: 'numeric',
-                          hour: '2-digit', minute: '2-digit',
-                        })
-                      : '-'}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (confirm(`Eliminar ${asset.name}?`)) deleteAssetMut.mutate(asset.id)
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {assets.length === 0 && (
+          {/* ── Desktop: tabla completa ── */}
+          <div className="hidden md:block overflow-x-auto mt-4">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                    No hay activos
-                  </TableCell>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Ticker</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Pais</TableHead>
+                  <TableHead className="text-right">Precio</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Actualizado</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {assets.map((asset) => (
+                  <TableRow
+                    key={asset.id}
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/activos/${asset.id}`)}
+                  >
+                    <TableCell className="font-medium">{asset.name}</TableCell>
+                    <TableCell>{asset.ticker ?? '-'}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{typeLabels[asset.type] ?? asset.type}</Badge>
+                    </TableCell>
+                    <TableCell>{asset.issuer_country ?? '-'}</TableCell>
+                    <TableCell className="text-right">
+                      <MoneyCell value={asset.current_price} />
+                    </TableCell>
+                    <TableCell>
+                      {asset.price_status && (
+                        <Badge variant={statusVariant(asset.price_status)}>
+                          {asset.price_status}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {asset.price_updated_at
+                        ? new Date(asset.price_updated_at).toLocaleDateString('es-ES', {
+                            day: '2-digit', month: '2-digit', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit',
+                          })
+                        : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (confirm(`Eliminar ${asset.name}?`)) deleteAssetMut.mutate(asset.id)
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {assets.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                      No hay activos
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
+
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
-        <DialogContent className="max-w-[95vw] sm:max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nuevo activo</DialogTitle>
           </DialogHeader>
@@ -238,7 +275,7 @@ export function ActivosPage() {
                 onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium">Ticker</label>
                 <Input
@@ -257,7 +294,7 @@ export function ActivosPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="text-sm font-medium">Tipo</label>
                 <Select value={newForm.type} onValueChange={(v) => setNewForm((f) => ({ ...f, type: v as Asset['type'] }))}>

@@ -5,6 +5,7 @@ import { assetsApi } from '@/api/assets'
 import { DataTable, type Column } from '@/components/app/DataTable'
 import { MoneyCell } from '@/components/app/MoneyCell'
 import { AssetEvolutionChart } from '@/components/app/AssetEvolutionChart'
+import { PositionCard, PositionCardSkeleton } from '@/components/app/PositionCard'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -83,72 +84,103 @@ export function CarteraPage() {
     },
   })
 
+  const filteredPositions = data?.positions.filter(
+    (p) => p.asset_ticker && parseFloat(p.current_price) > 0,
+  ) ?? []
+
   const totalPnl = parseFloat(data?.total_unrealized_pnl ?? '0')
   const totalCost = parseFloat(data?.total_cost ?? '0')
   const totalPnlPct = totalCost > 0 ? ((totalPnl / totalCost) * 100).toFixed(2) : '0'
   const pnlColor = totalPnl > 0 ? 'text-green-600' : totalPnl < 0 ? 'text-red-600' : ''
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader title="Cartera">
-        {priceResult && (
-          <span className="text-sm text-muted-foreground">
-            {priceResult.updated} precios actualizados
-            {priceResult.errors.length > 0 && (
-              <span className="text-destructive ml-1">({priceResult.errors.length} errores)</span>
-            )}
-          </span>
-        )}
         <Button
           variant="outline"
           size="sm"
           onClick={() => { setPriceResult(null); updatePricesMut.mutate() }}
           disabled={updatePricesMut.isPending}
+          aria-label="Actualizar precios"
         >
-          <RefreshCw className={`mr-2 h-4 w-4 ${updatePricesMut.isPending ? 'animate-spin' : ''}`} />
-          {updatePricesMut.isPending ? 'Actualizando...' : 'Actualizar precios'}
+          <RefreshCw className={`h-4 w-4 sm:mr-2 ${updatePricesMut.isPending ? 'animate-spin' : ''}`} />
+          <span className="hidden sm:inline">
+            {updatePricesMut.isPending ? 'Actualizando...' : 'Actualizar precios'}
+          </span>
         </Button>
       </PageHeader>
 
+      {priceResult && (
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium">{priceResult.updated}</span> precios actualizados
+          {priceResult.errors.length > 0 && (
+            <span className="text-destructive ml-1">· {priceResult.errors.length} errores</span>
+          )}
+        </p>
+      )}
+
       {data && (
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        <div className="grid gap-3 grid-cols-2 sm:gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="pt-4 pb-3">
               <p className="text-xs text-muted-foreground">Valor de Mercado</p>
-              <p className="text-2xl font-bold">{formatMoney(data.total_market_value)}</p>
+              <p className="text-lg sm:text-2xl font-bold">{formatMoney(data.total_market_value)}</p>
             </CardContent>
           </Card>
           <Card className={totalPnl >= 0 ? 'border-green-500/20 bg-green-500/5' : 'border-red-500/20 bg-red-500/5'}>
             <CardContent className="pt-4 pb-3">
               <p className="text-xs text-muted-foreground">P&L No Realizado</p>
-              <p className={`text-2xl font-bold ${pnlColor}`}>{formatMoney(data.total_unrealized_pnl)}</p>
+              <p className={`text-lg sm:text-2xl font-bold ${pnlColor}`}>{formatMoney(data.total_unrealized_pnl)}</p>
               <p className={`text-sm ${pnlColor}`}>{formatPercent(totalPnlPct)}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4 pb-3">
               <p className="text-xs text-muted-foreground">Coste Total</p>
-              <p className="text-lg font-semibold">{formatMoney(data.total_cost)}</p>
+              <p className="text-base sm:text-lg font-semibold">{formatMoney(data.total_cost)}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4 pb-3">
               <p className="text-xs text-muted-foreground">Efectivo</p>
-              <p className="text-lg font-semibold">{formatMoney(data.total_cash)}</p>
+              <p className="text-base sm:text-lg font-semibold">{formatMoney(data.total_cash)}</p>
             </CardContent>
           </Card>
         </div>
       )}
 
-      <DataTable
-        columns={columns}
-        data={data?.positions.filter((p) => p.asset_ticker && parseFloat(p.current_price) > 0) ?? []}
-        loading={isLoading}
-        onRowClick={(row) => setSelectedPosition(row)}
-      />
+      {/* ── Mobile: lista de cards ── */}
+      <div className="space-y-3 md:hidden">
+        {isLoading
+          ? Array.from({ length: 4 }).map((_, i) => <PositionCardSkeleton key={i} />)
+          : filteredPositions.length === 0
+            ? (
+              <div className="flex flex-col items-center gap-2 py-16 text-muted-foreground">
+                <p className="text-sm">Sin posiciones activas</p>
+              </div>
+            )
+            : filteredPositions.map((p) => (
+              <PositionCard
+                key={p.asset_id}
+                position={p}
+                onClick={() => setSelectedPosition(p)}
+              />
+            ))
+        }
+      </div>
+
+      {/* ── Desktop: tabla completa ── */}
+      <div className="hidden md:block">
+        <DataTable
+          columns={columns}
+          data={filteredPositions}
+          loading={isLoading}
+          onRowClick={(row) => setSelectedPosition(row)}
+        />
+      </div>
 
       <Dialog open={!!selectedPosition} onOpenChange={(open) => { if (!open) setSelectedPosition(null) }}>
-        <DialogContent className="max-w-[95vw] sm:max-w-2xl p-0 overflow-hidden gap-0">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] p-0 overflow-hidden gap-0">
           <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle className="flex items-center gap-2">
               {selectedPosition?.asset_name}

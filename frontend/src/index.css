@@ -95,6 +95,15 @@
   }
 }
 
+@layer utilities {
+  /* Safe-area bottom padding for iOS home indicator.
+     On mobile adds the MobileNav height (4rem) plus the system inset.
+     On desktop md:pb-0 takes over so this class has no effect. */
+  .pb-safe-mobile {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 @layer base {
   * {
     @apply border-border;

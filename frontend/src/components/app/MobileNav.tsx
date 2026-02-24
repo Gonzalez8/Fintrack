@@ -1,25 +1,30 @@
 import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Briefcase, ArrowLeftRight, Coins, MoreHorizontal,
-  Landmark, Wallet, Percent, FileText, Settings, LogOut, Moon, Sun, X,
+  LayoutDashboard, Briefcase, ArrowLeftRight, Settings,
+  Menu, Coins, Landmark, Wallet, Percent, FileText,
+  LogOut, Moon, Sun,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 
-const mainItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/cartera', icon: Briefcase, label: 'Cartera' },
-  { to: '/operaciones', icon: ArrowLeftRight, label: 'Operaciones' },
-  { to: '/dividendos', icon: Coins, label: 'Dividendos' },
+// ─── Navigation map ──────────────────────────────────────────────────────────
+
+const PRIMARY_TABS = [
+  { to: '/',            icon: LayoutDashboard, label: 'Inicio',      end: true },
+  { to: '/cartera',     icon: Briefcase,        label: 'Cartera',     end: false },
+  { to: '/operaciones', icon: ArrowLeftRight,   label: 'Operaciones', end: false },
 ]
 
-const moreItems = [
-  { to: '/activos', icon: Landmark, label: 'Activos' },
-  { to: '/cuentas', icon: Wallet, label: 'Cuentas' },
-  { to: '/intereses', icon: Percent, label: 'Intereses' },
-  { to: '/fiscal', icon: FileText, label: 'Fiscal' },
-  { to: '/configuracion', icon: Settings, label: 'Configuración' },
+const SECONDARY_ITEMS = [
+  { to: '/dividendos',   icon: Coins,    label: 'Dividendos' },
+  { to: '/intereses',    icon: Percent,  label: 'Intereses' },
+  { to: '/activos',      icon: Landmark, label: 'Activos' },
+  { to: '/cuentas',      icon: Wallet,   label: 'Cuentas' },
+  { to: '/fiscal',       icon: FileText, label: 'Fiscal' },
 ]
+
+// ─── Dark mode hook ───────────────────────────────────────────────────────────
 
 function useDarkMode() {
   const [isDark, setIsDark] = useState(
@@ -34,103 +39,144 @@ function useDarkMode() {
   return { isDark, toggle }
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function MobileNav() {
-  const [moreOpen, setMoreOpen] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const { isDark, toggle } = useDarkMode()
   const logout = useAuthStore((s) => s.logout)
+  const navigate = useNavigate()
 
-  const closeMore = () => setMoreOpen(false)
+  const closeSheet = () => setSheetOpen(false)
+
+  const handleSecondaryNav = (to: string) => {
+    closeSheet()
+    navigate(to)
+  }
 
   return (
-    <>
-      {/* Backdrop */}
-      {moreOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 md:hidden"
-          onClick={closeMore}
-        />
-      )}
+    // Height 64px (h-16), safe-area respected via padding
+    <nav
+      aria-label="Navegación principal"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background md:hidden"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
+      <div className="flex h-16 items-stretch">
 
-      {/* Slide-up panel */}
-      <div
-        className={`fixed left-0 right-0 z-50 md:hidden rounded-t-2xl border-t shadow-xl transition-transform duration-200 ${
-          moreOpen ? 'translate-y-0' : 'translate-y-full'
-        }`}
-        style={{ bottom: '4rem', background: 'hsl(var(--background))' }}
-      >
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <span className="font-semibold text-sm">Más</span>
-          <button onClick={closeMore} className="rounded-md p-1 hover:bg-muted">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <nav className="p-2">
-          {moreItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={closeMore}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors ${
-                  isActive ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'
-                }`
-              }
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="border-t p-2 space-y-1">
-          <button
-            onClick={toggle}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium hover:bg-muted"
+        {/* ── Primary tabs ── */}
+        {PRIMARY_TABS.map(({ to, icon: Icon, label, end }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={end}
+            aria-label={label}
+            className={({ isActive }) =>
+              `flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium
+               transition-colors select-none
+               ${isActive ? 'text-primary' : 'text-muted-foreground'}`
+            }
           >
-            {isDark ? <Sun className="h-5 w-5 shrink-0" /> : <Moon className="h-5 w-5 shrink-0" />}
-            {isDark ? 'Modo claro' : 'Modo oscuro'}
-          </button>
-          <button
-            onClick={() => { logout(); closeMore() }}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-destructive hover:bg-muted"
-          >
-            <LogOut className="h-5 w-5 shrink-0" />
-            Cerrar sesión
-          </button>
-        </div>
-      </div>
+            {({ isActive }) => (
+              <>
+                <Icon className="h-5 w-5" aria-hidden="true" />
+                <span>{label}</span>
+                {/* Active indicator */}
+                {isActive && (
+                  <span className="absolute bottom-0 h-0.5 w-8 rounded-full bg-primary" />
+                )}
+              </>
+            )}
+          </NavLink>
+        ))}
 
-      {/* Bottom bar */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t"
-        style={{ background: 'hsl(var(--background))' }}
-      >
-        <div className="flex items-center justify-around">
-          {mainItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/'}
-              className={({ isActive }) =>
-                `flex flex-col items-center gap-1 px-3 py-2 text-xs font-medium transition-colors ${
-                  isActive ? 'text-primary' : 'text-muted-foreground'
-                }`
-              }
+        {/* ── "Más" Sheet trigger ── */}
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetTrigger asChild>
+            <button
+              aria-label="Más secciones"
+              aria-expanded={sheetOpen}
+              className="flex flex-1 flex-col items-center justify-center gap-0.5
+                         text-[11px] font-medium text-muted-foreground
+                         transition-colors select-none"
             >
-              <item.icon className="h-5 w-5" />
-              {item.label}
-            </NavLink>
-          ))}
-          <button
-            onClick={() => setMoreOpen((o) => !o)}
-            className={`flex flex-col items-center gap-1 px-3 py-2 text-xs font-medium transition-colors ${
-              moreOpen ? 'text-primary' : 'text-muted-foreground'
-            }`}
-          >
-            <MoreHorizontal className="h-5 w-5" />
-            Más
-          </button>
-        </div>
+              <Menu className="h-5 w-5" aria-hidden="true" />
+              <span>Más</span>
+            </button>
+          </SheetTrigger>
+
+          <SheetContent side="bottom" className="pb-safe-mobile">
+            <SheetHeader className="px-4 pt-2 pb-4">
+              <SheetTitle className="text-base">Más secciones</SheetTitle>
+            </SheetHeader>
+
+            {/* Secondary nav grid */}
+            <div className="grid grid-cols-3 gap-2 px-4">
+              {SECONDARY_ITEMS.map(({ to, icon: Icon, label }) => (
+                <button
+                  key={to}
+                  onClick={() => handleSecondaryNav(to)}
+                  className="flex flex-col items-center justify-center gap-1.5 rounded-xl
+                             bg-muted py-4 text-xs font-medium
+                             active:scale-95 transition-transform"
+                >
+                  <Icon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Divider + utility actions */}
+            <div className="mt-4 border-t px-4 pt-3 pb-2 flex gap-2">
+              <button
+                onClick={toggle}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl
+                           bg-muted py-3 text-sm font-medium
+                           active:scale-95 transition-transform"
+                aria-label={isDark ? 'Activar modo claro' : 'Activar modo oscuro'}
+              >
+                {isDark
+                  ? <Sun className="h-4 w-4" aria-hidden="true" />
+                  : <Moon className="h-4 w-4" aria-hidden="true" />
+                }
+                {isDark ? 'Modo claro' : 'Modo oscuro'}
+              </button>
+
+              <button
+                onClick={() => { closeSheet(); logout() }}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl
+                           bg-destructive/10 py-3 text-sm font-medium text-destructive
+                           active:scale-95 transition-transform"
+                aria-label="Cerrar sesión"
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                Cerrar sesión
+              </button>
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        {/* ── Config tab (direct) ── */}
+        <NavLink
+          to="/configuracion"
+          aria-label="Configuración"
+          className={({ isActive }) =>
+            `flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium
+             transition-colors select-none
+             ${isActive ? 'text-primary' : 'text-muted-foreground'}`
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <Settings className="h-5 w-5" aria-hidden="true" />
+              <span>Config</span>
+              {isActive && (
+                <span className="absolute bottom-0 h-0.5 w-8 rounded-full bg-primary" />
+              )}
+            </>
+          )}
+        </NavLink>
+
       </div>
-    </>
+    </nav>
   )
 }

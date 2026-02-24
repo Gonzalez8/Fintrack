@@ -5,6 +5,8 @@ import { assetsApi } from '@/api/assets'
 import { DataTable, type Column } from '@/components/app/DataTable'
 import { MoneyCell } from '@/components/app/MoneyCell'
 import { PageHeader } from '@/components/app/PageHeader'
+import { DividendRow, DividendRowSkeleton } from '@/components/app/DividendRow'
+import { FilterSheet } from '@/components/app/FilterSheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
@@ -79,6 +81,9 @@ export function DividendosPage() {
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i)
 
+  const activeFilterCount = Object.values(filters).filter(Boolean).length
+  const resetFilters = () => { setFilters({}); setPage(1) }
+
   const today = new Date().toISOString().slice(0, 10)
 
   const openDialog = () => {
@@ -98,8 +103,11 @@ export function DividendosPage() {
         </Button>
       </PageHeader>
 
-      <div className="flex flex-wrap gap-2">
-        <Select onValueChange={(v) => { setFilters((f) => ({ ...f, year: v === 'ALL' ? '' : v })); setPage(1) }}>
+      <FilterSheet activeCount={activeFilterCount} onReset={resetFilters}>
+        <Select
+          value={filters.year || 'ALL'}
+          onValueChange={(v) => { setFilters((f) => ({ ...f, year: v === 'ALL' ? '' : v })); setPage(1) }}
+        >
           <SelectTrigger className="w-full sm:w-32"><SelectValue placeholder="Año" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">Todos</SelectItem>
@@ -108,12 +116,40 @@ export function DividendosPage() {
             ))}
           </SelectContent>
         </Select>
+      </FilterSheet>
+
+      {/* ── Mobile: lista de filas compactas ── */}
+      <div className="md:hidden rounded-xl border bg-card px-3">
+        {isLoading
+          ? Array.from({ length: 5 }).map((_, i) => <DividendRowSkeleton key={i} />)
+          : (data?.results ?? []).length === 0
+            ? <p className="py-12 text-center text-sm text-muted-foreground">Sin dividendos</p>
+            : (data?.results ?? []).map((d) => (
+              <DividendRow
+                key={d.id}
+                dividend={d}
+                onDelete={(id) => deleteMut.mutate(id)}
+              />
+            ))
+        }
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t px-1 py-3">
+            <span className="text-xs text-muted-foreground">Página {page} de {totalPages}</span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>Anterior</Button>
+              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Siguiente</Button>
+            </div>
+          </div>
+        )}
       </div>
 
-      <DataTable columns={columns} data={data?.results ?? []} loading={isLoading} page={page} totalPages={totalPages} totalCount={data?.count} onPageChange={setPage} />
+      {/* ── Desktop: tabla completa ── */}
+      <div className="hidden md:block">
+        <DataTable columns={columns} data={data?.results ?? []} loading={isLoading} page={page} totalPages={totalPages} totalCount={data?.count} onPageChange={setPage} />
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Nuevo Dividendo</DialogTitle></DialogHeader>
           <form className="space-y-3" onSubmit={(e) => {
             e.preventDefault()
