@@ -183,20 +183,20 @@ export function OperacionesPage() {
       <div className="flex flex-wrap gap-2">
         <Input
           placeholder="Buscar nombre o ticker..."
-          className="w-52"
+          className="w-full sm:w-52"
           value={filters.search ?? ''}
           onChange={(e) => { setFilters((f) => ({ ...f, search: e.target.value })); setPage(1) }}
         />
         <Input
-          placeholder="Desde fecha" type="date" className="w-40"
+          placeholder="Desde fecha" type="date" className="w-full sm:w-40"
           onChange={(e) => { setFilters((f) => ({ ...f, from_date: e.target.value })); setPage(1) }}
         />
         <Input
-          placeholder="Hasta fecha" type="date" className="w-40"
+          placeholder="Hasta fecha" type="date" className="w-full sm:w-40"
           onChange={(e) => { setFilters((f) => ({ ...f, to_date: e.target.value })); setPage(1) }}
         />
         <Select onValueChange={(v) => { setFilters((f) => ({ ...f, type: v === 'ALL' ? '' : v })); setPage(1) }}>
-          <SelectTrigger className="w-32"><SelectValue placeholder="Tipo" /></SelectTrigger>
+          <SelectTrigger className="flex-1 sm:w-32"><SelectValue placeholder="Tipo" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">Todos</SelectItem>
             <SelectItem value="BUY">Compra</SelectItem>
@@ -205,7 +205,7 @@ export function OperacionesPage() {
           </SelectContent>
         </Select>
         <Select onValueChange={(v) => { setFilters((f) => ({ ...f, account_id: v === 'ALL' ? '' : v })); setPage(1) }}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Cuenta" /></SelectTrigger>
+          <SelectTrigger className="flex-1 sm:w-40"><SelectValue placeholder="Cuenta" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">Todas las cuentas</SelectItem>
             {accountsData?.results.map((a) => (

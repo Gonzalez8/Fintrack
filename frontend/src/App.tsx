@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tan
 import { useAuthStore } from '@/stores/authStore'
 import { settingsApi, assetsApi } from '@/api/assets'
 import { Sidebar } from '@/components/app/Sidebar'
+import { MobileNav } from '@/components/app/MobileNav'
 import { LoginPage } from '@/pages/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { CarteraPage } from '@/pages/CarteraPage'
@@ -60,11 +61,12 @@ function ProtectedRoute() {
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
-      <main className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-7xl p-6 lg:p-8">
+      <main className="flex-1 overflow-auto pb-16 md:pb-0">
+        <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
           <Outlet />
         </div>
       </main>
+      <MobileNav />
     </div>
   )
 }

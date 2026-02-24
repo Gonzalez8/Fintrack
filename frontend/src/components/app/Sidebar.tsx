@@ -83,7 +83,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className="sticky top-0 flex h-screen w-56 flex-col"
+      className="sticky top-0 hidden md:flex h-screen w-56 flex-col"
       style={{ background: 'hsl(var(--sidebar))', borderRight: '1px solid hsl(var(--sidebar-border))' }}
     >
       {/* Logo */}

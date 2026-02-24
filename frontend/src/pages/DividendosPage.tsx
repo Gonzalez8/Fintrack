@@ -98,9 +98,9 @@ export function DividendosPage() {
         </Button>
       </PageHeader>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Select onValueChange={(v) => { setFilters((f) => ({ ...f, year: v === 'ALL' ? '' : v })); setPage(1) }}>
-          <SelectTrigger className="w-32"><SelectValue placeholder="Año" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-32"><SelectValue placeholder="Año" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">Todos</SelectItem>
             {years.map((y) => (

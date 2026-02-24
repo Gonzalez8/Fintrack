@@ -148,7 +148,7 @@ export function CarteraPage() {
       />
 
       <Dialog open={!!selectedPosition} onOpenChange={(open) => { if (!open) setSelectedPosition(null) }}>
-        <DialogContent className="max-w-2xl p-0 overflow-hidden gap-0">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl p-0 overflow-hidden gap-0">
           <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle className="flex items-center gap-2">
               {selectedPosition?.asset_name}

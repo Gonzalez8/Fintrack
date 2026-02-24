@@ -121,15 +121,15 @@ export function ActivosPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 flex gap-3">
+          <div className="mb-4 flex flex-wrap gap-3">
             <Input
               placeholder="Buscar nombre o ticker..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="max-w-xs"
+              className="w-full sm:max-w-xs"
             />
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="flex-1 sm:w-36">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -141,7 +141,7 @@ export function ActivosPage() {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="flex-1 sm:w-36">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent>
@@ -153,6 +153,7 @@ export function ActivosPage() {
             </Select>
           </div>
 
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -220,10 +221,11 @@ export function ActivosPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Nuevo activo</DialogTitle>
           </DialogHeader>

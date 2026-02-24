@@ -129,6 +129,7 @@ export function CuentasPage() {
           </div>
         </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -186,6 +187,7 @@ export function CuentasPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -225,7 +227,7 @@ export function CuentasPage() {
 
       {/* Bulk snapshot dialog */}
       <Dialog open={showBulk} onOpenChange={(open) => !open && setShowBulk(false)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Snapshot mensual</DialogTitle>
           </DialogHeader>

@@ -141,6 +141,7 @@ export function FiscalPage() {
         {salesYear.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin ventas en {year}</p>
         ) : (
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -178,6 +179,7 @@ export function FiscalPage() {
               </TableRow>
             </TableFooter>
           </Table>
+          </div>
         )}
       </div>
 
@@ -187,6 +189,7 @@ export function FiscalPage() {
         {sortedCountries.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin dividendos en {year}</p>
         ) : (
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -247,6 +250,7 @@ export function FiscalPage() {
               </TableRow>
             </TableFooter>
           </Table>
+          </div>
         )}
       </div>
 
@@ -256,6 +260,7 @@ export function FiscalPage() {
         {intRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin intereses en {year}</p>
         ) : (
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -281,6 +286,7 @@ export function FiscalPage() {
               </TableRow>
             </TableFooter>
           </Table>
+          </div>
         )}
       </div>
     </div>
