@@ -95,16 +95,24 @@ def rv_evolution():
 def patrimonio_evolution():
     """Return monthly patrimony evolution using PortfolioSnapshot + AccountSnapshot.
 
-    Investment values come exclusively from PortfolioSnapshot/PositionSnapshot records
-    (created by the scheduler). Cash values come from AccountSnapshot.
-    Missing months carry forward the last known values.
+    Investment values come exclusively from the LAST PortfolioSnapshot within each
+    calendar month. For past months without a snapshot, the cumulative transaction
+    cost basis is shown as an approximation (net capital deployed: BUY/GIFT cost
+    minus SELL proceeds). Cash values carry forward from AccountSnapshot.
+
+    The current month always uses LIVE portfolio values (current prices via FIFO)
+    instead of carrying forward the last snapshot.
     """
     from apps.assets.models import AccountSnapshot, Asset, PortfolioSnapshot, PositionSnapshot
+    from apps.transactions.models import Transaction
+    from apps.portfolio.services import calculate_portfolio
 
     EQUITY_TYPES = {"STOCK", "ETF", "CRYPTO"}
     asset_type_map = dict(Asset.objects.values_list("id", "type"))
 
     # --- Cash: last AccountSnapshot balance per month, carry-forward ---
+    # AccountSnapshot rows are entered manually and may be sparse; carry-forward
+    # is intentional here so we always have a cash figure alongside investments.
     account_balances = {}  # account_id -> latest balance
     monthly_cash = {}      # "YYYY-MM" -> total cash
 
@@ -113,7 +121,9 @@ def patrimonio_evolution():
         account_balances[snap["account_id"]] = snap["balance"]
         monthly_cash[month_key] = sum(account_balances.values(), Decimal("0"))
 
-    # --- Investments: last PortfolioSnapshot per month, carry-forward ---
+    # --- Investments: LAST PortfolioSnapshot per month, NO carry-forward ---
+    # Iterating ascending and overwriting ensures dict ends up with the
+    # snapshot of greatest captured_at for each calendar month.
     monthly_portfolio = {}  # "YYYY-MM" -> {"batch_id": ..., "total_market_value": ...}
 
     for snap in PortfolioSnapshot.objects.order_by("captured_at").values(
@@ -124,6 +134,27 @@ def patrimonio_evolution():
 
     if not monthly_portfolio and not monthly_cash:
         return []
+
+    # --- Cumulative transaction cost basis (workaround for months without snapshots) ---
+    # For past months where we have no PortfolioSnapshot (i.e. before tracking started),
+    # show the net capital deployed: sum of BUY/GIFT costs minus SELL proceeds.
+    # This is an approximation — actual cost basis would need full FIFO — but it's
+    # good enough to give the chart a meaningful investment line before snapshots exist.
+    running_cost = Decimal("0")
+    tx_cost_by_month = {}  # "YYYY-MM" -> cumulative net invested cost at end of that month
+
+    for tx in Transaction.objects.order_by("date", "created_at").values(
+        "date", "type", "quantity", "price", "commission"
+    ):
+        month_key = tx["date"].strftime("%Y-%m")
+        qty = tx["quantity"] or Decimal("0")
+        price = tx["price"] or Decimal("0")
+        commission = tx["commission"] or Decimal("0")
+        if tx["type"] in ("BUY", "GIFT"):
+            running_cost += qty * price + commission
+        elif tx["type"] == "SELL":
+            running_cost -= qty * price - commission
+        tx_cost_by_month[month_key] = running_cost
 
     # --- Breakdown by type using PositionSnapshot ---
     selected_batch_ids = {snap["batch_id"] for snap in monthly_portfolio.values()}
@@ -139,26 +170,69 @@ def patrimonio_evolution():
         else:
             batch_rf[pos["batch_id"]] += pos["market_value"]
 
-    # --- Combine all months with carry-forward ---
-    all_months = sorted(set(monthly_cash.keys()) | set(monthly_portfolio.keys()))
+    # --- Compute LIVE portfolio values for the current month ---
+    live_total = Decimal("0")
+    live_rv = Decimal("0")
+    live_rf = Decimal("0")
+    try:
+        live_portfolio = calculate_portfolio()
+        live_total = Decimal(live_portfolio["total_market_value"])
+        for pos in live_portfolio["positions"]:
+            mv = Decimal(pos["market_value"])
+            if pos["asset_type"] in EQUITY_TYPES:
+                live_rv += mv
+            else:
+                live_rf += mv
+    except Exception:
+        live_total = Decimal("0")
+
+    # --- Combine: ALL months with any data + always include current month ---
+    # Cash: carry-forward (AccountSnapshots entered manually, may be sparse).
+    # Investments:
+    #   - Current month                 → LIVE portfolio values (current prices).
+    #   - Past month with snapshot      → use the snapshot (market value).
+    #   - Past month, no snapshot       → cumulative tx cost basis (BUY/GIFT − SELL).
+    from django.utils import timezone as tz
+    current_month = tz.now().strftime("%Y-%m")
+
+    all_months_set = (
+        set(monthly_cash.keys())
+        | set(monthly_portfolio.keys())
+        | set(tx_cost_by_month.keys())
+    )
+    # Ensure current month always appears so live values are shown.
+    if monthly_portfolio or live_total > 0:
+        all_months_set.add(current_month)
+    all_months = sorted(all_months_set)
 
     last_cash = Decimal("0")
-    last_portfolio = None
+    last_tx_cost = Decimal("0")        # carry-forward: cumulative net invested cost from txs
+    last_portfolio_data: tuple | None = None  # (total_investments, rv, rf)
     result = []
 
     for month in all_months:
         if month in monthly_cash:
             last_cash = monthly_cash[month]
-        if month in monthly_portfolio:
-            last_portfolio = monthly_portfolio[month]
 
-        if last_portfolio:
-            total_investments = Decimal(str(last_portfolio["total_market_value"]))
-            bid = last_portfolio["batch_id"]
+        # Advance the tx cost carry-forward if there were transactions this month
+        if month in tx_cost_by_month:
+            last_tx_cost = tx_cost_by_month[month]
+
+        if month == current_month:
+            # Current month: always use LIVE portfolio values (current prices).
+            total_investments = live_total
+            rv = live_rv
+            rf = live_rf
+        elif month in monthly_portfolio:
+            portfolio = monthly_portfolio[month]
+            total_investments = Decimal(str(portfolio["total_market_value"]))
+            bid = portfolio["batch_id"]
             rv = batch_rv.get(bid, Decimal("0"))
             rf = batch_rf.get(bid, Decimal("0"))
+            last_portfolio_data = (total_investments, rv, rf)
         else:
-            total_investments = Decimal("0")
+            # Past month with no snapshot → show cumulative transaction cost as proxy.
+            total_investments = max(last_tx_cost, Decimal("0"))
             rv = Decimal("0")
             rf = Decimal("0")
 

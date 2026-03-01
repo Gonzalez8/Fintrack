@@ -33,22 +33,22 @@ function useAutoUpdatePrices() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const minutes = settings?.price_update_interval ?? 0
 
+  const invalidateAfterPriceUpdate = () => {
+    queryClient.invalidateQueries({ queryKey: ['portfolio'] })
+    queryClient.invalidateQueries({ queryKey: ['assets-all'] })
+    queryClient.invalidateQueries({ queryKey: ['patrimonio-evolution'] })
+  }
+
   // Update prices once on mount
   useEffect(() => {
-    assetsApi.updatePrices().then(() => {
-      queryClient.invalidateQueries({ queryKey: ['portfolio'] })
-      queryClient.invalidateQueries({ queryKey: ['assets-all'] })
-    })
+    assetsApi.updatePrices().then(invalidateAfterPriceUpdate)
   }, [queryClient])
 
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current)
     if (minutes > 0) {
       intervalRef.current = setInterval(() => {
-        assetsApi.updatePrices().then(() => {
-          queryClient.invalidateQueries({ queryKey: ['portfolio'] })
-          queryClient.invalidateQueries({ queryKey: ['assets-all'] })
-        })
+        assetsApi.updatePrices().then(invalidateAfterPriceUpdate)
       }, minutes * 60 * 1000)
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }

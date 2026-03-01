@@ -6,20 +6,23 @@ Personal investment tracking application. Monitor your portfolio, transactions, 
 
 ### Dashboard
 - Summary cards: total net worth (investments + cash), unrealized P&L %, current year income (dividends, interests, realized sales)
-- Asset allocation pie chart by market value
+- Asset allocation pie chart (Renta Variable / Renta Fija / Efectivo)
+- Per-asset distribution with progress bars and portfolio weight
 - Year-by-year income bar chart (dividends, interests, realized sales)
-- Asset type allocation: Renta Variable / Renta Fija / Cash
-- Monthly patrimony evolution area chart (cash + investments)
+- **Patrimony evolution chart**: stacked area (Efectivo + Inversiones) with range selectors (3M, 6M, 1A, 2A, MAX), period return % for total and cash. For months without a portfolio snapshot, the chart falls back to cumulative transaction cost basis so the investment line is never blank
+- **Portfolio value evolution chart** (Renta Variable): snapshot-based time series with range selectors (1D, 1S, 1M, 3M, 1A, MAX), hover-to-inspect, and a LIVE badge when live prices differ from the last snapshot
+- **Persistent top bar** (desktop): shows total patrimony, unrealized P&L, market value and cash at a glance without navigating away
 
 ### Portfolio (Cartera)
-- Current positions table: asset name/ticker, type, quantity, total cost, current price, market value, P&L €, P&L %  and portfolio weight
+- Current positions table: asset name/ticker, type, quantity, total cost, current price, market value, P&L €, P&L % and portfolio weight
 - One-click price update via Yahoo Finance
-- Position detail modal with historical evolution chart (market value, cost basis, unrealized P&L over time)
+- Position detail drawer with historical evolution chart (market value, cost basis, unrealized P&L over time)
 
 ### Assets (Activos)
 - Asset catalog: name, ticker, ISIN, type (Stock, ETF, Fund, Crypto), currency, issuer/domicile/withholding countries
 - Automatic price mode (Yahoo Finance) or manual price override
 - Price status tracking per asset (OK / Error / No ticker)
+- **Asset detail page**: inline edit of all fields, manual price form, and an interactive **price history chart** (lightweight-charts) with period selector (1M, 3M, 6M, 1A, 2A, 5A, MAX) and period-return badge
 - Delete protection when an asset has associated transactions
 
 ### Accounts (Cuentas)
@@ -63,7 +66,11 @@ Personal investment tracking application. Monitor your portfolio, transactions, 
 - Database storage usage breakdown by table
 - Last snapshot time and next eligible snapshot countdown
 
-### Dark mode
+### UI & Design System
+- **APEX dark theme**: consistent dark card palette with blue accent borders and JetBrains Mono typography throughout
+- **Chart theme tokens** (`chartTheme.ts`): single source of truth for all chart colors, tooltip styles, axis ticks, legend and gradient definitions — shared by every Recharts and lightweight-charts component
+- **Mobile-first responsive layout**: bottom navigation bar on small screens, collapsible sidebar on desktop
+- Dark / light mode toggle
 
 ---
 
@@ -72,7 +79,7 @@ Personal investment tracking application. Monitor your portfolio, transactions, 
 | Layer | Technologies |
 |---|---|
 | Backend | Django 5.1, Django REST Framework, PostgreSQL 16, yfinance, openpyxl |
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui (Radix), React Query, Zustand, Recharts |
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui (Radix), React Query, Zustand, Recharts, lightweight-charts |
 | Infra | Docker Compose |
 
 ---
@@ -212,10 +219,13 @@ frontend/               Vite + React 18 + TypeScript
                         Fiscal, Configuracion
     components/
       ui/               shadcn/ui (Radix + Tailwind)
-      app/              Sidebar, PageHeader, DataTable, MoneyCell
+      app/              Sidebar, TopBar, MobileNav, PageHeader,
+                        DataTable, MoneyCell, PriceChart,
+                        PatrimonioEvolutionChart, RVEvolutionChart,
+                        PositionCard
     stores/             Zustand (authStore)
     types/              TypeScript interfaces
-    lib/                Shared utilities and constants
+    lib/                chartTheme.ts, utils, constants
 ```
 
 ## Common Commands
@@ -245,6 +255,7 @@ GET     /api/auth/me/                     Current user
 CRUD    /api/assets/                      Assets
 POST    /api/assets/{id}/set-price/       Manual price override
 GET     /api/assets/{id}/position-history/ Position snapshot history
+GET     /api/assets/{id}/price-history/   OHLC price history from Yahoo Finance (?period=1mo|3mo|6mo|1y|2y|5y|max)
 POST    /api/assets/update-prices/        Fetch prices (Yahoo Finance)
 CRUD    /api/accounts/                    Accounts
 CRUD    /api/account-snapshots/           Account balance snapshots

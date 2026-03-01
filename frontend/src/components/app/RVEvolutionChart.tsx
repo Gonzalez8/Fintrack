@@ -78,24 +78,38 @@ export function RVEvolutionChart() {
     staleTime: 30 * 1000,
   })
 
-  const chartData = useMemo(() => filterByRange(allData, range), [allData, range])
-  const hasEnoughData = chartData.length >= 2
+  // Snapshot series filtered by range (historical data)
+  const snapshotData = useMemo(() => filterByRange(allData, range), [allData, range])
+  const hasEnoughData = snapshotData.length >= 2
 
-  // Range return: always computed from first vs last PortfolioSnapshot in range
-  const firstSnapshotValue = hasEnoughData ? parseFloat(chartData[0].value) : 0
-  const lastSnapshotValue = hasEnoughData ? parseFloat(chartData[chartData.length - 1].value) : 0
-  const isPositive = lastSnapshotValue >= firstSnapshotValue
-  const color = isPositive ? '#22c55e' : '#ef4444'
-  const gradientId = `rv-grad-${isPositive ? 'green' : 'red'}`
+  const firstSnapshotValue = hasEnoughData ? parseFloat(snapshotData[0].value) : 0
+  const lastSnapshotValue = hasEnoughData ? parseFloat(snapshotData[snapshotData.length - 1].value) : 0
 
-  const periodReturnAbs = lastSnapshotValue - firstSnapshotValue
-  const periodReturnPct =
-    firstSnapshotValue > 0 ? (periodReturnAbs / firstSnapshotValue) * 100 : 0
-
-  // Live value from portfolio API — shown as the big number when not hovering
+  // Live value from portfolio API — current prices
   const liveValue = portfolioData
     ? parseFloat(portfolioData.total_market_value)
     : lastSnapshotValue
+
+  // Chart data = historical snapshots + live point from current prices
+  const chartData = useMemo(() => {
+    if (!portfolioData || snapshotData.length === 0) return snapshotData
+    return [
+      ...snapshotData,
+      {
+        captured_at: new Date().toISOString(),
+        value: portfolioData.total_market_value,
+      },
+    ]
+  }, [snapshotData, portfolioData])
+
+  // Range return: first snapshot → live value (reflects current prices)
+  const isPositive = liveValue >= firstSnapshotValue
+  const color = isPositive ? '#22c55e' : '#ef4444'
+  const gradientId = `rv-grad-${isPositive ? 'green' : 'red'}`
+
+  const periodReturnAbs = liveValue - firstSnapshotValue
+  const periodReturnPct =
+    firstSnapshotValue > 0 ? (periodReturnAbs / firstSnapshotValue) * 100 : 0
 
   // Badge: live prices are fresher than the last snapshot
   const isLiveUpdated =

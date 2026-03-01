@@ -4,19 +4,16 @@ import { reportsApi } from '@/api/portfolio'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { MoneyCell } from '@/components/app/MoneyCell'
 import { RVEvolutionChart } from '@/components/app/RVEvolutionChart'
+import { PatrimonioEvolutionChart } from '@/components/app/PatrimonioEvolutionChart'
 import { formatMoney, formatPercent } from '@/lib/utils'
 import { PageHeader } from '@/components/app/PageHeader'
-import { PieChart, Pie, Cell, BarChart, Bar, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { useChartTheme, CHART_COLORS } from '@/lib/chartTheme'
 
 export function DashboardPage() {
   const { data: portfolio } = useQuery({
     queryKey: ['portfolio'],
     queryFn: () => portfolioApi.get().then((r) => r.data),
-  })
-  const { data: patrimonioEvo } = useQuery({
-    queryKey: ['patrimonio-evolution'],
-    queryFn: () => reportsApi.patrimonioEvolution().then((r) => r.data),
   })
   const { data: yearSummary } = useQuery({
     queryKey: ['year-summary'],
@@ -61,23 +58,6 @@ export function DashboardPage() {
     'Renta Fija': '#22c55e',
     'Efectivo': '#f59e0b',
   }
-
-  const evolutionData = (patrimonioEvo ?? []).map((p) => {
-    const cash = parseFloat(p.cash)
-    const investments = parseFloat(p.investments)
-    return {
-      month: p.month,
-      Efectivo: cash,
-      Inversiones: investments,
-      Total: cash + investments,
-    }
-  })
-
-  const lastEvoPoint = evolutionData[evolutionData.length - 1]
-  const evoCash = lastEvoPoint?.Efectivo ?? 0
-  const evoInvestments = lastEvoPoint?.Inversiones ?? 0
-  const evoTotal = lastEvoPoint?.Total ?? 0
-
 
   const totalPnlPct = portfolio && parseFloat(portfolio.total_cost) > 0
     ? ((parseFloat(portfolio.total_unrealized_pnl) / parseFloat(portfolio.total_cost)) * 100).toFixed(2)
@@ -231,36 +211,7 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      {evolutionData.length > 0 && (
-        <Card className="overflow-hidden">
-          <CardContent className="p-0">
-            <div className="px-4 pt-5 pb-3 sm:px-6 sm:pt-6 sm:pb-4">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Evolución del Patrimonio</p>
-              <p className="text-2xl sm:text-3xl font-bold tabular-nums leading-none">{formatMoney(evoTotal)}</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Inversiones: {formatMoney(evoInvestments)} · Efectivo: {formatMoney(evoCash)}
-              </p>
-            </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={evolutionData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                <XAxis dataKey="month" tick={ct.axisTick} tickLine={false} axisLine={false} padding={{ left: 16, right: 16 }} />
-                <YAxis hide />
-                <Tooltip
-                  formatter={(v: number) => formatMoney(v)}
-                  contentStyle={ct.tooltipStyle}
-                  labelStyle={ct.tooltipLabelStyle}
-                  itemStyle={ct.tooltipItemStyle}
-                  cursor={ct.tooltipCursor}
-                />
-                <Legend wrapperStyle={{ ...ct.legendStyle, paddingLeft: '24px', paddingBottom: '8px' }} />
-                <Area type="monotone" dataKey="Efectivo" stackId="1" fill="#f59e0b" stroke="#f59e0b" fillOpacity={0.6} />
-                <Area type="monotone" dataKey="Inversiones" stackId="1" fill="#3b82f6" stroke="#3b82f6" fillOpacity={0.6} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
-
+      <PatrimonioEvolutionChart />
       <RVEvolutionChart />
     </div>
   )
