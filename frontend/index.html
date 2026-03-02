@@ -11,9 +11,7 @@
     <!-- Prevent flash of wrong theme before React hydrates — dark by default -->
     <script>
       ;(function () {
-        const saved = localStorage.getItem('theme')
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-        if (saved === 'dark' || (!saved && prefersDark) || !saved) {
+        if (localStorage.getItem('theme') !== 'light') {
           document.documentElement.classList.add('dark')
         }
       })()

@@ -194,6 +194,14 @@
     );
   }
 
+  /* Date input calendar icon — adapt to dark mode */
+  .dark input[type="date"],
+  .dark input[type="datetime-local"],
+  .dark input[type="month"],
+  .dark input[type="time"] {
+    color-scheme: dark;
+  }
+
   /* JetBrains Mono for monospaced elements */
   .font-mono,
   [class*='tabular-nums'] {

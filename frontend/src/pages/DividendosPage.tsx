@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { dividendsApi } from '@/api/transactions'
 import { assetsApi } from '@/api/assets'
+import { portfolioApi } from '@/api/portfolio'
 import { DataTable, type Column } from '@/components/app/DataTable'
 import { MoneyCell } from '@/components/app/MoneyCell'
 import { PageHeader } from '@/components/app/PageHeader'
@@ -12,9 +13,8 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Download, Plus, Trash2 } from 'lucide-react'
-import { NewAssetForm } from '@/components/app/NewAssetForm'
 import { formatQty, formatErrors } from '@/lib/utils'
-import type { Dividend } from '@/types'
+import type { Dividend, Position } from '@/types'
 
 export function DividendosPage() {
   const queryClient = useQueryClient()
@@ -32,6 +32,14 @@ export function DividendosPage() {
     queryKey: ['assets-all'],
     queryFn: () => assetsApi.list({ page_size: '500' }).then((r) => r.data),
   })
+  const { data: portfolioData } = useQuery({
+    queryKey: ['portfolio'],
+    queryFn: () => portfolioApi.get().then((r) => r.data),
+  })
+
+  const positionMap = new Map<string, Position>(
+    (portfolioData?.positions ?? []).map((p) => [p.asset_id, p])
+  )
 
   const createMut = useMutation({
     mutationFn: (data: Record<string, string>) => dividendsApi.create(data as any),
@@ -173,7 +181,11 @@ export function DividendosPage() {
 
             <div className="space-y-1">
               <label className="text-sm font-medium">Activo</label>
-              <Select value={form.asset ?? ''} onValueChange={(v) => setForm((f) => ({ ...f, asset: v }))}>
+              <Select modal={false} value={form.asset ?? ''} onValueChange={(v) => {
+                const pos = positionMap.get(v)
+                setForm((f) => ({ ...f, asset: v, shares: pos ? pos.quantity : f.shares }))
+              }}>
+
                 <SelectTrigger><SelectValue placeholder="Seleccionar activo" /></SelectTrigger>
                 <SelectContent>
                   {assetsData?.results.map((a) => (
@@ -181,7 +193,6 @@ export function DividendosPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <NewAssetForm onCreated={(id) => setForm((f) => ({ ...f, asset: id }))} />
             </div>
 
             <div>
