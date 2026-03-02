@@ -19,13 +19,7 @@ export const RANGE_LABELS: Record<Range, string> = {
 }
 
 export function filterByRange(months: MonthlySavingsPoint[], range: Range): MonthlySavingsPoint[] {
-  if (range === 'MAX' || !months.length) return months
-  const now = new Date()
-  const cutoff = new Date(now)
-  if      (range === '3M') cutoff.setMonth(now.getMonth() - 3)
-  else if (range === '6M') cutoff.setMonth(now.getMonth() - 6)
-  else if (range === '1A') cutoff.setFullYear(now.getFullYear() - 1)
-  else if (range === '2A') cutoff.setFullYear(now.getFullYear() - 2)
-  const cutoffKey = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}`
-  return months.filter(m => m.month >= cutoffKey)
+  if (!months.length || range === 'MAX') return months
+  const n = { '3M': 3, '6M': 6, '1A': 12, '2A': 24 }[range]
+  return months.slice(-n)
 }
