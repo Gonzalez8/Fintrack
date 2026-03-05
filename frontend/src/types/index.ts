@@ -234,3 +234,16 @@ export interface MonthlySavingsData {
   months: MonthlySavingsPoint[]
   stats: MonthlySavingsStats | null
 }
+
+export interface TaskStatus {
+  task_id: string
+  status: 'PENDING' | 'STARTED' | 'SUCCESS' | 'FAILURE' | 'RETRY' | 'REVOKED'
+  result?: unknown
+  error?: string
+}
+
+export interface UpdatePricesResult {
+  updated: number
+  errors: string[]
+  prices: Array<{ ticker: string; name: string; price: string }>
+}

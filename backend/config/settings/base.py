@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -14,6 +15,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third-party
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "django_filters",
     # Local apps
@@ -83,7 +85,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # DRF
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        # SessionAuthentication removed: causes CSRF enforcement on JWT requests
+        # when a legacy session cookie is present. Django /admin/ uses its own
+        # auth system independently of DRF.
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -97,6 +102,20 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 50,
     "COERCE_DECIMAL_TO_STRING": True,
 }
+
+# JWT
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+}
+JWT_REFRESH_COOKIE_NAME = "refresh_token"
+JWT_REFRESH_COOKIE_HTTPONLY = True
+JWT_REFRESH_COOKIE_SAMESITE = "Lax"
 
 # CORS
 CORS_ALLOWED_ORIGINS = os.environ.get(
@@ -114,3 +133,19 @@ SESSION_COOKIE_SAMESITE = "Lax"
 # Frontend SPA served by Django in production
 FRONTEND_DIR = os.environ.get("FRONTEND_DIR", "")
 WHITENOISE_ROOT = FRONTEND_DIR if FRONTEND_DIR else None
+
+# Celery
+CELERY_BROKER_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+CELERY_RESULT_BACKEND = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_RESULT_EXPIRES = 3600       # keep results in Redis for 1h (used by task polling)
+CELERY_TASK_TRACK_STARTED = True   # expose STARTED status to TaskStatusView
+
+CELERY_BEAT_SCHEDULE = {
+    "portfolio-snapshot-all-users": {
+        "task": "apps.assets.tasks.snapshot_all_users_task",
+        "schedule": 60.0,            # every 60 seconds
+    },
+}

@@ -88,7 +88,7 @@ Personal investment tracking application. Monitor your portfolio, transactions, 
 
 | Layer | Technologies |
 |---|---|
-| Backend | Django 5.1, Django REST Framework, PostgreSQL 16, yfinance, openpyxl |
+| Backend | Django 5.1, Django REST Framework, PostgreSQL 16, yfinance, openpyxl, djangorestframework-simplejwt |
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui (Radix), React Query, Zustand, Recharts, lightweight-charts |
 | Infra | Docker Compose |
 
@@ -251,19 +251,21 @@ VITE_DEMO_MODE=true npm run dev
 ```
 backend/                Django 5.1 + DRF
   apps/
-    core/               Auth (session + CSRF cookies)
-    assets/             Asset, Account, Settings + Yahoo Finance
+    core/               JWT auth (JWTLoginView, JWTRefreshView, JWTLogoutView, MeView)
+                        UserOwnedModel abstract base + OwnedByUserMixin
+    assets/             Asset, Account, Settings + Yahoo Finance + snapshot scheduler
     transactions/       Transaction (BUY/SELL/GIFT), Dividend, Interest
-    portfolio/          FIFO engine (positions, realized P&L)
-    importer/           Excel import + JSON backup/restore
-    reports/            Yearly tax summaries + patrimony evolution
+    portfolio/          FIFO engine (positions, realized P&L) — all fns receive user param
+    importer/           Excel import + JSON backup/restore (owner-scoped)
+    reports/            Yearly tax summaries + patrimony/savings evolution
   config/
     settings/           base.py, development.py
     urls.py
 
 frontend/               Vite + React 18 + TypeScript
   src/
-    api/                Axios clients (CSRF interceptor)
+    api/                client.ts — Bearer interceptor + 401→refresh retry (no CSRF)
+                        auth.ts — tokenLogin, tokenRefresh, logout, me
     pages/              Dashboard, Cartera, Activos, Cuentas,
                         Operaciones, Dividendos, Intereses,
                         AhorroMensual, Fiscal, Configuracion
@@ -274,7 +276,8 @@ frontend/               Vite + React 18 + TypeScript
                         PatrimonioEvolutionChart, RVEvolutionChart,
                         MonthlySavingsChart, MonthlySavingsTable,
                         PositionCard
-    stores/             Zustand (authStore)
+    stores/             Zustand (authStore — access token in memory)
+    demo/               MSW handlers for Vercel demo mode
     types/              TypeScript interfaces
     lib/                chartTheme.ts, savingsUtils.ts, utils, constants
 ```
@@ -298,25 +301,28 @@ docker compose exec frontend npx tsc --noEmit
 
 ## API
 
+All endpoints (except auth) require `Authorization: Bearer <access_token>`. Resources are automatically scoped to the authenticated user.
+
 ```
-POST    /api/auth/login/                  Login (session)
-POST    /api/auth/logout/                 Logout
+POST    /api/auth/token/                  JWT login → { access, user } + httpOnly refresh cookie
+POST    /api/auth/token/refresh/          Rotate refresh token → { access }
+POST    /api/auth/logout/                 Blacklist refresh token + clear cookie
 GET     /api/auth/me/                     Current user
 
-CRUD    /api/assets/                      Assets
+CRUD    /api/assets/                      Assets (owner-scoped)
 POST    /api/assets/{id}/set-price/       Manual price override
 GET     /api/assets/{id}/position-history/ Position snapshot history
 GET     /api/assets/{id}/price-history/   OHLC price history from Yahoo Finance (?period=1mo|3mo|6mo|1y|2y|5y|max)
 POST    /api/assets/update-prices/        Fetch prices (Yahoo Finance)
-CRUD    /api/accounts/                    Accounts
-CRUD    /api/account-snapshots/           Account balance snapshots
+CRUD    /api/accounts/                    Accounts (owner-scoped)
+CRUD    /api/account-snapshots/           Account balance snapshots (owner-scoped)
 POST    /api/accounts/bulk-snapshot/      Bulk snapshot creation
-GET/PUT /api/settings/                    Settings (singleton)
+GET/PUT /api/settings/                    Settings (per-user)
 GET     /api/storage-info/                DB size by table
 
-CRUD    /api/transactions/                Transactions
-CRUD    /api/dividends/                   Dividends
-CRUD    /api/interests/                   Interests
+CRUD    /api/transactions/                Transactions (owner-scoped)
+CRUD    /api/dividends/                   Dividends (owner-scoped)
+CRUD    /api/interests/                   Interests (owner-scoped)
 
 GET     /api/portfolio/                   Positions + realized sales (FIFO)
 
@@ -326,12 +332,12 @@ GET     /api/reports/rv-evolution/        Portfolio value time series
 GET     /api/reports/monthly-savings/     Monthly cash + investment cost basis + real savings
 GET     /api/reports/snapshot-status/     Last/next snapshot info
 
-GET     /api/export/transactions.csv      CSV export
-GET     /api/export/dividends.csv         CSV export
-GET     /api/export/interests.csv         CSV export
+GET     /api/export/transactions.csv      CSV export (owner-scoped)
+GET     /api/export/dividends.csv         CSV export (owner-scoped)
+GET     /api/export/interests.csv         CSV export (owner-scoped)
 
-GET     /api/backup/export/               Full JSON backup
-POST    /api/backup/import/               Restore from JSON backup
+GET     /api/backup/export/               Full JSON backup (owner-scoped)
+POST    /api/backup/import/               Restore from JSON backup (owner-scoped)
 ```
 
 ## License

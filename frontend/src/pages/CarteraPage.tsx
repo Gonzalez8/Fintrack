@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { portfolioApi } from '@/api/portfolio'
 import { assetsApi } from '@/api/assets'
+import { pollTask } from '@/api/tasks'
+import type { UpdatePricesResult } from '@/types'
 import { DataTable, type Column } from '@/components/app/DataTable'
 import { MoneyCell } from '@/components/app/MoneyCell'
 import { AssetEvolutionChart } from '@/components/app/AssetEvolutionChart'
@@ -73,7 +75,12 @@ export function CarteraPage() {
   })
 
   const updatePricesMut = useMutation({
-    mutationFn: () => assetsApi.updatePrices().then((r) => r.data),
+    mutationFn: async () => {
+      const { data } = await assetsApi.updatePrices()
+      const taskResult = await pollTask(data.task_id)
+      if (taskResult.status === 'FAILURE') throw new Error(taskResult.error ?? 'Error desconocido')
+      return taskResult.result as UpdatePricesResult
+    },
     onSuccess: (result) => {
       setPriceResult({ updated: result.updated, errors: result.errors })
       queryClient.invalidateQueries({ queryKey: ['portfolio'] })

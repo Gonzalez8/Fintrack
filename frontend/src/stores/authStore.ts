@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { authApi } from '@/api/auth'
+import { setAccessToken } from '@/api/client'
 import type { User } from '@/types'
 
 interface AuthState {
@@ -7,6 +8,10 @@ interface AuthState {
   loading: boolean
   login: (username: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  /**
+   * Called on app mount to restore the session from the httpOnly refresh cookie.
+   * Calls /auth/token/refresh/ → if valid, gets a new access token and fetches user.
+   */
   fetchMe: () => Promise<void>
 }
 
@@ -15,21 +20,30 @@ export const useAuthStore = create<AuthState>((set) => ({
   loading: true,
 
   login: async (username, password) => {
-    await authApi.getCsrf()
-    const { data } = await authApi.login(username, password)
-    set({ user: data })
+    const { data } = await authApi.tokenLogin(username, password)
+    setAccessToken(data.access)
+    set({ user: data.user })
   },
 
   logout: async () => {
-    await authApi.logout()
-    set({ user: null })
+    try {
+      await authApi.logout()
+    } finally {
+      setAccessToken(null)
+      set({ user: null })
+    }
   },
 
   fetchMe: async () => {
     try {
-      const { data } = await authApi.me()
-      set({ user: data, loading: false })
+      // Try to get a fresh access token using the httpOnly refresh_token cookie.
+      // On first page load after login the cookie is present; on expiry this fails.
+      const { data: refreshData } = await authApi.tokenRefresh()
+      setAccessToken(refreshData.access)
+      const { data: user } = await authApi.me()
+      set({ user, loading: false })
     } catch {
+      setAccessToken(null)
       set({ user: null, loading: false })
     }
   },

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/authStore'
 import { settingsApi, assetsApi } from '@/api/assets'
+import { pollTask } from '@/api/tasks'
 import { Sidebar } from '@/components/app/Sidebar'
 import { MobileNav } from '@/components/app/MobileNav'
 import { TopBar } from '@/components/app/TopBar'
@@ -41,17 +42,21 @@ function useAutoUpdatePrices() {
     queryClient.invalidateQueries({ queryKey: ['patrimonio-evolution'] })
   }
 
+  const triggerPriceUpdate = () =>
+    assetsApi.updatePrices()
+      .then((r) => pollTask(r.data.task_id))
+      .then(invalidateAfterPriceUpdate)
+      .catch(() => {}) // silent — background update, non-critical
+
   // Update prices once on mount
   useEffect(() => {
-    assetsApi.updatePrices().then(invalidateAfterPriceUpdate)
+    triggerPriceUpdate()
   }, [queryClient])
 
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current)
     if (minutes > 0) {
-      intervalRef.current = setInterval(() => {
-        assetsApi.updatePrices().then(invalidateAfterPriceUpdate)
-      }, minutes * 60 * 1000)
+      intervalRef.current = setInterval(triggerPriceUpdate, minutes * 60 * 1000)
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [minutes, queryClient])

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import { pollTask } from '@/api/tasks'
+import type { UpdatePricesResult } from '@/types'
 import { assetsApi } from '@/api/assets'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -77,7 +79,12 @@ export function ActivosPage() {
 
   const [priceResult, setPriceResult] = useState<{ updated: number; errors: string[] } | null>(null)
   const updatePricesMut = useMutation({
-    mutationFn: () => assetsApi.updatePrices().then((r) => r.data),
+    mutationFn: async () => {
+      const { data } = await assetsApi.updatePrices()
+      const taskResult = await pollTask(data.task_id)
+      if (taskResult.status === 'FAILURE') throw new Error(taskResult.error ?? 'Error desconocido')
+      return taskResult.result as UpdatePricesResult
+    },
     onSuccess: (result) => {
       setPriceResult({ updated: result.updated, errors: result.errors })
       queryClient.invalidateQueries({ queryKey: ['assets-all'] })
