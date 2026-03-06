@@ -4,7 +4,7 @@ from django.db.models import Sum
 from django.db.models.functions import ExtractYear
 from django.utils import timezone
 from apps.transactions.models import Dividend, Interest
-from apps.portfolio.services import calculate_realized_pnl
+from apps.portfolio.services import calculate_realized_pnl_fiscal
 
 
 def _default_year(y):
@@ -56,7 +56,7 @@ def year_summary(user):
         years[y]["interests_net"] = str(i["total_net"] or Decimal("0"))
 
     # Realized sales P&L grouped by year
-    realized = calculate_realized_pnl(user)
+    realized = calculate_realized_pnl_fiscal(user)
     sales_by_year = {}
     for sale in realized["realized_sales"]:
         y = int(sale["date"][:4])
@@ -300,9 +300,13 @@ def monthly_savings(user, start_date=None, end_date=None):
             "note": snap["note"],
         })
 
-    # --- Investment cost basis: incremental FIFO ---
+    # --- Investment cost basis: incremental, respects fiscal cost method ---
     settings = Settings.load(user)
-    lots = {}
+    fiscal_method = settings.fiscal_cost_method
+    use_wac = fiscal_method == "WAC"
+    use_lifo = fiscal_method == "LIFO"
+    lots = {}           # FIFO/LIFO: asset_id -> deque of {qty, ppu}
+    wac_state = {}      # WAC:  asset_id -> {total_qty, total_cost}
     running_inv_cost = Decimal("0")
     inv_cost_by_month = {}
 
@@ -311,8 +315,6 @@ def monthly_savings(user, start_date=None, end_date=None):
     ):
         month_key = tx["date"].strftime("%Y-%m")
         aid = tx["asset_id"]
-        if aid not in lots:
-            lots[aid] = deque()
 
         qty = tx["quantity"] or Decimal("0")
         price = tx["price"] or Decimal("0")
@@ -322,23 +324,52 @@ def monthly_savings(user, start_date=None, end_date=None):
         if tx["type"] == "BUY":
             ppu = price + (commission + tax) / qty if qty else Decimal("0")
             running_inv_cost += qty * ppu
-            lots[aid].append({"qty": qty, "ppu": ppu})
+            if use_wac:
+                if aid not in wac_state:
+                    wac_state[aid] = {"total_qty": Decimal("0"), "total_cost": Decimal("0")}
+                wac_state[aid]["total_qty"] += qty
+                wac_state[aid]["total_cost"] += qty * ppu
+            else:
+                if aid not in lots:
+                    lots[aid] = deque()
+                lots[aid].append({"qty": qty, "ppu": ppu})
 
         elif tx["type"] == "GIFT":
             ppu = price if settings.gift_cost_mode == "MARKET" else Decimal("0")
             running_inv_cost += qty * ppu
-            lots[aid].append({"qty": qty, "ppu": ppu})
+            if use_wac:
+                if aid not in wac_state:
+                    wac_state[aid] = {"total_qty": Decimal("0"), "total_cost": Decimal("0")}
+                wac_state[aid]["total_qty"] += qty
+                wac_state[aid]["total_cost"] += qty * ppu
+            else:
+                if aid not in lots:
+                    lots[aid] = deque()
+                lots[aid].append({"qty": qty, "ppu": ppu})
 
         elif tx["type"] == "SELL":
-            remaining = qty
-            while remaining > 0 and lots.get(aid):
-                lot = lots[aid][0]
-                consumed = min(remaining, lot["qty"])
-                running_inv_cost -= consumed * lot["ppu"]
-                lot["qty"] -= consumed
-                remaining -= consumed
-                if lot["qty"] <= 0:
-                    lots[aid].popleft()
+            if use_wac:
+                state = wac_state.get(aid)
+                if state and state["total_qty"] > 0:
+                    avg = state["total_cost"] / state["total_qty"]
+                    running_inv_cost -= avg * qty
+                    state["total_qty"] -= qty
+                    state["total_cost"] -= avg * qty
+                    if state["total_qty"] <= 0:
+                        state["total_qty"] = Decimal("0")
+                        state["total_cost"] = Decimal("0")
+            else:
+                if aid not in lots:
+                    lots[aid] = deque()
+                remaining = qty
+                while remaining > 0 and lots.get(aid):
+                    lot = lots[aid][-1] if use_lifo else lots[aid][0]
+                    consumed = min(remaining, lot["qty"])
+                    running_inv_cost -= consumed * lot["ppu"]
+                    lot["qty"] -= consumed
+                    remaining -= consumed
+                    if lot["qty"] <= 0:
+                        lots[aid].pop() if use_lifo else lots[aid].popleft()
 
         inv_cost_by_month[month_key] = running_inv_cost
 

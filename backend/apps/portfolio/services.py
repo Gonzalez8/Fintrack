@@ -4,29 +4,31 @@ from apps.assets.models import Account, Settings
 from apps.transactions.models import Transaction
 
 
-def _process_fifo(user):
-    """Single FIFO pass over all transactions belonging to `user`.
-
-    Returns (lots, realized_sales, asset_map, settings) where:
-    - lots: dict[asset_id] -> deque of remaining lots [{qty, price_per_unit, account_id}]
-    - realized_sales: list of sale dicts
-    - asset_map: dict[asset_id] -> Asset instance
-    - settings: Settings for this user
-    """
-    settings = Settings.load(user)
-    money_exp = Decimal(10) ** -settings.rounding_money
-
-    transactions = (
+def _fetch_transactions(user):
+    """Fetch all transactions for a user, ordered chronologically."""
+    return (
         Transaction.objects.filter(owner=user)
         .select_related("asset")
         .order_by("date", "created_at")
     )
 
+
+def _process_lot_based(user, lifo=False):
+    """Single lot-based pass (FIFO or LIFO) over all transactions belonging to `user`.
+
+    When lifo=False (default), lots are consumed from the front (FIFO).
+    When lifo=True, lots are consumed from the back (LIFO).
+
+    Returns (lots, realized_sales, asset_map, settings).
+    """
+    settings = Settings.load(user)
+    money_exp = Decimal(10) ** -settings.rounding_money
+
     lots = {}        # asset_id -> deque of [{qty, price_per_unit, account_id}]
     asset_map = {}   # asset_id -> Asset
     realized_sales = []
 
-    for tx in transactions:
+    for tx in _fetch_transactions(user):
         aid = tx.asset_id
         if aid not in lots:
             lots[aid] = deque()
@@ -50,13 +52,13 @@ def _process_fifo(user):
             cost_basis = Decimal("0")
 
             while remaining > 0 and lots[aid]:
-                lot = lots[aid][0]
+                lot = lots[aid][-1] if lifo else lots[aid][0]
                 consumed = min(remaining, lot["qty"])
                 cost_basis += lot["price_per_unit"] * consumed
                 lot["qty"] -= consumed
                 remaining -= consumed
                 if lot["qty"] <= 0:
-                    lots[aid].popleft()
+                    lots[aid].pop() if lifo else lots[aid].popleft()
 
             total_cost_basis = cost_basis.quantize(money_exp, rounding=ROUND_HALF_UP)
             sell_total = (sell_price * tx.quantity - tx.commission - tx.tax).quantize(money_exp, rounding=ROUND_HALF_UP)
@@ -80,9 +82,128 @@ def _process_fifo(user):
     return lots, realized_sales, asset_map, settings
 
 
+def _process_wac(user):
+    """Single WAC (Weighted Average Cost) pass over all transactions belonging to `user`.
+
+    Returns the same signature as _process_fifo so all downstream code works unchanged:
+    - lots: dict[asset_id] -> deque with a single synthetic lot [{qty, price_per_unit, account_id}]
+    - realized_sales: list of sale dicts
+    - asset_map: dict[asset_id] -> Asset instance
+    - settings: Settings for this user
+    """
+    settings = Settings.load(user)
+    money_exp = Decimal(10) ** -settings.rounding_money
+
+    # WAC state per asset: total_qty, total_cost, primary account tracking
+    wac_state = {}   # asset_id -> {"total_qty": Decimal, "total_cost": Decimal, "acct_qty": {account_id: Decimal}}
+    asset_map = {}
+    realized_sales = []
+
+    for tx in _fetch_transactions(user):
+        aid = tx.asset_id
+        if aid not in wac_state:
+            wac_state[aid] = {"total_qty": Decimal("0"), "total_cost": Decimal("0"), "acct_qty": {}}
+        asset_map[aid] = tx.asset
+        state = wac_state[aid]
+
+        if tx.type == Transaction.TransactionType.BUY:
+            price = tx.price or Decimal("0")
+            price_per_unit = price + (tx.commission + tx.tax) / tx.quantity if tx.quantity else Decimal("0")
+            state["total_qty"] += tx.quantity
+            state["total_cost"] += price_per_unit * tx.quantity
+            state["acct_qty"][tx.account_id] = state["acct_qty"].get(tx.account_id, Decimal("0")) + tx.quantity
+
+        elif tx.type == Transaction.TransactionType.GIFT:
+            if settings.gift_cost_mode == Settings.GiftCostMode.MARKET:
+                price_per_unit = tx.price or Decimal("0")
+            else:
+                price_per_unit = Decimal("0")
+            state["total_qty"] += tx.quantity
+            state["total_cost"] += price_per_unit * tx.quantity
+            state["acct_qty"][tx.account_id] = state["acct_qty"].get(tx.account_id, Decimal("0")) + tx.quantity
+
+        elif tx.type == Transaction.TransactionType.SELL:
+            sell_price = tx.price or Decimal("0")
+            avg_price = (state["total_cost"] / state["total_qty"]) if state["total_qty"] > 0 else Decimal("0")
+            cost_basis = (avg_price * tx.quantity).quantize(money_exp, rounding=ROUND_HALF_UP)
+
+            state["total_qty"] -= tx.quantity
+            state["total_cost"] -= avg_price * tx.quantity
+            # Prevent negative rounding drift
+            if state["total_qty"] <= 0:
+                state["total_qty"] = Decimal("0")
+                state["total_cost"] = Decimal("0")
+
+            sell_total = (sell_price * tx.quantity - tx.commission - tx.tax).quantize(money_exp, rounding=ROUND_HALF_UP)
+            pnl = (sell_total - cost_basis).quantize(money_exp, rounding=ROUND_HALF_UP)
+            pnl_pct = (
+                (pnl / cost_basis * 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                if cost_basis > 0 else Decimal("0")
+            )
+
+            realized_sales.append({
+                "date": tx.date.isoformat(),
+                "asset_name": tx.asset.name,
+                "asset_ticker": tx.asset.ticker,
+                "quantity": str(tx.quantity),
+                "cost_basis": str(cost_basis),
+                "sell_total": str(sell_total),
+                "realized_pnl": str(pnl),
+                "realized_pnl_pct": str(pnl_pct),
+            })
+
+            # Reduce account tracking proportionally
+            for acct_id in list(state["acct_qty"]):
+                if state["acct_qty"][acct_id] > 0:
+                    state["acct_qty"][acct_id] -= tx.quantity
+                    if state["acct_qty"][acct_id] <= 0:
+                        del state["acct_qty"][acct_id]
+                    break
+
+    # Convert WAC state to lots format (single synthetic lot per asset)
+    lots = {}
+    for aid, state in wac_state.items():
+        if state["total_qty"] > 0:
+            avg_price = state["total_cost"] / state["total_qty"]
+            primary_account = max(state["acct_qty"], key=state["acct_qty"].get) if state["acct_qty"] else None
+            lots[aid] = deque([{"qty": state["total_qty"], "price_per_unit": avg_price, "account_id": primary_account}])
+        else:
+            lots[aid] = deque()
+
+    return lots, realized_sales, asset_map, settings
+
+
+def _process_transactions(user, method=None):
+    """Dispatch to the appropriate cost basis method.
+
+    If method is None, uses the user's settings.cost_basis_method.
+    """
+    if method is None:
+        settings = Settings.load(user)
+        method = settings.cost_basis_method
+    if method == Settings.CostBasisMethod.WAC:
+        return _process_wac(user)
+    if method == Settings.CostBasisMethod.LIFO:
+        return _process_lot_based(user, lifo=True)
+    return _process_lot_based(user, lifo=False)
+
+
 def calculate_realized_pnl(user):
-    """Calculate realized P&L using FIFO (First In, First Out) method."""
-    _, realized_sales, _, settings = _process_fifo(user)
+    """Calculate realized P&L using the user's portfolio cost method."""
+    _, realized_sales, _, settings = _process_transactions(user)
+    money_exp = Decimal(10) ** -settings.rounding_money
+    total = sum((Decimal(s["realized_pnl"]) for s in realized_sales), Decimal("0"))
+
+    return {
+        "realized_pnl_total": str(total.quantize(money_exp, rounding=ROUND_HALF_UP)),
+        "realized_sales": realized_sales,
+    }
+
+
+def calculate_realized_pnl_fiscal(user):
+    """Calculate realized P&L using the user's fiscal cost method."""
+    settings = Settings.load(user)
+    _, realized_sales, _, settings = _process_transactions(user, method=settings.fiscal_cost_method)
     money_exp = Decimal(10) ** -settings.rounding_money
     total = sum((Decimal(s["realized_pnl"]) for s in realized_sales), Decimal("0"))
 
@@ -93,7 +214,7 @@ def calculate_realized_pnl(user):
 
 
 def _build_portfolio(lots, asset_map, money_exp, qty_exp, user):
-    """Build portfolio dict from remaining FIFO lots for a given user."""
+    """Build portfolio dict from remaining lots for a given user."""
     positions = []
     total_market_value = Decimal("0")
 
@@ -181,15 +302,15 @@ def _build_portfolio(lots, asset_map, money_exp, qty_exp, user):
 
 
 def calculate_portfolio(user):
-    lots, _, asset_map, settings = _process_fifo(user)
+    lots, _, asset_map, settings = _process_transactions(user)
     money_exp = Decimal(10) ** -settings.rounding_money
     qty_exp = Decimal(10) ** -settings.rounding_qty
     return _build_portfolio(lots, asset_map, money_exp, qty_exp, user)
 
 
 def calculate_portfolio_full(user):
-    """Single FIFO pass returning both portfolio positions and realized sales."""
-    lots, realized_sales, asset_map, settings = _process_fifo(user)
+    """Single pass returning both portfolio positions and realized sales."""
+    lots, realized_sales, asset_map, settings = _process_transactions(user)
     money_exp = Decimal(10) ** -settings.rounding_money
     qty_exp = Decimal(10) ** -settings.rounding_qty
 

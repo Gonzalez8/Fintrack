@@ -22,6 +22,7 @@ export const store = {
   settings: {
     base_currency: 'EUR',
     cost_basis_method: 'FIFO',
+    fiscal_cost_method: 'FIFO',
     gift_cost_mode: 'ZERO',
     rounding_money: 2,
     rounding_qty: 6,
