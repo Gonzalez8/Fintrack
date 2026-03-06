@@ -70,7 +70,7 @@ Track your portfolio, transactions, dividends, interests and taxes from a single
 
 ### 🔄 Transactions
 - BUY / SELL / GIFT operations with date, quantity, price, commission and tax
-- **FIFO cost basis engine** — single-pass algorithm, commission and tax included in cost basis
+- **Cost basis engine** — FIFO, LIFO and WAC (Weighted Average Cost), single-pass algorithms with commission and tax included in cost basis
 - Configurable gift cost mode: zero or market price at gift date
 - Pagination, filters, CSV export
 
@@ -87,6 +87,7 @@ Track your portfolio, transactions, dividends, interests and taxes from a single
 
 ### 📋 Tax Report
 - Year-by-year summary: gross/net dividends, gross/net interest, realized sales P&L
+- **Separate fiscal cost method** — independent from portfolio method, supports FIFO / LIFO / WAC per country requirements
 - Detailed breakdown per year
 - Year selector for the last 6 fiscal years
 
@@ -99,7 +100,9 @@ Track your portfolio, transactions, dividends, interests and taxes from a single
 - Django password validators (minimum length, common passwords, similarity check)
 
 ### ⚙️ Settings
-- FIFO cost basis configuration
+- **Cost basis method** — FIFO / LIFO / WAC for portfolio and snapshots
+- **Fiscal cost method** — independent method for tax reports (configurable per country)
+- Warning dialog when changing methods explaining impact on snapshots and fiscal reports
 - Gift cost mode (Zero / Market price)
 - Money and quantity rounding decimals
 - Portfolio snapshot frequency and data retention policy
@@ -241,7 +244,7 @@ fintrack/
 │   │   ├── assets/             Asset, Account, Settings + Yahoo Finance prices
 │   │   │                       Celery tasks (price updates, snapshots)
 │   │   ├── transactions/       Transaction (BUY/SELL/GIFT), Dividend, Interest
-│   │   ├── portfolio/          FIFO engine — pure service functions
+│   │   ├── portfolio/          Cost basis engine (FIFO/LIFO/WAC) — pure service functions
 │   │   ├── reports/            Tax summaries, patrimony & savings evolution
 │   │   └── importer/           JSON backup / restore
 │   └── config/
