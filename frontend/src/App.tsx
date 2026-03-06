@@ -30,9 +30,11 @@ const queryClient = new QueryClient({
 
 function useAutoUpdatePrices() {
   const queryClient = useQueryClient()
+  const user = useAuthStore((s) => s.user)
   const { data: settings } = useQuery({
     queryKey: ['settings'],
     queryFn: () => settingsApi.get().then((r) => r.data),
+    enabled: !!user,
   })
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const minutes = settings?.price_update_interval ?? 0
