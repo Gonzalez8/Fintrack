@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PageHeader } from '@/components/app/PageHeader'
 import type { Settings } from '@/types'
 
@@ -56,6 +57,25 @@ export function ConfiguracionPage() {
   const [form, setForm] = useState<Partial<Settings>>({})
   const current = { ...settings, ...form }
 
+  // Cost method change warning dialog
+  const [methodWarning, setMethodWarning] = useState<{ field: 'cost_basis_method' | 'fiscal_cost_method'; value: string } | null>(null)
+
+  function handleCostMethodChange(field: 'cost_basis_method' | 'fiscal_cost_method', value: string) {
+    const currentValue = field === 'cost_basis_method' ? settings?.cost_basis_method : settings?.fiscal_cost_method
+    if (currentValue && currentValue !== value) {
+      setMethodWarning({ field, value })
+    } else {
+      setForm((f) => ({ ...f, [field]: value }))
+    }
+  }
+
+  function confirmMethodChange() {
+    if (methodWarning) {
+      setForm((f) => ({ ...f, [methodWarning.field]: methodWarning.value }))
+      setMethodWarning(null)
+    }
+  }
+
   const now = useNow()
   const { data: snapshotStatus } = useQuery({
     queryKey: ['snapshot-status'],
@@ -103,6 +123,28 @@ export function ConfiguracionPage() {
     <div className="space-y-6">
       <PageHeader title={t('settings.title')} />
 
+      {/* Cost method change warning dialog */}
+      <Dialog open={methodWarning !== null} onOpenChange={(open) => { if (!open) setMethodWarning(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('settings.costMethodWarningTitle')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {methodWarning?.field === 'cost_basis_method'
+              ? t('settings.costMethodWarningPortfolio')
+              : t('settings.costMethodWarningFiscal')}
+          </p>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setMethodWarning(null)}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={confirmMethodChange}>
+              {t('common.confirm')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{t('settings.generalSettings')}</CardTitle>
@@ -115,10 +157,23 @@ export function ConfiguracionPage() {
             </div>
             <div>
               <label className="text-sm font-medium">{t('settings.costMethod')}</label>
-              <Select value={current.cost_basis_method} onValueChange={(v) => setForm((f) => ({ ...f, cost_basis_method: v }))}>
+              <Select value={current.cost_basis_method} onValueChange={(v) => handleCostMethodChange('cost_basis_method', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="FIFO">{t('settings.fifo')}</SelectItem>
+                  <SelectItem value="LIFO">{t('settings.lifo')}</SelectItem>
+                  <SelectItem value="WAC">{t('settings.wac')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">{t('settings.fiscalMethod')}</label>
+              <Select value={current.fiscal_cost_method} onValueChange={(v) => handleCostMethodChange('fiscal_cost_method', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="FIFO">{t('settings.fifo')}</SelectItem>
+                  <SelectItem value="LIFO">{t('settings.lifo')}</SelectItem>
+                  <SelectItem value="WAC">{t('settings.wac')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

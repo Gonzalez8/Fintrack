@@ -188,6 +188,7 @@ export interface SnapshotStatus {
 export interface Settings {
   base_currency: string
   cost_basis_method: string
+  fiscal_cost_method: string
   gift_cost_mode: string
   rounding_money: number
   rounding_qty: number

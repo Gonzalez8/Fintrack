@@ -150,6 +150,8 @@ class PositionSnapshot(models.Model):
 class Settings(models.Model):
     class CostBasisMethod(models.TextChoices):
         FIFO = "FIFO", "First In, First Out"
+        LIFO = "LIFO", "Last In, First Out"
+        WAC = "WAC", "Weighted Average Cost"
 
     class GiftCostMode(models.TextChoices):
         ZERO = "ZERO", "Zero cost"
@@ -162,6 +164,9 @@ class Settings(models.Model):
     )
     base_currency = models.CharField(max_length=3, default="EUR")
     cost_basis_method = models.CharField(
+        max_length=10, choices=CostBasisMethod.choices, default=CostBasisMethod.FIFO
+    )
+    fiscal_cost_method = models.CharField(
         max_length=10, choices=CostBasisMethod.choices, default=CostBasisMethod.FIFO
     )
     gift_cost_mode = models.CharField(
