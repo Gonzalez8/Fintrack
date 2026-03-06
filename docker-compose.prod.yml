@@ -62,7 +62,7 @@ services:
   celery_worker:
     image: ghcr.io/gonzalez8/fintrack-backend:latest
     restart: unless-stopped
-    command: celery -A config worker -l info -Q default
+    command: celery -A config worker -l info
     environment:
       - DB_NAME=${DB_NAME:-fintrack}
       - DB_USER=${DB_USER:-fintrack}
