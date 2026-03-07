@@ -419,10 +419,19 @@ export function ConfiguracionPage() {
             {t('settings.backupDesc')}
           </p>
           <div className="flex flex-wrap gap-3 items-center">
-            <Button variant="outline" asChild>
-              <a href={backupApi.exportUrl} download>
-                {t('settings.downloadBackup')}
-              </a>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                const { data } = await backupApi.export()
+                const url = URL.createObjectURL(data)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `fintrack-backup-${new Date().toISOString().slice(0, 10)}.json`
+                a.click()
+                URL.revokeObjectURL(url)
+              }}
+            >
+              {t('settings.downloadBackup')}
             </Button>
 
             <input

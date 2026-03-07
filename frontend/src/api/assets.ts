@@ -42,7 +42,7 @@ export const storageApi = {
 }
 
 export const backupApi = {
-  exportUrl: '/api/backup/export/',
+  export: () => client.get<Blob>('/backup/export/', { responseType: 'blob' }),
   import: (file: File) => {
     const form = new FormData()
     form.append('file', file)
