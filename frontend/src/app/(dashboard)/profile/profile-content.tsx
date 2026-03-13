@@ -38,14 +38,18 @@ function ProfileCard() {
       setTimeout(() => setSaved(false), 3000);
     },
     onError: (err: unknown) => {
-      const data = (err as { response?: { data?: Record<string, string[]> } })
-        ?.response?.data;
-      if (data && typeof data === "object") {
-        const flat: Record<string, string> = {};
-        for (const [k, v] of Object.entries(data)) {
-          flat[k] = Array.isArray(v) ? v[0] : String(v);
+      try {
+        const body = (err as { body?: string })?.body;
+        const data = body ? JSON.parse(body) : null;
+        if (data && typeof data === "object") {
+          const flat: Record<string, string> = {};
+          for (const [k, v] of Object.entries(data)) {
+            flat[k] = Array.isArray(v) ? v[0] : String(v);
+          }
+          setErrors(flat);
         }
-        setErrors(flat);
+      } catch {
+        // body not JSON — ignore
       }
     },
   });
@@ -86,7 +90,7 @@ function ProfileCard() {
       <CardContent>
         {!editing ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-[120px_1fr] gap-2 text-sm">
+            <div className="grid grid-cols-[100px_1fr] sm:grid-cols-[120px_1fr] gap-2 text-sm">
               <span className="text-muted-foreground">
                 {t("common.username")}
               </span>
@@ -222,18 +226,21 @@ function ChangePasswordCard() {
       setTimeout(() => setSuccess(false), 4000);
     },
     onError: (err: unknown) => {
-      const data = (
-        err as { response?: { data?: Record<string, string | string[]> } }
-      )?.response?.data;
-      if (data && typeof data === "object") {
-        const flat: Record<string, string> = {};
-        for (const [k, v] of Object.entries(data)) {
-          flat[k] = Array.isArray(v) ? v[0] : String(v);
+      try {
+        const body = (err as { body?: string })?.body;
+        const data = body ? JSON.parse(body) : null;
+        if (data && typeof data === "object") {
+          const flat: Record<string, string> = {};
+          for (const [k, v] of Object.entries(data)) {
+            flat[k] = Array.isArray(v) ? v[0] : String(v);
+          }
+          setErrors(flat);
+          return;
         }
-        setErrors(flat);
-      } else {
-        setErrors({ non_field_errors: t("profile.passwordError") });
+      } catch {
+        // body not JSON
       }
+      setErrors({ non_field_errors: t("profile.passwordError") });
     },
   });
 

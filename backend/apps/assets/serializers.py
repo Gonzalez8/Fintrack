@@ -33,6 +33,12 @@ class AccountSnapshotSerializer(serializers.ModelSerializer):
         fields = ["id", "account", "account_name", "date", "balance", "note", "created_at"]
         read_only_fields = ["id", "created_at"]
 
+    def validate_account(self, value):
+        request = self.context.get("request")
+        if request and hasattr(value, "owner") and value.owner != request.user:
+            raise serializers.ValidationError("Invalid account.")
+        return value
+
 
 class BulkSnapshotItemSerializer(serializers.Serializer):
     account = serializers.UUIDField()

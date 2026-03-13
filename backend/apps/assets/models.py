@@ -140,6 +140,12 @@ class PositionSnapshot(models.Model):
 
     class Meta:
         ordering = ["-captured_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["batch_id", "asset"],
+                name="unique_positionsnapshot_batch_asset",
+            )
+        ]
 
     def __str__(self):
         return f"{self.asset.name} @ {self.captured_at}: {self.market_value}"

@@ -42,11 +42,19 @@ async function handler(
     return h;
   };
 
-  let djangoRes = await fetch(target, {
-    method: req.method,
-    headers: buildHeaders(access),
-    body,
-  });
+  let djangoRes: Response;
+  try {
+    djangoRes = await fetch(target, {
+      method: req.method,
+      headers: buildHeaders(access),
+      body,
+    });
+  } catch {
+    return NextResponse.json(
+      { detail: "Backend unavailable" },
+      { status: 502 },
+    );
+  }
 
   // If 401 and we have a refresh token, try to get a new access token and retry
   if (djangoRes.status === 401 && refresh) {
@@ -67,7 +75,7 @@ async function handler(
       let newAccess: string | undefined;
       for (const sc of setCookies) {
         if (sc.startsWith(`${COOKIE_ACCESS}=`)) {
-          newAccess = sc.split("=")[1].split(";")[0];
+          newAccess = sc.slice(`${COOKIE_ACCESS}=`.length).split(";")[0];
         }
       }
 

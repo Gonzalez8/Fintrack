@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, pollTask } from "@/lib/api-client";
@@ -15,13 +15,238 @@ import {
 } from "@/components/ui/select";
 import { DataTable, type Column } from "@/components/app/data-table";
 import { MoneyCell } from "@/components/app/money-cell";
-import { Plus, Search, Pencil, Trash2, RefreshCw } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import type { Asset, AssetFormData, PaginatedResponse } from "@/types";
-import { ASSET_TYPE_LABELS } from "@/lib/constants";
+import { ASSET_TYPE_LABELS, ASSET_TYPE_BADGE_COLORS } from "@/lib/constants";
 import { useTranslations } from "@/i18n/use-translations";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 25;
+
+/* ── Swipeable Asset Card (mobile) ──────────────────────────── */
+
+const SWIPE_THRESHOLD = 72;
+const ACTION_WIDTH = 144;
+
+function AssetCard({
+  asset,
+  onTap,
+  onEdit,
+  onDelete,
+}: {
+  asset: Asset;
+  onTap: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const t = useTranslations();
+  const trackRef = useRef<HTMLDivElement>(null);
+  const startX = useRef(0);
+  const currentX = useRef(0);
+  const swiping = useRef(false);
+  const isOpen = useRef(false);
+
+  const badgeColor = ASSET_TYPE_BADGE_COLORS[asset.type] ?? "";
+  const accentColor = asset.type === "STOCK"
+    ? "border-l-blue-500"
+    : asset.type === "ETF"
+      ? "border-l-emerald-500"
+      : asset.type === "FUND"
+        ? "border-l-violet-500"
+        : "border-l-orange-500";
+
+  const setTranslate = useCallback((x: number, animate = false) => {
+    const el = trackRef.current;
+    if (!el) return;
+    el.style.transition = animate ? "transform 280ms cubic-bezier(.4,0,.2,1)" : "none";
+    el.style.transform = `translateX(${x}px)`;
+  }, []);
+
+  const resetPosition = useCallback(() => {
+    setTranslate(0, true);
+    isOpen.current = false;
+  }, [setTranslate]);
+
+  const openActions = useCallback(() => {
+    setTranslate(-ACTION_WIDTH, true);
+    isOpen.current = true;
+  }, [setTranslate]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    startX.current = e.touches[0].clientX;
+    currentX.current = 0;
+    swiping.current = false;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const dx = e.touches[0].clientX - startX.current;
+    const offset = isOpen.current ? -ACTION_WIDTH + dx : dx;
+    // Only allow swiping left
+    if (offset > 0) {
+      currentX.current = 0;
+      setTranslate(0);
+      return;
+    }
+    const clamped = Math.max(offset, -ACTION_WIDTH);
+    currentX.current = dx;
+    if (Math.abs(dx) > 8) swiping.current = true;
+    setTranslate(clamped);
+  }, [setTranslate]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!swiping.current) return;
+    const traveled = Math.abs(currentX.current);
+    if (isOpen.current) {
+      if (traveled > SWIPE_THRESHOLD && currentX.current > 0) resetPosition();
+      else openActions();
+    } else {
+      if (traveled > SWIPE_THRESHOLD && currentX.current < 0) openActions();
+      else resetPosition();
+    }
+  }, [resetPosition, openActions]);
+
+  const handleClick = useCallback(() => {
+    if (swiping.current) return;
+    if (isOpen.current) {
+      resetPosition();
+      return;
+    }
+    onTap();
+  }, [onTap, resetPosition]);
+
+  // Close on outside scroll
+  useEffect(() => {
+    const close = () => {
+      if (isOpen.current) resetPosition();
+    };
+    window.addEventListener("scroll", close, { passive: true });
+    return () => window.removeEventListener("scroll", close);
+  }, [resetPosition]);
+
+  return (
+    <div className="relative overflow-hidden rounded-lg sm:hidden">
+      {/* Swipe-behind actions */}
+      <div className="absolute inset-y-0 right-0 flex">
+        <button
+          onClick={(e) => { e.stopPropagation(); onEdit(); resetPosition(); }}
+          className="flex w-[72px] items-center justify-center bg-blue-500 text-white active:bg-blue-600"
+          aria-label={t("common.edit")}
+        >
+          <Pencil className="h-5 w-5" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); resetPosition(); }}
+          className="flex w-[72px] items-center justify-center bg-red-500 text-white active:bg-red-600"
+          aria-label={t("common.delete")}
+        >
+          <Trash2 className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Card foreground (slides left) */}
+      <div
+        ref={trackRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClick={handleClick}
+        className={cn(
+          "relative z-10 cursor-pointer border-l-[3px] bg-card px-3.5 py-3 active:bg-accent/50 transition-colors",
+          "border border-border rounded-lg",
+          accentColor,
+        )}
+      >
+        <div className="flex items-start justify-between gap-3">
+          {/* Left: name + meta */}
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold truncate leading-tight">{asset.name}</p>
+            <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+              {asset.ticker && (
+                <span className="font-mono text-[11px] font-medium text-muted-foreground">
+                  {asset.ticker}
+                </span>
+              )}
+              <Badge
+                variant="secondary"
+                className={cn("text-[9px] px-1.5 h-4", badgeColor)}
+              >
+                {ASSET_TYPE_LABELS[asset.type] || asset.type}
+              </Badge>
+              {asset.price_mode === "MANUAL" && (
+                <Badge variant="outline" className="text-[9px] px-1.5 h-4 font-mono">
+                  MANUAL
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {/* Right: price */}
+          <div className="text-right shrink-0">
+            <MoneyCell
+              value={asset.current_price}
+              currency={asset.currency}
+              className="text-sm font-semibold"
+            />
+            <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
+              {asset.currency}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Mobile Pagination ──────────────────────────────────────── */
+
+function MobilePagination({
+  page,
+  total,
+  pageSize,
+  onPageChange,
+}: {
+  page: number;
+  total: number;
+  pageSize: number;
+  onPageChange: (p: number) => void;
+}) {
+  const totalPages = Math.ceil(total / pageSize);
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-between pt-2 sm:hidden">
+      <p className="text-xs text-muted-foreground tabular-nums">
+        {total} resultado{total !== 1 ? "s" : ""}
+      </p>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-xs tabular-nums font-mono">
+          {page}/{totalPages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Component ─────────────────────────────────────────── */
 
 export function AssetsContent() {
   const router = useRouter();
@@ -82,6 +307,7 @@ export function AssetsContent() {
     router.push(`?${params}`);
   };
 
+  /* ── Desktop table columns (unchanged) ── */
   const columns: Column<Asset>[] = [
     {
       key: "name",
@@ -96,7 +322,14 @@ export function AssetsContent() {
     {
       key: "type",
       header: t("common.type"),
-      render: (a) => <Badge variant="secondary">{ASSET_TYPE_LABELS[a.type] || a.type}</Badge>,
+      render: (a) => (
+        <Badge
+          variant="secondary"
+          className={ASSET_TYPE_BADGE_COLORS[a.type] ?? ""}
+        >
+          {ASSET_TYPE_LABELS[a.type] || a.type}
+        </Badge>
+      ),
     },
     { key: "currency", header: t("common.currency"), render: (a) => <span className="text-sm">{a.currency}</span> },
     { key: "price", header: t("transactions.price"), className: "text-right", render: (a) => <MoneyCell value={a.current_price} currency={a.currency} /> },
@@ -137,13 +370,17 @@ export function AssetsContent() {
     },
   ];
 
+  const assets = data?.results ?? [];
+  const total = data?.count ?? 0;
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3">
         <h1 className="text-lg font-semibold">{t("assets.title")}</h1>
         <Button variant="outline" size="sm" onClick={handleUpdatePrices} disabled={updating}>
           <RefreshCw className={`h-4 w-4 mr-2 ${updating ? "animate-spin" : ""}`} />
-          <span>{updating ? t("portfolio.updating") : t("portfolio.updatePrices")}</span>
+          <span className="hidden sm:inline">{updating ? t("portfolio.updating") : t("portfolio.updatePrices")}</span>
         </Button>
       </div>
 
@@ -159,8 +396,8 @@ export function AssetsContent() {
         </p>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-2">
+      {/* Filters — mobile: stacked, desktop: row */}
+      <div className="space-y-2 sm:space-y-0 sm:flex sm:flex-row sm:gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -170,33 +407,82 @@ export function AssetsContent() {
             onChange={(e) => setParam("search", e.target.value)}
           />
         </div>
-        <Select value={typeFilter} onValueChange={(v) => setParam("type", v === "ALL" ? "" : v || "")}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder={t("common.type")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">{t("common.all")}</SelectItem>
-            {Object.entries(ASSET_TYPE_LABELS).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
-          <Plus className="h-4 w-4 mr-1" /> {t("common.new")}
-        </Button>
+        <div className="flex gap-2">
+          <Select value={typeFilter} onValueChange={(v) => setParam("type", v === "ALL" ? "" : v || "")}>
+            <SelectTrigger className="flex-1 sm:w-[150px]">
+              <SelectValue placeholder={t("common.type")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">{t("common.all")}</SelectItem>
+              {Object.entries(ASSET_TYPE_LABELS).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {/* Desktop inline new button */}
+          <Button className="hidden sm:flex" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+            <Plus className="h-4 w-4 mr-1" /> {t("common.new")}
+          </Button>
+        </div>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={data?.results ?? []}
-        keyFn={(a) => a.id}
-        onRowClick={(a) => router.push(`/assets/${a.id}`)}
-        page={page}
-        pageSize={PAGE_SIZE}
-        total={data?.count}
-        onPageChange={(p) => setParam("page", String(p))}
-        emptyMessage={isLoading ? `${t("common.loading")}...` : t("common.noData")}
-      />
+      {/* ── Mobile: Card List ── */}
+      <div className="sm:hidden">
+        {isLoading ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">{t("common.loading")}...</p>
+        ) : assets.length === 0 ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">{t("common.noData")}</p>
+        ) : (
+          <div className="space-y-2">
+            {assets.map((a) => (
+              <AssetCard
+                key={a.id}
+                asset={a}
+                onTap={() => router.push(`/assets/${a.id}`)}
+                onEdit={() => { setEditing(a); setDialogOpen(true); }}
+                onDelete={() => {
+                  if (confirm("Eliminar este activo?")) deleteMutation.mutate(a.id);
+                }}
+              />
+            ))}
+          </div>
+        )}
+        <MobilePagination
+          page={page}
+          total={total}
+          pageSize={PAGE_SIZE}
+          onPageChange={(p) => setParam("page", String(p))}
+        />
+      </div>
+
+      {/* ── Desktop: Table ── */}
+      <div className="hidden sm:block">
+        <DataTable
+          columns={columns}
+          data={assets}
+          keyFn={(a) => a.id}
+          onRowClick={(a) => router.push(`/assets/${a.id}`)}
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          onPageChange={(p) => setParam("page", String(p))}
+          emptyMessage={isLoading ? `${t("common.loading")}...` : t("common.noData")}
+        />
+      </div>
+
+      {/* ── Mobile FAB ── */}
+      <button
+        onClick={() => { setEditing(null); setDialogOpen(true); }}
+        className={cn(
+          "fixed bottom-24 right-5 z-40 sm:hidden",
+          "flex h-14 w-14 items-center justify-center rounded-full",
+          "bg-primary text-primary-foreground shadow-lg shadow-primary/25",
+          "active:scale-95 transition-transform duration-150",
+        )}
+        aria-label={t("assets.new")}
+      >
+        <Plus className="h-6 w-6" />
+      </button>
 
       <AssetDialog
         open={dialogOpen}
@@ -206,6 +492,8 @@ export function AssetsContent() {
     </div>
   );
 }
+
+/* ── Create / Edit Dialog ───────────────────────────────────── */
 
 function AssetDialog({
   open,
@@ -231,8 +519,9 @@ function AssetDialog({
   });
   const [loading, setLoading] = useState(false);
 
-  // Sync form when asset changes
-  const resetForm = () => {
+  // Sync form whenever dialog opens or asset changes
+  useLayoutEffect(() => {
+    if (!open) return;
     if (asset) {
       setForm({
         name: asset.name,
@@ -248,7 +537,7 @@ function AssetDialog({
     } else {
       setForm({ name: "", ticker: "", isin: "", type: "STOCK", currency: "EUR", price_mode: "AUTO", issuer_country: "", domicile_country: "", withholding_country: "" });
     }
-  };
+  }, [open, asset]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -271,14 +560,14 @@ function AssetDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (v) resetForm(); }}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{asset ? t("assets.edit") : t("assets.new")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2 space-y-1.5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2 space-y-1.5">
               <label className="text-sm font-medium">{t("common.name")} *</label>
               <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} required />
             </div>
@@ -328,11 +617,11 @@ function AssetDialog({
               <Input value={form.withholding_country} onChange={(e) => setForm((f) => ({ ...f, withholding_country: e.target.value }))} />
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
               {t("common.cancel")}
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
               {loading ? `${t("common.loading")}...` : t("common.save")}
             </Button>
           </div>

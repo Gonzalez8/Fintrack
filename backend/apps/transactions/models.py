@@ -1,4 +1,8 @@
+from decimal import Decimal
+
+from django.core.validators import MinValueValidator
 from django.db import models
+
 from apps.core.models import UserOwnedModel
 
 
@@ -16,7 +20,10 @@ class Transaction(UserOwnedModel):
     account = models.ForeignKey(
         "assets.Account", on_delete=models.PROTECT, related_name="transactions"
     )
-    quantity = models.DecimalField(max_digits=20, decimal_places=6)
+    quantity = models.DecimalField(
+        max_digits=20, decimal_places=6,
+        validators=[MinValueValidator(Decimal("0.000001"))],
+    )
     price = models.DecimalField(max_digits=20, decimal_places=6, null=True, blank=True)
     commission = models.DecimalField(max_digits=20, decimal_places=2, default=0)
     tax = models.DecimalField(max_digits=20, decimal_places=2, default=0)

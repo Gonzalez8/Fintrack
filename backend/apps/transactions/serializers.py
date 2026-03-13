@@ -2,7 +2,17 @@ from rest_framework import serializers
 from .models import Transaction, Dividend, Interest
 
 
-class TransactionSerializer(serializers.ModelSerializer):
+class _OwnershipValidationMixin:
+    """Validate that FK fields point to resources owned by the requesting user."""
+
+    def _validate_owned_fk(self, value, field_name):
+        request = self.context.get("request")
+        if request and hasattr(value, "owner") and value.owner != request.user:
+            raise serializers.ValidationError(f"Invalid {field_name}.")
+        return value
+
+
+class TransactionSerializer(_OwnershipValidationMixin, serializers.ModelSerializer):
     asset_name = serializers.CharField(source="asset.name", read_only=True)
     asset_ticker = serializers.CharField(source="asset.ticker", read_only=True)
     account_name = serializers.CharField(source="account.name", read_only=True)
@@ -16,8 +26,14 @@ class TransactionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
+    def validate_asset(self, value):
+        return self._validate_owned_fk(value, "asset")
 
-class DividendSerializer(serializers.ModelSerializer):
+    def validate_account(self, value):
+        return self._validate_owned_fk(value, "account")
+
+
+class DividendSerializer(_OwnershipValidationMixin, serializers.ModelSerializer):
     asset_name = serializers.CharField(source="asset.name", read_only=True)
     asset_ticker = serializers.CharField(source="asset.ticker", read_only=True)
     asset_issuer_country = serializers.CharField(source="asset.issuer_country", read_only=True, default=None)
@@ -31,8 +47,11 @@ class DividendSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
+    def validate_asset(self, value):
+        return self._validate_owned_fk(value, "asset")
 
-class InterestSerializer(serializers.ModelSerializer):
+
+class InterestSerializer(_OwnershipValidationMixin, serializers.ModelSerializer):
     account_name = serializers.CharField(source="account.name", read_only=True)
     days = serializers.IntegerField(read_only=True)
 
@@ -45,3 +64,15 @@ class InterestSerializer(serializers.ModelSerializer):
             "created_at", "updated_at",
         ]
         read_only_fields = ["id", "days", "created_at", "updated_at"]
+
+    def validate_account(self, value):
+        return self._validate_owned_fk(value, "account")
+
+    def validate(self, data):
+        date_start = data.get("date_start") or (self.instance and self.instance.date_start)
+        date_end = data.get("date_end") or (self.instance and self.instance.date_end)
+        if date_start and date_end and date_end < date_start:
+            raise serializers.ValidationError(
+                {"date_end": "date_end must be on or after date_start."}
+            )
+        return data

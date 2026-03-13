@@ -9,11 +9,19 @@ logger = logging.getLogger(__name__)
 def update_prices_task(self, user_id: int) -> dict:
     """Fetch latest prices from Yahoo Finance for all AUTO-mode assets of `user_id`."""
     from django.contrib.auth import get_user_model
+    from django.core.exceptions import ObjectDoesNotExist
     from apps.assets.services import update_prices
 
     try:
         user = get_user_model().objects.get(pk=user_id)
-        return update_prices(user)
+    except ObjectDoesNotExist:
+        logger.info("update_prices_task: user %s not found, skipping", user_id)
+        return {"updated": 0, "errors": ["User not found"]}
+
+    try:
+        result = update_prices(user)
+        result["user_id"] = user.pk
+        return result
     except Exception as exc:
         logger.warning("update_prices_task failed for user %s: %s", user_id, exc)
         raise self.retry(exc=exc)

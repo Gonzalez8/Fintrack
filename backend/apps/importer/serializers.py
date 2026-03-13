@@ -81,7 +81,8 @@ class BackupSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Settings
         fields = [
-            "base_currency", "cost_basis_method", "gift_cost_mode",
+            "base_currency", "cost_basis_method", "fiscal_cost_method", "gift_cost_mode",
             "rounding_money", "rounding_qty", "price_update_interval",
             "default_price_source", "snapshot_frequency",
+            "data_retention_days", "purge_portfolio_snapshots", "purge_position_snapshots",
         ]

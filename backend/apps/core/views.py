@@ -165,7 +165,11 @@ class MeView(APIView):
 # ---------------------------------------------------------------------------
 
 class TaskStatusView(APIView):
-    """GET /api/tasks/{task_id}/ — poll a Celery task result."""
+    """GET /api/tasks/{task_id}/ — poll a Celery task result.
+
+    Only returns the result payload if the task was initiated by the requesting
+    user (the user_id is embedded in the task result by the dispatching view).
+    """
 
     def get(self, request, task_id: str):
         from celery.result import AsyncResult
@@ -173,7 +177,14 @@ class TaskStatusView(APIView):
         data: dict = {"task_id": task_id, "status": result.status}
         if result.ready():
             if result.successful():
-                data["result"] = result.result
+                payload = result.result
+                # Only expose result if it belongs to the requesting user
+                if isinstance(payload, dict) and payload.get("user_id") and payload["user_id"] != request.user.pk:
+                    return Response(
+                        {"detail": "Not found."},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
+                data["result"] = payload
             else:
                 data["error"] = str(result.result)
         return Response(data)

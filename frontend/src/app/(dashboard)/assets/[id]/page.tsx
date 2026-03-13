@@ -17,9 +17,10 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { MoneyCell } from "@/components/app/money-cell";
-import { ArrowLeft, Pencil, X } from "lucide-react";
-import { ASSET_TYPE_LABELS } from "@/lib/constants";
+import { ArrowLeft, Pencil, X, Check } from "lucide-react";
+import { ASSET_TYPE_LABELS, ASSET_TYPE_BADGE_COLORS } from "@/lib/constants";
 import { useTranslations } from "@/i18n/use-translations";
+import { cn } from "@/lib/utils";
 import type { Asset } from "@/types";
 
 const PriceChart = dynamic(
@@ -95,7 +96,9 @@ export default function AssetDetailPage({
 
   if (isLoading) {
     return (
-      <div className="text-muted-foreground">{t("common.loading")}</div>
+      <div className="flex items-center justify-center py-20 text-muted-foreground">
+        {t("common.loading")}
+      </div>
     );
   }
   if (!asset) return null;
@@ -107,76 +110,94 @@ export default function AssetDetailPage({
         ? ("destructive" as const)
         : ("secondary" as const);
 
+  const badgeColor = ASSET_TYPE_BADGE_COLORS[asset.type] ?? "";
+
+  const resetFormFromAsset = () => {
+    setForm({
+      name: asset.name,
+      ticker: asset.ticker,
+      isin: asset.isin,
+      type: asset.type,
+      currency: asset.currency,
+      price_mode: asset.price_mode,
+      issuer_country: asset.issuer_country,
+      domicile_country: asset.domicile_country,
+      withholding_country: asset.withholding_country,
+    });
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
+    <div className="space-y-4 sm:space-y-6">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
           <Button
             variant="ghost"
             size="sm"
+            className="shrink-0 -ml-2 h-9 w-9 p-0 sm:w-auto sm:px-3"
             onClick={() => router.push("/assets")}
           >
-            <ArrowLeft className="h-4 w-4 mr-1" /> {t("assets.title")}
+            <ArrowLeft className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">{t("assets.title")}</span>
           </Button>
-          <h1 className="text-lg font-semibold">{asset.name}</h1>
+          <h1 className="text-base sm:text-lg font-semibold truncate">{asset.name}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           {editing ? (
             <>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setEditing(false);
-                  if (asset) {
-                    setForm({
-                      name: asset.name,
-                      ticker: asset.ticker,
-                      isin: asset.isin,
-                      type: asset.type,
-                      currency: asset.currency,
-                      price_mode: asset.price_mode,
-                      issuer_country: asset.issuer_country,
-                      domicile_country: asset.domicile_country,
-                      withholding_country: asset.withholding_country,
-                    });
-                  }
-                }}
+                className="h-9 w-9 p-0 sm:w-auto sm:px-3"
+                onClick={() => { setEditing(false); resetFormFromAsset(); }}
               >
-                <X className="mr-1.5 h-3.5 w-3.5" /> {t("common.cancel")}
+                <X className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">{t("common.cancel")}</span>
               </Button>
               <Button
                 size="sm"
+                className="h-9 w-9 p-0 sm:w-auto sm:px-3"
                 onClick={() => updateMut.mutate(form)}
                 disabled={updateMut.isPending}
               >
-                {updateMut.isPending ? t("common.loading") : t("common.save")}
+                {updateMut.isPending ? (
+                  <span className="hidden sm:inline">{t("common.loading")}</span>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4 sm:mr-1" />
+                    <span className="hidden sm:inline">{t("common.save")}</span>
+                  </>
+                )}
               </Button>
             </>
           ) : (
             <Button
               size="sm"
               variant="outline"
+              className="h-9 w-9 p-0 sm:w-auto sm:px-3"
               onClick={() => setEditing(true)}
             >
-              <Pencil className="mr-1.5 h-3.5 w-3.5" /> {t("common.edit")}
+              <Pencil className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">{t("common.edit")}</span>
             </Button>
           )}
         </div>
       </div>
 
-      {/* View mode */}
+      {/* ── View mode ── */}
       {!editing && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Identity badges */}
           <div className="flex flex-wrap items-center gap-2">
             {asset.ticker && (
-              <span className="font-mono text-lg font-bold text-primary">
+              <span className="font-mono text-base sm:text-lg font-bold text-primary">
                 {asset.ticker}
               </span>
             )}
-            <Badge variant="secondary">
+            <Badge
+              variant="secondary"
+              className={cn(badgeColor)}
+            >
               {ASSET_TYPE_LABELS[asset.type] || asset.type}
             </Badge>
             <Badge variant="outline" className="font-mono text-xs">
@@ -189,12 +210,13 @@ export default function AssetDetailPage({
             )}
           </div>
 
-          {/* Price chart */}
-          <div className="rounded-lg border border-border overflow-hidden">
+          {/* Price chart — full-bleed on mobile */}
+          <div className="-mx-4 sm:mx-0 rounded-none sm:rounded-lg border-y sm:border border-border overflow-hidden">
             <PriceChart assetId={id} ticker={asset.ticker} />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          {/* Price + Fiscal cards — stack on mobile */}
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
             {/* Price card */}
             <Card>
               <CardHeader className="pb-3">
@@ -203,13 +225,13 @@ export default function AssetDetailPage({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+                <div className="grid grid-cols-2 gap-y-4 gap-x-4 sm:gap-x-6">
                   <div>
                     <p className="font-mono text-[9px] tracking-[1.5px] uppercase text-muted-foreground mb-1">
                       {t("portfolio.currentPrice")}
                     </p>
-                    <p className="text-2xl font-bold tabular-nums">
-                      <MoneyCell value={asset.current_price} />
+                    <p className="text-xl sm:text-2xl font-bold tabular-nums">
+                      <MoneyCell value={asset.current_price} className="text-xl sm:text-2xl" />
                     </p>
                   </div>
                   <div>
@@ -262,7 +284,7 @@ export default function AssetDetailPage({
                     <p className="text-sm text-muted-foreground mb-3">
                       Manual price update
                     </p>
-                    <div className="flex items-center gap-3 max-w-xs">
+                    <div className="flex items-center gap-3">
                       <Input
                         type="number"
                         step="any"
@@ -271,11 +293,13 @@ export default function AssetDetailPage({
                         }
                         value={manualPrice}
                         onChange={(e) => setManualPrice(e.target.value)}
+                        className="flex-1 max-w-[200px]"
                       />
                       <Button
                         onClick={() => setPriceMut.mutate(manualPrice)}
                         disabled={!manualPrice || setPriceMut.isPending}
                         size="sm"
+                        className="h-9 min-w-[72px]"
                       >
                         {setPriceMut.isPending
                           ? t("common.loading")
@@ -300,7 +324,7 @@ export default function AssetDetailPage({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   <div>
                     <p className="font-mono text-[9px] tracking-[1.5px] uppercase text-muted-foreground mb-1">
                       {t("assets.isin")}
@@ -344,10 +368,10 @@ export default function AssetDetailPage({
         </div>
       )}
 
-      {/* Edit mode */}
+      {/* ── Edit mode ── */}
       {editing && (
-        <div className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">
@@ -367,7 +391,7 @@ export default function AssetDetailPage({
                       }
                     />
                   </div>
-                  <div className="grid gap-4 grid-cols-3">
+                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
                     <div>
                       <label className="text-sm font-medium">
                         {t("assets.ticker")}
@@ -541,7 +565,7 @@ export default function AssetDetailPage({
                 <CardTitle className="text-base">Manual price</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center gap-3 max-w-xs">
+                <div className="flex items-center gap-3">
                   <Input
                     type="number"
                     step="any"
@@ -550,11 +574,13 @@ export default function AssetDetailPage({
                     }
                     value={manualPrice}
                     onChange={(e) => setManualPrice(e.target.value)}
+                    className="flex-1 max-w-[200px]"
                   />
                   <Button
                     onClick={() => setPriceMut.mutate(manualPrice)}
                     disabled={!manualPrice || setPriceMut.isPending}
                     size="sm"
+                    className="h-9 min-w-[72px]"
                   >
                     {setPriceMut.isPending
                       ? t("common.loading")

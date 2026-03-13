@@ -57,7 +57,12 @@ coverage.xml
 celerybeat-schedule
 celerybeat-schedule.*
 
+# Claude Code / MCP
+.claude/
+.mcp.json
+
 # Misc
 *.bak
 *.tmp
-.claude/
+*.pid
+*.seed

@@ -163,16 +163,16 @@ export function TransactionsContent() {
         <h1 className="text-lg font-semibold">{t("transactions.title")}</h1>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={handleExportCsv}>
-            <Download className="mr-2 h-4 w-4" />CSV
+            <Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">CSV</span>
           </Button>
           <Button size="sm" onClick={() => openNew("BUY")}>
-            <ShoppingCart className="mr-2 h-4 w-4" />{t("transactions.buy")}
+            <ShoppingCart className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">{t("transactions.buy")}</span>
           </Button>
           <Button size="sm" variant="destructive" onClick={() => openNew("SELL")}>
-            <TrendingDown className="mr-2 h-4 w-4" />{t("transactions.sell")}
+            <TrendingDown className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">{t("transactions.sell")}</span>
           </Button>
           <Button size="sm" variant="ghost" onClick={() => openNew("GIFT")}>
-            <Gift className="mr-2 h-4 w-4" />{t("transactions.gift")}
+            <Gift className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">{t("transactions.gift")}</span>
           </Button>
         </div>
       </div>
@@ -206,7 +206,7 @@ export function TransactionsContent() {
       </div>
 
       {/* Mobile cards */}
-      <div className="md:hidden rounded-xl border bg-card px-3">
+      <div className="sm:hidden rounded-xl border bg-card px-3">
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground text-sm">{t("common.loading")}</div>
         ) : (data?.results ?? []).length === 0 ? (
@@ -254,7 +254,7 @@ export function TransactionsContent() {
       </div>
 
       {/* Desktop table */}
-      <div className="hidden md:block">
+      <div className="hidden sm:block">
         <DataTable
           columns={columns}
           data={data?.results ?? []}
@@ -463,7 +463,7 @@ function TransactionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{getDialogTitle()}</DialogTitle>
         </DialogHeader>
@@ -510,23 +510,21 @@ function TransactionDialog({
             </Select>
           </div>
 
-          {!isSell && (
-            <div>
-              <label className="text-sm font-medium">{t("common.account")} *</label>
-              <Select value={form.account} onValueChange={(v) => setForm((f) => ({ ...f, account: v }))}>
-                <SelectTrigger className="w-full">
-                  <span className="flex flex-1 text-left truncate" data-slot="select-value">
-                    {selectedAccountLabel || <span className="text-muted-foreground">{t("common.select")}</span>}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  {dialogAccountList.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <div>
+            <label className="text-sm font-medium">{t("common.account")} *</label>
+            <Select value={form.account} onValueChange={(v) => setForm((f) => ({ ...f, account: v }))}>
+              <SelectTrigger className="w-full">
+                <span className="flex flex-1 text-left truncate" data-slot="select-value">
+                  {selectedAccountLabel || <span className="text-muted-foreground">{t("common.select")}</span>}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                {dialogAccountList.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div>
             <label className="text-sm font-medium">{t("portfolio.quantity")} *</label>

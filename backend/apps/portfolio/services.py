@@ -196,7 +196,7 @@ def _build_portfolio(lots, asset_map, money_exp, qty_exp, user):
         if qty.quantize(qty_exp, rounding=ROUND_HALF_UP) <= 0:
             continue
         asset = asset_map[aid]
-        if not asset.ticker or not asset.current_price:
+        if not asset.current_price:
             continue
 
         acct_qty = {}

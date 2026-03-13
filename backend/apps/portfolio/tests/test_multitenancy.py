@@ -201,7 +201,8 @@ class TestDividendIsolation:
 class TestInterestIsolation:
     def test_user_sees_only_own_interests(self, client1, client2, account1):
         Interest.objects.create(
-            date="2025-03-01",
+            date_start="2025-03-01",
+            date_end="2025-03-01",
             account=account1,
             gross=Decimal("20.00"),
             net=Decimal("16.00"),

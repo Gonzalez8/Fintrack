@@ -63,10 +63,18 @@ class BackupExportView(APIView):
 class BackupImportView(APIView):
     parser_classes = [MultiPartParser]
 
+    MAX_BACKUP_SIZE = 50 * 1024 * 1024  # 50 MB
+
     def post(self, request):
         file = request.FILES.get("file")
         if not file:
             return Response({"detail": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if file.size and file.size > self.MAX_BACKUP_SIZE:
+            return Response(
+                {"detail": "File too large. Maximum size is 50 MB."},
+                status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            )
 
         try:
             payload = json.loads(file.read())

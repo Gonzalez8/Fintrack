@@ -87,7 +87,8 @@ def dividend(user, asset):
 @pytest.fixture
 def interest(user, account):
     return Interest.objects.create(
-        date="2025-06-01",
+        date_start="2025-06-01",
+        date_end="2025-06-01",
         account=account,
         gross=Decimal("5.00"),
         net=Decimal("4.00"),
@@ -294,7 +295,8 @@ class TestInterests:
         resp = client.post(
             "/api/interests/",
             {
-                "date": "2025-07-15",
+                "date_start": "2025-07-15",
+                "date_end": "2025-07-15",
                 "account": str(account.pk),
                 "gross": "10.00",
                 "net": "8.00",

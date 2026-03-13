@@ -4,7 +4,7 @@ import { COOKIE_ACCESS, COOKIE_REFRESH, COOKIE_LANG, DEFAULT_LOCALE, SUPPORTED_L
 const DJANGO_INTERNAL_URL = process.env.DJANGO_INTERNAL_URL || "http://backend:8000";
 
 const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
-const PUBLIC_PATHS = ["/", "/login"];
+const PUBLIC_PATHS = ["/login", "/welcome"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -33,9 +33,9 @@ export async function middleware(req: NextRequest) {
   const access = req.cookies.get(COOKIE_ACCESS)?.value;
   const refresh = req.cookies.get(COOKIE_REFRESH)?.value;
 
-  // No tokens at all → redirect to login
+  // No tokens at all → redirect to welcome/landing
   if (!access && !refresh) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    return NextResponse.redirect(new URL("/welcome", req.url));
   }
 
   // Check if access token is expired by decoding the payload (no signature verification)
@@ -82,8 +82,8 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // All auth attempts failed → redirect to login
-  return NextResponse.redirect(new URL("/login", req.url));
+  // All auth attempts failed → redirect to welcome/landing
+  return NextResponse.redirect(new URL("/welcome", req.url));
 }
 
 function withLocale(req: NextRequest, res: NextResponse): NextResponse {

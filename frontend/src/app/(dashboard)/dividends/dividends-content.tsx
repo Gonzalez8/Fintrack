@@ -122,7 +122,7 @@ export function DividendsContent() {
           <Input placeholder={`${t("common.search")}...`} className="pl-9" defaultValue={search} onChange={(e) => setParam("search", e.target.value)} />
         </div>
         <Select value={yearFilter} onValueChange={(v) => setParam("year", v === "all" || !v ? "" : v)}>
-          <SelectTrigger className="w-[120px]"><SelectValue placeholder={t("common.all")} /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[120px]"><SelectValue placeholder={t("common.all")} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("common.all")}</SelectItem>
             {YEAR_OPTIONS.map((y) => (
@@ -133,17 +133,17 @@ export function DividendsContent() {
         <Button variant="outline" size="icon" onClick={handleExportCsv} title="CSV">
           <Download className="h-4 w-4" />
         </Button>
-        <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
-          <Plus className="h-4 w-4 mr-1" /> {t("common.new")}
+        <Button className="hidden sm:flex" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+          <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">{t("common.new")}</span>
         </Button>
       </div>
 
       {/* Mobile cards */}
-      <div className="md:hidden space-y-2">
+      <div className="sm:hidden space-y-2">
         {(data?.results ?? []).map((d) => (
           <div
             key={d.id}
-            className="border rounded-lg p-3 space-y-1 cursor-pointer active:bg-muted/50"
+            className="border rounded-lg p-3 space-y-1 cursor-pointer active:bg-muted/50 border-l-4 border-l-blue-500"
             onClick={() => { setEditing(d); setDialogOpen(true); }}
           >
             <div className="flex justify-between items-start">
@@ -181,7 +181,7 @@ export function DividendsContent() {
       </div>
 
       {/* Desktop table */}
-      <div className="hidden md:block">
+      <div className="hidden sm:block">
         <DataTable
           columns={columns}
           data={data?.results ?? []}
@@ -193,6 +193,15 @@ export function DividendsContent() {
           emptyMessage={isLoading ? `${t("common.loading")}...` : t("common.noData")}
         />
       </div>
+
+      {/* FAB mobile */}
+      <button
+        className="fixed bottom-24 right-5 z-40 sm:hidden flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg active:scale-95 transition-transform"
+        onClick={() => { setEditing(null); setDialogOpen(true); }}
+        aria-label={t("common.new")}
+      >
+        <Plus className="h-6 w-6" />
+      </button>
 
       <DividendDialog open={dialogOpen} onOpenChange={setDialogOpen} dividend={editing} />
     </div>
@@ -320,7 +329,7 @@ function DividendDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{dividend ? t("dividends.edit") : t("dividends.new")}</DialogTitle>
         </DialogHeader>

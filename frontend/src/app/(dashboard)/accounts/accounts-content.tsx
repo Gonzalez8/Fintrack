@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useLayoutEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -62,10 +62,10 @@ export function AccountsContent() {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setBulkOpen(true)}>
-              <Camera className="h-4 w-4 mr-1" /> {t("accounts.bulkSnapshot")}
+              <Camera className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">{t("accounts.bulkSnapshot")}</span>
             </Button>
             <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1" /> {t("common.new")}
+              <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">{t("common.new")}</span>
             </Button>
           </div>
         </CardContent>
@@ -130,6 +130,15 @@ export function AccountsContent() {
           </Card>
         ))}
       </div>
+
+      {/* FAB mobile */}
+      <button
+        className="fixed bottom-24 right-5 z-40 sm:hidden flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg active:scale-95 transition-transform"
+        onClick={() => { setEditing(null); setDialogOpen(true); }}
+        aria-label={t("common.new")}
+      >
+        <Plus className="h-6 w-6" />
+      </button>
 
       <AccountDialog open={dialogOpen} onOpenChange={setDialogOpen} account={editing} />
       <BulkSnapshotDialog open={bulkOpen} onOpenChange={setBulkOpen} accounts={accounts || []} />
@@ -231,7 +240,7 @@ function IndividualSnapshotDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="sm:max-w-sm max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Snapshot — {account?.name}</DialogTitle>
         </DialogHeader>
@@ -255,7 +264,7 @@ function IndividualSnapshotDialog({
             <label className="text-sm font-medium">Nota</label>
             <Input value={note} onChange={(e) => setNote(e.target.value)} />
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
             <Button type="submit" disabled={loading}>{loading ? `${t("common.loading")}...` : t("common.save")}</Button>
           </div>
@@ -280,10 +289,12 @@ function AccountDialog({
   const [form, setForm] = useState<AccountFormData>({ name: "", type: "OPERATIVA", currency: "EUR" });
   const [loading, setLoading] = useState(false);
 
-  const resetForm = () => {
-    if (account) setForm({ name: account.name, type: account.type, currency: account.currency });
-    else setForm({ name: "", type: "OPERATIVA", currency: "EUR" });
-  };
+  useLayoutEffect(() => {
+    if (open) {
+      if (account) setForm({ name: account.name, type: account.type, currency: account.currency });
+      else setForm({ name: "", type: "OPERATIVA", currency: "EUR" });
+    }
+  }, [open, account]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -306,8 +317,8 @@ function AccountDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (v) resetForm(); }}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{account ? t("accounts.edit") : t("accounts.new")}</DialogTitle>
         </DialogHeader>
@@ -331,7 +342,7 @@ function AccountDialog({
             <label className="text-sm font-medium">{t("common.currency")}</label>
             <Input value={form.currency} onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))} />
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
             <Button type="submit" disabled={loading}>{loading ? `${t("common.loading")}...` : t("common.save")}</Button>
           </div>
@@ -378,7 +389,7 @@ function BulkSnapshotDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("accounts.bulkSnapshot")}</DialogTitle>
         </DialogHeader>
@@ -399,7 +410,7 @@ function BulkSnapshotDialog({
               />
             </div>
           ))}
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
             <Button type="submit" disabled={loading}>{loading ? `${t("common.loading")}...` : t("common.save")}</Button>
           </div>

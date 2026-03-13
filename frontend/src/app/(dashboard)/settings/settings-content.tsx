@@ -257,7 +257,7 @@ export function SettingsContent() {
           <CardTitle className="text-base">{t("settings.generalSettings")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 max-w-xl">
+          <div className="grid gap-4 sm:grid-cols-2 max-w-xl">
             <div>
               <label className="text-sm font-medium">{t("settings.baseCurrency")}</label>
               <Input value={current.base_currency ?? "EUR"} onChange={(e) => setForm((f) => ({ ...f, base_currency: e.target.value }))} />
@@ -336,7 +336,7 @@ export function SettingsContent() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="md:col-span-2">
+            <div className="sm:col-span-2">
               <label className="text-sm font-medium">{t("settings.snapshotFreq")}</label>
               <Select value={String(current.snapshot_frequency ?? 1440)} onValueChange={(v) => v && setForm((f) => ({ ...f, snapshot_frequency: parseInt(v) }))}>
                 <SelectTrigger>

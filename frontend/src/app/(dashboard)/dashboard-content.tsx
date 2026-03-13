@@ -143,7 +143,7 @@ export function DashboardContent() {
           </CardContent>
         </Card>
 
-        <Card className="sm:col-span-2 md:col-span-1">
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="font-mono text-[9px] tracking-[2px] uppercase text-muted-foreground">
               {t("dashboard.unrealizedPnl")}
@@ -169,7 +169,7 @@ export function DashboardContent() {
       </div>
 
       {/* 3 Chart cards */}
-      <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 md:grid-cols-3">
         {/* Allocation pie */}
         <Card>
           <CardHeader>
