@@ -23,4 +23,4 @@ class InterestViewSet(OwnedByUserMixin, viewsets.ModelViewSet):
     queryset = Interest.objects.select_related("account").all()
     serializer_class = InterestSerializer
     filterset_class = InterestFilter
-    ordering_fields = ["date", "gross", "net"]
+    ordering_fields = ["date_end", "gross", "net"]

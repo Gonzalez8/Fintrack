@@ -35,11 +35,20 @@ async function handler(
     ? await req.arrayBuffer()
     : undefined;
 
-  const djangoRes = await fetch(target, {
-    method: req.method,
-    headers,
-    body,
-  });
+  let djangoRes: Response;
+  try {
+    djangoRes = await fetch(target, {
+      method: req.method,
+      headers,
+      body,
+    });
+  } catch (err) {
+    console.error(`[auth-proxy] fetch to ${target} failed:`, err);
+    return NextResponse.json(
+      { detail: "Backend unavailable" },
+      { status: 502 },
+    );
+  }
 
   // Build response forwarding Django's body and status
   const resHeaders = new Headers();

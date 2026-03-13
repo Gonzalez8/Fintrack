@@ -28,7 +28,7 @@ def year_summary(user):
 
     interest_by_year = (
         Interest.objects.filter(owner=user)
-        .annotate(year=ExtractYear("date"))
+        .annotate(year=ExtractYear("date_end"))
         .values("year")
         .annotate(total_gross=Sum("gross"), total_net=Sum("net"))
         .order_by("year")
@@ -73,13 +73,15 @@ def rv_evolution(user):
     snapshots = (
         PortfolioSnapshot.objects.filter(owner=user)
         .order_by("captured_at")
-        .values("captured_at", "total_market_value")
+        .values("captured_at", "total_market_value", "total_cost", "total_unrealized_pnl")
     )
 
     return [
         {
             "captured_at": snap["captured_at"].isoformat(),
             "value": str(snap["total_market_value"]),
+            "cost": str(snap["total_cost"] or 0),
+            "pnl": str(snap["total_unrealized_pnl"] or 0),
         }
         for snap in snapshots
         if snap["total_market_value"] > 0
@@ -104,7 +106,7 @@ def patrimonio_evolution(user):
 
     monthly_portfolio = {}
     for snap in PortfolioSnapshot.objects.filter(owner=user).order_by("captured_at").values(
-        "captured_at", "batch_id", "total_market_value"
+        "captured_at", "batch_id", "total_market_value", "total_cost", "total_unrealized_pnl"
     ):
         month_key = snap["captured_at"].strftime("%Y-%m")
         monthly_portfolio[month_key] = snap
@@ -142,11 +144,13 @@ def patrimonio_evolution(user):
             batch_rf[pos["batch_id"]] += pos["market_value"]
 
     live_total = Decimal("0")
+    live_pnl = Decimal("0")
     live_rv = Decimal("0")
     live_rf = Decimal("0")
     try:
         live_portfolio = calculate_portfolio(user)
         live_total = Decimal(live_portfolio["totals"]["total_market_value"])
+        live_pnl = Decimal(live_portfolio["totals"]["total_unrealized_pnl"])
         for pos in live_portfolio["positions"]:
             mv = Decimal(pos["market_value"])
             if pos["asset_type"] in EQUITY_TYPES:
@@ -179,16 +183,19 @@ def patrimonio_evolution(user):
 
         if month == current_month:
             total_investments = live_total
+            investment_pnl = live_pnl
             rv = live_rv
             rf = live_rf
         elif month in monthly_portfolio:
             portfolio = monthly_portfolio[month]
             total_investments = Decimal(str(portfolio["total_market_value"]))
+            investment_pnl = Decimal(str(portfolio["total_unrealized_pnl"] or 0))
             bid = portfolio["batch_id"]
             rv = batch_rv.get(bid, Decimal("0"))
             rf = batch_rf.get(bid, Decimal("0"))
         else:
             total_investments = max(last_tx_cost, Decimal("0"))
+            investment_pnl = Decimal("0")
             rv = Decimal("0")
             rf = Decimal("0")
 
@@ -196,6 +203,7 @@ def patrimonio_evolution(user):
             "month": month,
             "cash": str(last_cash),
             "investments": str(total_investments),
+            "investment_pnl": str(investment_pnl),
             "renta_variable": str(rv),
             "renta_fija": str(rf),
         })

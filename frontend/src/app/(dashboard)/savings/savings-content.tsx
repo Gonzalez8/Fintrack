@@ -20,6 +20,7 @@ import {
   type SavingsRange,
   filterByRange,
 } from "@/components/app/monthly-savings-chart";
+import { NoteIndicator, CommentsDrawer } from "@/components/app/comments-drawer";
 import { formatMoney } from "@/lib/utils";
 import { useTranslations } from "@/i18n/use-translations";
 import type { MonthlySavingsPoint, MonthlySavingsStats } from "@/types";
@@ -144,6 +145,7 @@ function MobileMonthCard({
   selected?: boolean;
   onSelect?: (month: string) => void;
 }) {
+  const hasComments = (m.comments?.length ?? 0) > 0;
   return (
     <div
       className={`py-3 ${indent ? "pl-8 pr-4" : "px-4"} transition-colors ${
@@ -157,9 +159,13 @@ function MobileMonthCard({
       onKeyDown={(e) => {
         if (e.key === "Enter") onSelect?.(m.month);
       }}
+      aria-label={hasComments ? `Ver comentarios de ${fmtMonth(m.month)}` : undefined}
     >
       <div className="flex items-baseline justify-between gap-2">
-        <span className="font-mono text-sm">{fmtMonth(m.month)}</span>
+        <span className="font-mono text-sm inline-flex items-center">
+          {fmtMonth(m.month)}
+          <NoteIndicator count={m.comments?.length ?? 0} />
+        </span>
         <span className="font-mono text-sm font-semibold tabular-nums shrink-0">
           <DeltaCell value={m.real_savings} />
         </span>
@@ -207,6 +213,11 @@ export function SavingsContent() {
     [filteredMonths, normalize],
   );
 
+  // Clear selection when range changes so chart and table stay in sync
+  useEffect(() => {
+    setSelectedMonth(null);
+  }, [range]);
+
   const avgSubtitle = stats
     ? `${RANGE_LABELS[range]}${stats.is_normalized ? ` · ${t("savings.noOutliers")}` : ""}`
     : undefined;
@@ -219,6 +230,24 @@ export function SavingsContent() {
       });
     }
   }, []);
+
+  // ── Comments drawer state ──
+  const [drawerMonth, setDrawerMonth] = useState<string | null>(null);
+  const drawerComments = useMemo(() => {
+    if (!drawerMonth) return [];
+    return filteredMonths.find((m) => m.month === drawerMonth)?.comments ?? [];
+  }, [drawerMonth, filteredMonths]);
+
+  const handleRowClick = useCallback((month: string) => {
+    const m = filteredMonths.find((x) => x.month === month);
+    if (m && (m.comments?.length ?? 0) > 0) {
+      setDrawerMonth(month);
+    }
+    setSelectedMonth(month);
+    if (tableRef.current) {
+      // Don't scroll — user already clicked in the table
+    }
+  }, [filteredMonths]);
 
   // ── Table data (descending) ──
   const tableData = useMemo(() => [...filteredMonths].reverse(), [filteredMonths]);
@@ -458,7 +487,7 @@ export function SavingsContent() {
                                 m={m}
                                 indent
                                 selected={selectedMonth === m.month}
-                                onSelect={setSelectedMonth}
+                                onSelect={handleRowClick}
                               />
                             ))}
                         </Fragment>
@@ -469,7 +498,7 @@ export function SavingsContent() {
                         key={m.month}
                         m={m}
                         selected={selectedMonth === m.month}
-                        onSelect={setSelectedMonth}
+                        onSelect={handleRowClick}
                       />
                     ))}
                 {stats?.avg_monthly_delta != null && (
@@ -526,60 +555,74 @@ export function SavingsContent() {
                               </TableCell>
                             </TableRow>
                             {!isCollapsed &&
-                              yearMonths.map((m) => (
-                                <TableRow
-                                  key={m.month}
-                                  style={selectedMonth === m.month ? highlightStyle : undefined}
-                                  className="transition-colors cursor-pointer hover:bg-secondary/30"
-                                  onClick={() => setSelectedMonth(m.month)}
-                                >
-                                  <TableCell className="font-mono text-sm pl-9">
-                                    {fmtMonth(m.month)}
-                                  </TableCell>
-                                  <TableCell className="text-right font-mono tabular-nums text-sm">
-                                    {formatMoney(m.cash_end)}
-                                  </TableCell>
-                                  <TableCell className="text-right text-sm">
-                                    <DeltaCell value={m.cash_delta} />
-                                  </TableCell>
-                                  <TableCell className="text-right text-sm">
-                                    <DeltaCell value={m.investment_cost_delta} />
-                                  </TableCell>
-                                  <TableCell className="text-right text-sm">
-                                    <DeltaCell value={m.real_savings} />
-                                  </TableCell>
-                                </TableRow>
-                              ))}
+                              yearMonths.map((m) => {
+                                const isSelected = selectedMonth === m.month;
+                                const hasComments = (m.comments?.length ?? 0) > 0;
+                                return (
+                                  <TableRow
+                                    key={m.month}
+                                    style={isSelected ? highlightStyle : undefined}
+                                    className={`transition-colors cursor-pointer hover:bg-secondary/30`}
+                                    onClick={() => handleRowClick(m.month)}
+                                  >
+                                    <TableCell className="font-mono text-sm pl-9">
+                                      <span className="inline-flex items-center">
+                                        {fmtMonth(m.month)}
+                                        <NoteIndicator count={m.comments?.length ?? 0} />
+                                      </span>
+                                    </TableCell>
+                                    <TableCell className="text-right font-mono tabular-nums text-sm">
+                                      {formatMoney(m.cash_end)}
+                                    </TableCell>
+                                    <TableCell className="text-right text-sm">
+                                      <DeltaCell value={m.cash_delta} />
+                                    </TableCell>
+                                    <TableCell className="text-right text-sm">
+                                      <DeltaCell value={m.investment_cost_delta} />
+                                    </TableCell>
+                                    <TableCell className="text-right text-sm">
+                                      <DeltaCell value={m.real_savings} />
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
                           </Fragment>
                         );
                       })}
                     </TableBody>
                   ) : (
                     <TableBody>
-                      {tableData.map((m) => (
-                        <TableRow
-                          key={m.month}
-                          style={selectedMonth === m.month ? highlightStyle : undefined}
-                          className="transition-colors cursor-pointer hover:bg-secondary/30"
-                          onClick={() => setSelectedMonth(m.month)}
-                        >
-                          <TableCell className="font-mono text-sm">
-                            {fmtMonth(m.month)}
-                          </TableCell>
-                          <TableCell className="text-right font-mono tabular-nums text-sm">
-                            {formatMoney(m.cash_end)}
-                          </TableCell>
-                          <TableCell className="text-right text-sm">
-                            <DeltaCell value={m.cash_delta} />
-                          </TableCell>
-                          <TableCell className="text-right text-sm">
-                            <DeltaCell value={m.investment_cost_delta} />
-                          </TableCell>
-                          <TableCell className="text-right text-sm">
-                            <DeltaCell value={m.real_savings} />
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {tableData.map((m) => {
+                        const isSelected = selectedMonth === m.month;
+                        const hasComments = (m.comments?.length ?? 0) > 0;
+                        return (
+                          <TableRow
+                            key={m.month}
+                            style={isSelected ? highlightStyle : undefined}
+                            className={`transition-colors cursor-pointer hover:bg-secondary/30`}
+                            onClick={() => handleRowClick(m.month)}
+                          >
+                            <TableCell className="font-mono text-sm">
+                              <span className="inline-flex items-center">
+                                {fmtMonth(m.month)}
+                                <NoteIndicator count={m.comments?.length ?? 0} />
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right font-mono tabular-nums text-sm">
+                              {formatMoney(m.cash_end)}
+                            </TableCell>
+                            <TableCell className="text-right text-sm">
+                              <DeltaCell value={m.cash_delta} />
+                            </TableCell>
+                            <TableCell className="text-right text-sm">
+                              <DeltaCell value={m.investment_cost_delta} />
+                            </TableCell>
+                            <TableCell className="text-right text-sm">
+                              <DeltaCell value={m.real_savings} />
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   )}
 
@@ -600,6 +643,14 @@ export function SavingsContent() {
           </Card>
         )}
       </div>
+
+      {/* Comments drawer/dialog */}
+      <CommentsDrawer
+        open={drawerMonth !== null}
+        onOpenChange={(open) => { if (!open) setDrawerMonth(null); }}
+        month={drawerMonth}
+        comments={drawerComments}
+      />
     </div>
   );
 }

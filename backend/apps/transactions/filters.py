@@ -31,7 +31,7 @@ class DividendFilter(django_filters.FilterSet):
 
 
 class InterestFilter(django_filters.FilterSet):
-    year = django_filters.NumberFilter(field_name="date", lookup_expr="year")
+    year = django_filters.NumberFilter(field_name="date_end", lookup_expr="year")
     account_id = django_filters.UUIDFilter(field_name="account_id")
 
     class Meta:

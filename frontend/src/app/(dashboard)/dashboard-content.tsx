@@ -151,8 +151,18 @@ export function DashboardContent() {
           </CardHeader>
           <CardContent>
             <div className="text-xl sm:text-2xl font-bold tabular-nums">
-              <MoneyCell value={totals?.total_unrealized_pnl} colored />
-              <span className="ml-2 text-sm">{formatPct(totalPnlPct)}</span>
+              <MoneyCell
+                value={totals?.total_unrealized_pnl}
+                colored
+                className="text-xl sm:text-2xl"
+              />
+              <span className={`ml-2 text-sm ${
+                parseFloat(totals?.total_unrealized_pnl ?? "0") >= 0
+                  ? "text-green-500"
+                  : "text-red-500"
+              }`}>
+                {formatPct(totalPnlPct)}
+              </span>
             </div>
           </CardContent>
         </Card>

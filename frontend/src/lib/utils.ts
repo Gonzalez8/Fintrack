@@ -36,6 +36,17 @@ export function formatPct(value: string | number | null | undefined): string {
 }
 
 /**
+ * Format a quantity (shares, units) respecting up to 6 decimal places.
+ * Trailing zeros are trimmed automatically by toLocaleString.
+ */
+export function formatQty(value: string | number | null | undefined): string {
+  if (value == null || value === "") return "—";
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  if (isNaN(num)) return "—";
+  return num.toLocaleString("es-ES", { maximumFractionDigits: 6 });
+}
+
+/**
  * Return CSS class for positive/negative money values.
  */
 export function moneyColor(value: string | number | null | undefined): string {

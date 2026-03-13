@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
@@ -23,6 +23,22 @@ import type { Interest, InterestFormData, Account, PaginatedResponse } from "@/t
 const PAGE_SIZE = 25;
 const currentYear = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 11 }, (_, i) => String(currentYear - 5 + i));
+
+// Shared calc helpers
+function calcTIN(gross: number, balance: number, days: number): number | null {
+  if (balance <= 0 || gross <= 0 || days <= 0) return null;
+  return (gross / balance) * (365 / days) * 100;
+}
+
+function calcTAE(gross: number, balance: number, days: number): number | null {
+  if (balance <= 0 || gross <= 0 || days <= 0) return null;
+  return (Math.pow(1 + gross / balance, 365 / days) - 1) * 100;
+}
+
+function daysBetween(start: string, end: string): number {
+  const ms = new Date(end).getTime() - new Date(start).getTime();
+  return Math.round(ms / 86400000);
+}
 
 export function InterestsContent() {
   const router = useRouter();
@@ -70,20 +86,46 @@ export function InterestsContent() {
   };
 
   const columns: Column<Interest>[] = [
-    { key: "date", header: t("common.date"), render: (i) => <span className="text-sm">{i.date}</span> },
+    {
+      key: "period",
+      header: "Periodo",
+      render: (i) => {
+        const completed = new Date(i.date_end) <= new Date();
+        return (
+          <div className="text-sm">
+            <span>{i.date_start}</span>
+            <span className="text-muted-foreground mx-1">→</span>
+            <span>{i.date_end}</span>
+            <span className="text-xs text-muted-foreground ml-1">({i.days}d)</span>
+            {completed
+              ? <span className="ml-1.5 text-xs text-green-500">Completado</span>
+              : <span className="ml-1.5 text-xs text-yellow-500">Activo</span>
+            }
+          </div>
+        );
+      },
+    },
     { key: "account", header: t("common.account"), render: (i) => <span className="text-sm font-medium">{i.account_name}</span> },
     { key: "gross", header: t("interests.gross"), className: "text-right", render: (i) => <MoneyCell value={i.gross} /> },
     { key: "net", header: t("interests.net"), className: "text-right", render: (i) => <MoneyCell value={i.net} colored /> },
     { key: "balance", header: t("interests.balance"), className: "text-right", render: (i) => <MoneyCell value={i.balance} /> },
     {
-      key: "rate",
-      header: t("interests.annualRate"),
+      key: "tin",
+      header: "TIN",
       className: "text-right",
-      render: (i) => (
-        <span className="font-mono text-sm tabular-nums">
-          {i.annual_rate ? `${parseFloat(i.annual_rate).toFixed(2)}%` : "—"}
-        </span>
-      ),
+      render: (i) => {
+        const tin = calcTIN(parseFloat(i.gross), parseFloat(i.balance ?? "0"), i.days);
+        return <span className="font-mono text-sm tabular-nums">{tin !== null ? `${tin.toFixed(2)}%` : "—"}</span>;
+      },
+    },
+    {
+      key: "tae",
+      header: "TAE",
+      className: "text-right",
+      render: (i) => {
+        const tae = calcTAE(parseFloat(i.gross), parseFloat(i.balance ?? "0"), i.days);
+        return <span className="font-mono text-sm tabular-nums">{tae !== null ? `${tae.toFixed(2)}%` : "—"}</span>;
+      },
     },
     {
       key: "actions",
@@ -131,40 +173,59 @@ export function InterestsContent() {
 
       {/* Mobile cards */}
       <div className="md:hidden space-y-2">
-        {(data?.results ?? []).map((i) => (
-          <div
-            key={i.id}
-            className="border rounded-lg p-3 space-y-1 cursor-pointer active:bg-muted/50"
-            onClick={() => { setEditing(i); setDialogOpen(true); }}
-          >
-            <div className="flex justify-between items-start">
-              <p className="text-sm font-medium">{i.account_name}</p>
-              <span className="text-xs text-muted-foreground">{i.date}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t("interests.gross")}</span>
-              <span className="font-mono tabular-nums">{formatMoney(i.gross)}</span>
-            </div>
-            <div className="flex justify-between text-sm font-medium">
-              <span>{t("interests.net")}</span>
-              <span className={`font-mono tabular-nums ${parseFloat(i.net) >= 0 ? "text-green-500" : "text-red-500"}`}>
-                {formatMoney(i.net)}
-              </span>
-            </div>
-            {i.balance && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t("interests.balance")}</span>
-                <span className="font-mono tabular-nums">{formatMoney(i.balance)}</span>
+        {(data?.results ?? []).map((i) => {
+          const gross = parseFloat(i.gross) || 0;
+          const balance = parseFloat(i.balance ?? "0") || 0;
+          const tin = calcTIN(gross, balance, i.days);
+          const tae = calcTAE(gross, balance, i.days);
+          const completed = new Date(i.date_end) <= new Date();
+          return (
+            <div
+              key={i.id}
+              className="border rounded-lg p-3 space-y-1 cursor-pointer active:bg-muted/50"
+              onClick={() => { setEditing(i); setDialogOpen(true); }}
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-sm font-medium">{i.account_name}</p>
+                  {completed
+                    ? <span className="text-xs text-green-500">Completado</span>
+                    : <span className="text-xs text-yellow-500">Activo</span>
+                  }
+                </div>
+                <span className="text-xs text-muted-foreground">{i.date_start} → {i.date_end} ({i.days}d)</span>
               </div>
-            )}
-            {i.annual_rate && (
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t("interests.annualRate")}</span>
-                <span className="font-mono tabular-nums">{parseFloat(i.annual_rate).toFixed(2)}%</span>
+                <span className="text-muted-foreground">{t("interests.gross")}</span>
+                <span className="font-mono tabular-nums">{formatMoney(i.gross)}</span>
               </div>
-            )}
-          </div>
-        ))}
+              <div className="flex justify-between text-sm font-medium">
+                <span>{t("interests.net")}</span>
+                <span className={`font-mono tabular-nums ${parseFloat(i.net) >= 0 ? "text-green-500" : "text-red-500"}`}>
+                  {formatMoney(i.net)}
+                </span>
+              </div>
+              {i.balance && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{t("interests.balance")}</span>
+                  <span className="font-mono tabular-nums">{formatMoney(i.balance)}</span>
+                </div>
+              )}
+              {tin !== null && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">TIN</span>
+                  <span className="font-mono tabular-nums">{tin.toFixed(2)}%</span>
+                </div>
+              )}
+              {tae !== null && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">TAE</span>
+                  <span className="font-mono tabular-nums">{tae.toFixed(2)}%</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
         {!isLoading && (data?.results ?? []).length === 0 && (
           <p className="text-center text-muted-foreground py-8">{t("common.noData")}</p>
         )}
@@ -200,8 +261,10 @@ function InterestDialog({
 }) {
   const queryClient = useQueryClient();
   const t = useTranslations();
+  const today = new Date().toISOString().split("T")[0];
   const [form, setForm] = useState<InterestFormData>({
-    date: new Date().toISOString().split("T")[0],
+    date_start: today,
+    date_end: today,
     account: "",
     gross: "",
     net: "",
@@ -214,19 +277,32 @@ function InterestDialog({
     enabled: open,
   });
 
-  const resetForm = () => {
+  // Reset form every time the dialog opens
+  useEffect(() => {
+    if (!open) return;
     if (interest) {
       setForm({
-        date: interest.date,
+        date_start: interest.date_start,
+        date_end: interest.date_end,
         account: interest.account,
         gross: interest.gross,
         net: interest.net,
         balance: interest.balance || undefined,
-        annual_rate: interest.annual_rate || undefined,
       });
     } else {
-      setForm({ date: new Date().toISOString().split("T")[0], account: "", gross: "", net: "" });
+      setForm({ date_start: today, date_end: today, account: "", gross: "", net: "" });
     }
+  }, [open, interest, today]);
+
+  // Spain withholding tax rate (19%) — TODO: move to user settings
+  const TAX_RATE = 0.19;
+
+  const handleGrossChange = (value: string) => {
+    setForm((f) => {
+      const gross = parseFloat(value) || 0;
+      const net = (gross * (1 - TAX_RATE)).toFixed(2);
+      return { ...f, gross: value, net };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -249,52 +325,84 @@ function InterestDialog({
     }
   };
 
-  const accountList = Array.isArray(accounts) ? accounts : [];
+  const accountList = Array.isArray(accounts) ? accounts : (accounts as PaginatedResponse<Account> | undefined)?.results ?? [];
+
+  // Compute display label (Base UI Portal unmounts items when closed, losing label resolution)
+  const selectedAccountLabel = (() => {
+    if (!form.account) return "";
+    const account = accountList.find((a) => a.id === form.account);
+    return account?.name ?? "";
+  })();
+
+  // Computed preview values
+  const gross = parseFloat(form.gross) || 0;
+  const net = parseFloat(form.net) || 0;
+  const balance = parseFloat(form.balance ?? "0") || 0;
+  const days = daysBetween(form.date_start, form.date_end);
+  const previewTIN = calcTIN(gross, balance, days);
+  const previewTAE = calcTAE(gross, balance, days);
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (v) resetForm(); }}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{interest ? t("interests.edit") : t("interests.new")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          {/* Fecha Inicio / Fin */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t("common.date")} *</label>
-              <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} required />
+              <label className="text-sm font-medium">Fecha inicio</label>
+              <Input type="date" value={form.date_start} onChange={(e) => setForm((f) => ({ ...f, date_start: e.target.value }))} required />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t("common.account")} *</label>
-              <Select value={form.account} onValueChange={(v) => setForm((f) => ({ ...f, account: v || "" }))}>
-                <SelectTrigger><SelectValue placeholder={t("common.select")} /></SelectTrigger>
-                <SelectContent>
-                  {accountList.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t("interests.gross")} *</label>
-              <Input type="number" step="0.01" value={form.gross} onChange={(e) => setForm((f) => ({ ...f, gross: e.target.value }))} required />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t("interests.net")} *</label>
-              <Input type="number" step="0.01" value={form.net} onChange={(e) => setForm((f) => ({ ...f, net: e.target.value }))} required />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t("interests.balance")}</label>
-              <Input type="number" step="0.01" value={form.balance || ""} onChange={(e) => setForm((f) => ({ ...f, balance: e.target.value || undefined }))} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t("interests.annualRate")} (%)</label>
-              <Input type="number" step="0.01" value={form.annual_rate || ""} onChange={(e) => setForm((f) => ({ ...f, annual_rate: e.target.value || undefined }))} />
+              <label className="text-sm font-medium">Fecha fin</label>
+              <Input type="date" value={form.date_end} onChange={(e) => setForm((f) => ({ ...f, date_end: e.target.value }))} required />
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
-            <Button type="submit" disabled={loading}>{loading ? `${t("common.loading")}...` : t("common.save")}</Button>
+
+          {/* Cuenta */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">{t("common.account")}</label>
+            <Select value={form.account} onValueChange={(v) => setForm((f) => ({ ...f, account: v || "" }))}>
+              <SelectTrigger className="w-full">
+                <span className="flex flex-1 text-left truncate" data-slot="select-value">
+                  {selectedAccountLabel || <span className="text-muted-foreground">{t("common.select")}</span>}
+                </span>
+              </SelectTrigger>
+              <SelectContent className="z-[200]">
+                {accountList.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+
+          {/* Bruto */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">{t("interests.gross")}</label>
+            <Input type="number" step="0.01" value={form.gross} onChange={(e) => handleGrossChange(e.target.value)} required />
+          </div>
+
+          {/* Balance */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">{t("interests.balance")}</label>
+            <Input type="number" step="0.01" value={form.balance || ""} onChange={(e) => setForm((f) => ({ ...f, balance: e.target.value || undefined }))} />
+          </div>
+
+          {/* Preview */}
+          {gross > 0 && (
+            <div className="text-sm text-muted-foreground">
+              <p>Neto: {formatMoney(String(net))} ({(TAX_RATE * 100).toFixed(0)}% retención)</p>
+              {days > 0 && <p>Días: {days}</p>}
+              {previewTIN !== null && <p>TIN: {previewTIN.toFixed(2)}%</p>}
+              {previewTAE !== null && <p>TAE: {previewTAE.toFixed(2)}%</p>}
+            </div>
+          )}
+
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? `${t("common.loading")}...` : t("common.save")}
+          </Button>
         </form>
       </DialogContent>
     </Dialog>

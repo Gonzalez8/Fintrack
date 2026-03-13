@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
@@ -18,7 +18,7 @@ import { MoneyCell } from "@/components/app/money-cell";
 import { ShoppingCart, TrendingDown, Gift, Search, Pencil, Trash2, Download, Info } from "lucide-react";
 import { toast } from "sonner";
 import { TRANSACTION_TYPE_LABELS } from "@/lib/constants";
-import { formatMoney } from "@/lib/utils";
+import { formatMoney, formatQty } from "@/lib/utils";
 import { useTranslations } from "@/i18n/use-translations";
 import type { Transaction, TransactionFormData, Asset, Account, PaginatedResponse, PortfolioData } from "@/types";
 
@@ -64,10 +64,26 @@ export function TransactionsContent() {
     queryKey: ["accounts"],
     queryFn: () => api.get<Account[]>("/accounts/"),
   });
-  const accountList = Array.isArray(accounts) ? accounts : [];
+  const accountList = Array.isArray(accounts) ? accounts : (accounts as PaginatedResponse<Account> | undefined)?.results ?? [];
 
-  const handleExportCsv = () => {
-    window.open("/api/proxy/export/transactions.csv", "_blank");
+  const handleExportCsv = async () => {
+    try {
+      const res = await fetch("/api/proxy/export/transactions.csv", { credentials: "include" });
+      if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "transactions.csv";
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (err) {
+      console.error("[csv-export]", err);
+      toast.error(t("common.errorSaving"));
+    }
   };
 
   const deleteMutation = useMutation({
@@ -119,7 +135,7 @@ export function TransactionsContent() {
       ),
     },
     { key: "account", header: t("common.account"), render: (tx) => <span className="text-sm">{tx.account_name}</span> },
-    { key: "qty", header: t("portfolio.quantity"), className: "text-right", render: (tx) => <span className="font-mono text-sm tabular-nums">{parseFloat(tx.quantity).toFixed(4)}</span> },
+    { key: "qty", header: t("portfolio.quantity"), className: "text-right", render: (tx) => <span className="font-mono text-sm tabular-nums">{formatQty(tx.quantity)}</span> },
     { key: "price", header: t("transactions.price"), className: "text-right", render: (tx) => <MoneyCell value={tx.price} /> },
     { key: "commission", header: t("transactions.commission"), className: "text-right", render: (tx) => <MoneyCell value={tx.commission} /> },
     { key: "tax", header: t("transactions.taxes"), className: "text-right", render: (tx) => <MoneyCell value={tx.tax} /> },
@@ -215,7 +231,7 @@ export function TransactionsContent() {
                     {tx.asset_ticker && <span className="text-xs text-muted-foreground">{tx.asset_ticker}</span>}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {tx.date} · {tx.account_name} · {parseFloat(tx.quantity).toFixed(4)} × {tx.price ? formatMoney(tx.price) : "—"}
+                    {tx.date} · {tx.account_name} · {formatQty(tx.quantity)} × {tx.price ? formatMoney(tx.price) : "—"}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
@@ -283,31 +299,9 @@ function TransactionDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { data: assets } = useQuery({
-    queryKey: ["assets-list"],
-    queryFn: () => api.get<Asset[]>("/assets/?page_size=1000"),
-    enabled: open,
-  });
-
-  const { data: dialogAccounts } = useQuery({
-    queryKey: ["accounts"],
-    queryFn: () => api.get<Account[]>("/accounts/"),
-    enabled: open,
-  });
-
-  const { data: portfolio } = useQuery({
-    queryKey: ["portfolio"],
-    queryFn: () => api.get<PortfolioData>("/portfolio/"),
-    enabled: open,
-  });
-
-  const positionMap = new Map(
-    (portfolio?.positions ?? []).map((p) => [p.asset_id, p])
-  );
-
-  const isSell = form.type === "SELL";
-
-  const resetForm = () => {
+  // Reset form every time the dialog opens
+  useEffect(() => {
+    if (!open) return;
     if (transaction) {
       setForm({
         date: transaction.date,
@@ -334,7 +328,32 @@ function TransactionDialog({
       });
     }
     setError("");
-  };
+  }, [open, transaction, defaultType]);
+
+  const { data: assets } = useQuery({
+    queryKey: ["assets-list"],
+    queryFn: () => api.get<Asset[]>("/assets/?page_size=1000"),
+    enabled: open,
+  });
+
+  const { data: dialogAccounts } = useQuery({
+    queryKey: ["accounts"],
+    queryFn: () => api.get<Account[]>("/accounts/"),
+    enabled: open,
+  });
+
+  const { data: portfolio } = useQuery({
+    queryKey: ["portfolio"],
+    queryFn: () => api.get<PortfolioData>("/portfolio/"),
+    enabled: open,
+  });
+
+  const positionMap = new Map(
+    (portfolio?.positions ?? []).map((p) => [p.asset_id, p])
+  );
+
+  const isSell = form.type === "SELL";
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -352,13 +371,17 @@ function TransactionDialog({
       queryClient.invalidateQueries({ queryKey: ["portfolio"] });
       onOpenChange(false);
     } catch (err: unknown) {
-      const data = (err as { response?: { data?: Record<string, string | string[]> } })?.response?.data;
-      if (data && typeof data === "object") {
-        const msgs: string[] = [];
-        for (const v of Object.values(data)) {
-          msgs.push(Array.isArray(v) ? v[0] : String(v));
+      if (err && typeof err === "object" && "body" in err) {
+        try {
+          const data = JSON.parse((err as { body: string }).body);
+          const msgs: string[] = [];
+          for (const v of Object.values(data)) {
+            msgs.push(Array.isArray(v) ? v[0] : String(v));
+          }
+          setError(msgs.join(". "));
+        } catch {
+          setError(t("common.errorSaving"));
         }
-        setError(msgs.join(". "));
       } else {
         setError(t("common.errorSaving"));
       }
@@ -368,7 +391,7 @@ function TransactionDialog({
   };
 
   const assetList = Array.isArray(assets) ? assets : (assets as PaginatedResponse<Asset> | undefined)?.results ?? [];
-  const dialogAccountList = Array.isArray(dialogAccounts) ? dialogAccounts : [];
+  const dialogAccountList = Array.isArray(dialogAccounts) ? dialogAccounts : (dialogAccounts as PaginatedResponse<Account> | undefined)?.results ?? [];
 
   // For SELL: only show assets with open positions
   const assetOptions = isSell
@@ -376,6 +399,20 @@ function TransactionDialog({
     : assetList;
 
   const selectedPosition = isSell && form.asset ? positionMap.get(form.asset) : null;
+
+  // Compute display labels (Base UI Portal unmounts items when closed, losing label resolution)
+  const selectedAssetLabel = (() => {
+    if (!form.asset) return "";
+    const asset = assetList.find((a) => a.id === form.asset);
+    if (!asset) return "";
+    return `${asset.name}${asset.ticker ? ` (${asset.ticker})` : ""}`;
+  })();
+
+  const selectedAccountLabel = (() => {
+    if (!form.account) return "";
+    const account = dialogAccountList.find((a) => a.id === form.account);
+    return account?.name ?? "";
+  })();
 
   const handleAssetChange = (assetId: string) => {
     setForm((f) => {
@@ -425,7 +462,7 @@ function TransactionDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (v) resetForm(); }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{getDialogTitle()}</DialogTitle>
@@ -441,7 +478,7 @@ function TransactionDialog({
             <div>
               <label className="text-sm font-medium">{t("common.type")}</label>
               <Select value={form.type} onValueChange={(v) => v && handleTypeChange(v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(TRANSACTION_TYPE_LABELS).map(([k, v]) => (
                     <SelectItem key={k} value={k}>{v}</SelectItem>
@@ -453,12 +490,16 @@ function TransactionDialog({
 
           <div>
             <label className="text-sm font-medium">{t("common.name")} *</label>
-            <Select value={form.asset} onValueChange={(v) => handleAssetChange(v || "")}>
-              <SelectTrigger><SelectValue placeholder={t("common.select")} /></SelectTrigger>
+            <Select value={form.asset} onValueChange={handleAssetChange}>
+              <SelectTrigger className="w-full">
+                <span className="flex flex-1 text-left truncate" data-slot="select-value">
+                  {selectedAssetLabel || <span className="text-muted-foreground">{t("common.select")}</span>}
+                </span>
+              </SelectTrigger>
               <SelectContent>
                 {assetOptions.map((a) => {
                   const pos = positionMap.get(a.id);
-                  const suffix = isSell && pos ? ` — ${parseFloat(pos.quantity).toFixed(4)} ${t("transactions.units")}` : "";
+                  const suffix = isSell && pos ? ` — ${formatQty(pos.quantity)} ${t("transactions.units")}` : "";
                   return (
                     <SelectItem key={a.id} value={a.id}>
                       {a.name} {a.ticker ? `(${a.ticker})` : ""}{suffix}
@@ -472,8 +513,12 @@ function TransactionDialog({
           {!isSell && (
             <div>
               <label className="text-sm font-medium">{t("common.account")} *</label>
-              <Select value={form.account} onValueChange={(v) => setForm((f) => ({ ...f, account: v || "" }))}>
-                <SelectTrigger><SelectValue placeholder={t("common.select")} /></SelectTrigger>
+              <Select value={form.account} onValueChange={(v) => setForm((f) => ({ ...f, account: v }))}>
+                <SelectTrigger className="w-full">
+                  <span className="flex flex-1 text-left truncate" data-slot="select-value">
+                    {selectedAccountLabel || <span className="text-muted-foreground">{t("common.select")}</span>}
+                  </span>
+                </SelectTrigger>
                 <SelectContent>
                   {dialogAccountList.map((a) => (
                     <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
@@ -496,7 +541,7 @@ function TransactionDialog({
             />
             {selectedPosition && (
               <p className="text-xs text-muted-foreground mt-1">
-                {t("transactions.available")}: <strong>{parseFloat(selectedPosition.quantity).toFixed(4)}</strong> {t("transactions.units")}
+                {t("transactions.available")}: <strong>{formatQty(selectedPosition.quantity)}</strong> {t("transactions.units")}
               </p>
             )}
           </div>
@@ -543,11 +588,6 @@ function TransactionDialog({
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">€</span>
               </div>
             </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">{t("transactions.notes")}</label>
-            <Input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
           </div>
 
           {/* Total calculation card */}

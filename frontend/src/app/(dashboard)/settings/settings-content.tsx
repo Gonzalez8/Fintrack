@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger,
 } from "@/components/ui/select";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
@@ -56,6 +56,16 @@ function formatDateTime(iso: string): string {
   });
 }
 
+// ── Helper: renders a custom label span for Base UI Select (Portal unmounts items) ──
+
+function SelectLabel({ label, placeholder }: { label: string; placeholder?: string }) {
+  return (
+    <span className="flex flex-1 text-left truncate" data-slot="select-value">
+      {label || <span className="text-muted-foreground">{placeholder ?? "—"}</span>}
+    </span>
+  );
+}
+
 export function SettingsContent() {
   const t = useTranslations();
   const queryClient = useQueryClient();
@@ -94,6 +104,50 @@ export function SettingsContent() {
 
   const current = { ...settings, ...form } as Settings;
 
+  // ── Option maps for Select labels ──
+  const COST_METHOD_LABELS: Record<string, string> = {
+    FIFO: t("settings.fifo"),
+    LIFO: t("settings.lifo"),
+    WAC: t("settings.wac"),
+  };
+
+  const GIFT_COST_LABELS: Record<string, string> = {
+    ZERO: t("settings.zeroCost"),
+    MARKET: t("settings.marketPrice"),
+  };
+
+  const PRICE_UPDATE_LABELS: Record<string, string> = {
+    "0": t("settings.manual"),
+    "5": t("settings.min5"),
+    "15": t("settings.min15"),
+    "30": t("settings.min30"),
+    "60": t("settings.hour1"),
+    "360": t("settings.hours6"),
+    "1440": t("settings.hours24"),
+  };
+
+  const PRICE_SOURCE_LABELS: Record<string, string> = {
+    YAHOO: "Yahoo Finance",
+  };
+
+  const SNAPSHOT_FREQ_LABELS: Record<string, string> = {
+    "0": t("settings.snapshotDisabled"),
+    "15": t("settings.every15min"),
+    "30": t("settings.every30min"),
+    "60": t("settings.every1h"),
+    "180": t("settings.every3h"),
+    "360": t("settings.every6h"),
+    "720": t("settings.every12h"),
+    "1440": t("settings.every24h"),
+  };
+
+  const RETENTION_LABELS: Record<string, string> = {
+    never: t("settings.neverDelete"),
+    "365": t("settings.olderThan1y"),
+    "1825": t("settings.olderThan5y"),
+    "3650": t("settings.olderThan10y"),
+  };
+
   // Cost method change warning
   const [methodWarning, setMethodWarning] = useState<{ field: "cost_basis_method" | "fiscal_cost_method"; value: string } | null>(null);
 
@@ -129,31 +183,42 @@ export function SettingsContent() {
   const handleExport = async () => {
     try {
       const res = await fetch("/api/proxy/backup/export/", { credentials: "include" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `fintrack-backup-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
       toast.error(t("common.error"));
     }
   };
+
+  const [importing, setImporting] = useState(false);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setImportResult(null);
     setImportError(null);
+    setImporting(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
       const result = await api.upload<{ counts: Record<string, number | boolean> }>("/backup/import/", formData);
       setImportResult(result.counts);
       queryClient.invalidateQueries();
-    } catch {
-      setImportError("Error al importar el backup");
+      toast.success(t("settings.backupImported"));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error al importar el backup";
+      setImportError(msg);
+      toast.error("Error al importar");
+    } finally {
+      setImporting(false);
     }
     e.target.value = "";
   };
@@ -200,7 +265,9 @@ export function SettingsContent() {
             <div>
               <label className="text-sm font-medium">{t("settings.costMethod")}</label>
               <Select value={current.cost_basis_method} onValueChange={(v) => v && handleCostMethodChange("cost_basis_method", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectLabel label={COST_METHOD_LABELS[current.cost_basis_method] ?? ""} />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="FIFO">{t("settings.fifo")}</SelectItem>
                   <SelectItem value="LIFO">{t("settings.lifo")}</SelectItem>
@@ -211,7 +278,9 @@ export function SettingsContent() {
             <div>
               <label className="text-sm font-medium">{t("settings.fiscalMethod")}</label>
               <Select value={current.fiscal_cost_method} onValueChange={(v) => v && handleCostMethodChange("fiscal_cost_method", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectLabel label={COST_METHOD_LABELS[current.fiscal_cost_method] ?? ""} />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="FIFO">{t("settings.fifo")}</SelectItem>
                   <SelectItem value="LIFO">{t("settings.lifo")}</SelectItem>
@@ -222,7 +291,9 @@ export function SettingsContent() {
             <div>
               <label className="text-sm font-medium">{t("settings.giftCost")}</label>
               <Select value={current.gift_cost_mode} onValueChange={(v) => v && setForm((f) => ({ ...f, gift_cost_mode: v as Settings["gift_cost_mode"] }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectLabel label={GIFT_COST_LABELS[current.gift_cost_mode] ?? ""} />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ZERO">{t("settings.zeroCost")}</SelectItem>
                   <SelectItem value="MARKET">{t("settings.marketPrice")}</SelectItem>
@@ -240,7 +311,9 @@ export function SettingsContent() {
             <div>
               <label className="text-sm font-medium">{t("settings.priceUpdateFreq")}</label>
               <Select value={String(current.price_update_interval ?? 0)} onValueChange={(v) => v && setForm((f) => ({ ...f, price_update_interval: parseInt(v) }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectLabel label={PRICE_UPDATE_LABELS[String(current.price_update_interval ?? 0)] ?? ""} />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="0">{t("settings.manual")}</SelectItem>
                   <SelectItem value="5">{t("settings.min5")}</SelectItem>
@@ -255,7 +328,9 @@ export function SettingsContent() {
             <div>
               <label className="text-sm font-medium">{t("settings.priceSource")}</label>
               <Select value={current.default_price_source ?? "YAHOO"} onValueChange={(v) => v && setForm((f) => ({ ...f, default_price_source: v as Settings["default_price_source"] }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectLabel label={PRICE_SOURCE_LABELS[current.default_price_source ?? "YAHOO"] ?? ""} />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="YAHOO">Yahoo Finance</SelectItem>
                 </SelectContent>
@@ -264,7 +339,9 @@ export function SettingsContent() {
             <div className="md:col-span-2">
               <label className="text-sm font-medium">{t("settings.snapshotFreq")}</label>
               <Select value={String(current.snapshot_frequency ?? 1440)} onValueChange={(v) => v && setForm((f) => ({ ...f, snapshot_frequency: parseInt(v) }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectLabel label={SNAPSHOT_FREQ_LABELS[String(current.snapshot_frequency ?? 1440)] ?? ""} />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="0">{t("settings.snapshotDisabled")}</SelectItem>
                   <SelectItem value="15">{t("settings.every15min")}</SelectItem>
@@ -374,7 +451,9 @@ export function SettingsContent() {
                   value={currentRetention === null || currentRetention === undefined ? "never" : String(currentRetention)}
                   onValueChange={(v) => v && setRetentionDays(v === "never" ? null : parseInt(v))}
                 >
-                  <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-56">
+                    <SelectLabel label={RETENTION_LABELS[currentRetention === null || currentRetention === undefined ? "never" : String(currentRetention)] ?? ""} />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="never">{t("settings.neverDelete")}</SelectItem>
                     <SelectItem value="365">{t("settings.olderThan1y")}</SelectItem>
@@ -454,8 +533,8 @@ export function SettingsContent() {
               className="hidden"
               onChange={handleFileChange}
             />
-            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-              {t("settings.importBackup")}
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing}>
+              {importing ? `${t("common.loading")}...` : t("settings.importBackup")}
             </Button>
           </div>
 

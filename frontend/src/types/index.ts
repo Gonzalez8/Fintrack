@@ -172,25 +172,25 @@ export interface DividendFormData {
 // ── Interests ────────────────────────────────────────────────────
 export interface Interest {
   id: string;
-  date: string;
+  date_start: string;
+  date_end: string;
+  days: number;
   account: string;
   account_name?: string;
   gross: string;
   net: string;
   balance: string | null;
-  annual_rate: string | null;
-  import_hash: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface InterestFormData {
-  date: string;
+  date_start: string;
+  date_end: string;
   account: string;
   gross: string;
   net: string;
   balance?: string;
-  annual_rate?: string;
 }
 
 // ── Portfolio ────────────────────────────────────────────────────
@@ -270,6 +270,7 @@ export interface PatrimonioPoint {
   month: string;
   cash: string;
   investments: string;
+  investment_pnl: string;
   renta_variable: string;
   renta_fija: string;
 }
@@ -277,6 +278,8 @@ export interface PatrimonioPoint {
 export interface RVEvolutionPoint {
   captured_at: string;
   value: string;
+  cost: string;
+  pnl: string;
 }
 
 export interface MonthlySaving {

@@ -231,7 +231,9 @@ function DividendDialog({
     enabled: open,
   });
 
-  const resetForm = () => {
+  // Reset form every time the dialog opens
+  useEffect(() => {
+    if (!open) return;
     if (dividend) {
       setForm({
         date: dividend.date,
@@ -245,36 +247,30 @@ function DividendDialog({
     } else {
       setForm({ date: new Date().toISOString().split("T")[0], asset: "", gross: "", tax: "0", net: "" });
     }
+  }, [open, dividend]);
+
+  // Auto-calculate: gross = net + tax, rate = tax / gross
+  const recalcGross = (net: number, tax: number) => {
+    const gross = net + tax;
+    const rate = gross > 0 ? ((tax / gross) * 100).toFixed(2) : undefined;
+    return { gross: gross.toFixed(2), withholding_rate: rate };
   };
 
-  // Auto-calculate: when gross or tax changes, compute net = gross - tax
-  const handleGrossChange = (value: string) => {
+  const handleNetChange = (value: string) => {
     setForm((f) => {
-      const gross = parseFloat(value) || 0;
+      const net = parseFloat(value) || 0;
       const tax = parseFloat(f.tax ?? "0") || 0;
-      const net = (gross - tax).toFixed(2);
-      const rate = gross > 0 ? ((tax / gross) * 100).toFixed(2) : undefined;
-      return { ...f, gross: value, net, withholding_rate: rate };
+      const { gross, withholding_rate } = recalcGross(net, tax);
+      return { ...f, net: value, gross, withholding_rate };
     });
   };
 
   const handleTaxChange = (value: string) => {
     setForm((f) => {
-      const gross = parseFloat(f.gross) || 0;
+      const net = parseFloat(f.net) || 0;
       const tax = parseFloat(value) || 0;
-      const net = (gross - tax).toFixed(2);
-      const rate = gross > 0 ? ((tax / gross) * 100).toFixed(2) : undefined;
-      return { ...f, tax: value, net, withholding_rate: rate };
-    });
-  };
-
-  const handleNetChange = (value: string) => {
-    setForm((f) => {
-      const gross = parseFloat(f.gross) || 0;
-      const net = parseFloat(value) || 0;
-      const tax = (gross - net).toFixed(2);
-      const rate = gross > 0 ? (((gross - net) / gross) * 100).toFixed(2) : undefined;
-      return { ...f, net: value, tax, withholding_rate: rate };
+      const { gross, withholding_rate } = recalcGross(net, tax);
+      return { ...f, tax: value, gross, withholding_rate };
     });
   };
 
@@ -308,64 +304,81 @@ function DividendDialog({
 
   const assetList = Array.isArray(assets) ? assets : (assets as PaginatedResponse<Asset> | undefined)?.results ?? [];
 
-  // Per-share preview
-  const perShare = form.shares && parseFloat(form.shares as string) > 0 && form.net
-    ? (parseFloat(form.net) / parseFloat(form.shares as string)).toFixed(4)
-    : null;
+  // Compute display label (Base UI Portal unmounts items when closed, losing label resolution)
+  const selectedAssetLabel = (() => {
+    if (!form.asset) return "";
+    const asset = assetList.find((a) => a.id === form.asset);
+    if (!asset) return "";
+    return `${asset.name}${asset.ticker ? ` (${asset.ticker})` : ""}`;
+  })();
+
+  // Computed preview values
+  const gross = parseFloat(form.gross) || 0;
+  const shares = parseFloat(form.shares as string) || 0;
+  const grossPerShare = shares > 0 ? (gross / shares).toFixed(4) : null;
+  const withholdingPct = form.withholding_rate ? parseFloat(form.withholding_rate).toFixed(2) : null;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (v) resetForm(); }}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{dividend ? t("dividends.edit") : t("dividends.new")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t("common.date")} *</label>
-              <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} required />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t("common.name")} *</label>
-              <Select value={form.asset} onValueChange={(v) => v && handleAssetChange(v)}>
-                <SelectTrigger><SelectValue placeholder={t("common.select")} /></SelectTrigger>
-                <SelectContent>
-                  {assetList.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t("dividends.gross")} *</label>
-              <Input type="number" step="0.01" value={form.gross} onChange={(e) => handleGrossChange(e.target.value)} required />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t("dividends.withholding")}</label>
-              <Input type="number" step="0.01" value={form.tax} onChange={(e) => handleTaxChange(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t("dividends.net")} *</label>
-              <Input type="number" step="0.01" value={form.net} onChange={(e) => handleNetChange(e.target.value)} required />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t("dividends.withholdingRate")}</label>
-              <Input type="number" step="0.01" value={form.withholding_rate || ""} onChange={(e) => setForm((f) => ({ ...f, withholding_rate: e.target.value || undefined }))} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">{t("dividends.shares")}</label>
-              <Input type="number" step="any" value={form.shares || ""} onChange={(e) => setForm((f) => ({ ...f, shares: e.target.value || undefined }))} />
-            </div>
+          {/* Fecha */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">{t("common.date")}</label>
+            <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} required />
           </div>
-          {perShare && (
-            <p className="text-xs text-muted-foreground text-right">
-              {formatMoney(perShare)} / {t("dividends.shares").toLowerCase()}
-            </p>
+
+          {/* Activo */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">{t("common.asset")}</label>
+            <Select value={form.asset} onValueChange={(v) => v && handleAssetChange(v)}>
+              <SelectTrigger className="w-full">
+                <span className="flex flex-1 text-left truncate" data-slot="select-value">
+                  {selectedAssetLabel || <span className="text-muted-foreground">{t("common.select")}</span>}
+                </span>
+              </SelectTrigger>
+              <SelectContent className="z-[200]">
+                {assetList.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}{a.ticker ? ` (${a.ticker})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Numero de acciones */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">{t("dividends.shares")}</label>
+            <Input type="number" step="any" value={form.shares || ""} onChange={(e) => setForm((f) => ({ ...f, shares: e.target.value || undefined }))} />
+          </div>
+
+          {/* Total recibido (neto) */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Total recibido (neto)</label>
+            <Input type="number" step="0.01" value={form.net} onChange={(e) => handleNetChange(e.target.value)} required />
+          </div>
+
+          {/* Impuestos retenidos */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Impuestos retenidos</label>
+            <Input type="number" step="0.01" value={form.tax} onChange={(e) => handleTaxChange(e.target.value)} />
+          </div>
+
+          {/* Preview */}
+          {gross > 0 && (
+            <div className="text-sm text-muted-foreground">
+              <p>Bruto: {formatMoney(String(gross))}{grossPerShare ? ` (${grossPerShare} EUR/accion)` : ""}</p>
+              {withholdingPct && <p>Retencion: {withholdingPct}%</p>}
+            </div>
           )}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
-            <Button type="submit" disabled={loading}>{loading ? `${t("common.loading")}...` : t("common.save")}</Button>
-          </div>
+
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? `${t("common.loading")}...` : t("common.save")}
+          </Button>
         </form>
       </DialogContent>
     </Dialog>

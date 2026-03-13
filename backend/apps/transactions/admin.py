@@ -1,0 +1,27 @@
+from django.contrib import admin
+
+from .models import Dividend, Interest, Transaction
+
+
+@admin.register(Transaction)
+class TransactionAdmin(admin.ModelAdmin):
+    list_display = ("date", "type", "asset", "account", "quantity", "price", "commission", "owner")
+    list_filter = ("type", "date")
+    search_fields = ("asset__name", "asset__ticker", "notes")
+    readonly_fields = ("id", "created_at", "updated_at")
+
+
+@admin.register(Dividend)
+class DividendAdmin(admin.ModelAdmin):
+    list_display = ("date", "asset", "gross", "tax", "net", "owner")
+    list_filter = ("date",)
+    search_fields = ("asset__name", "asset__ticker")
+    readonly_fields = ("id", "created_at", "updated_at")
+
+
+@admin.register(Interest)
+class InterestAdmin(admin.ModelAdmin):
+    list_display = ("date_start", "date_end", "account", "gross", "net", "owner")
+    list_filter = ("date_end",)
+    search_fields = ("account__name",)
+    readonly_fields = ("id", "created_at", "updated_at")

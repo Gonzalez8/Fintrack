@@ -54,21 +54,23 @@ class Dividend(UserOwnedModel):
 
 
 class Interest(UserOwnedModel):
-    date = models.DateField()
+    date_start = models.DateField()
+    date_end = models.DateField()
     account = models.ForeignKey(
         "assets.Account", on_delete=models.PROTECT, related_name="interests"
     )
     gross = models.DecimalField(max_digits=20, decimal_places=2)
     net = models.DecimalField(max_digits=20, decimal_places=2)
     balance = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
-    annual_rate = models.DecimalField(
-        max_digits=8, decimal_places=6, null=True, blank=True
-    )
     import_hash = models.CharField(max_length=64, null=True, blank=True)
 
     class Meta:
-        ordering = ["-date", "-created_at"]
+        ordering = ["-date_end", "-created_at"]
         unique_together = [("owner", "import_hash")]
 
+    @property
+    def days(self):
+        return (self.date_end - self.date_start).days
+
     def __str__(self):
-        return f"{self.date} Interest {self.account.name} {self.net}"
+        return f"{self.date_start}→{self.date_end} Interest {self.account.name} {self.net}"

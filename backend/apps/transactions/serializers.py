@@ -34,12 +34,14 @@ class DividendSerializer(serializers.ModelSerializer):
 
 class InterestSerializer(serializers.ModelSerializer):
     account_name = serializers.CharField(source="account.name", read_only=True)
+    days = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Interest
         fields = [
-            "id", "date", "account", "account_name",
-            "gross", "net", "balance", "annual_rate",
+            "id", "date_start", "date_end", "days",
+            "account", "account_name",
+            "gross", "net", "balance",
             "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "days", "created_at", "updated_at"]

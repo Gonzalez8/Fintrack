@@ -46,8 +46,8 @@ class BackupInterestSerializer(serializers.ModelSerializer):
     class Meta:
         model = Interest
         fields = [
-            "id", "date", "account", "gross", "net", "balance",
-            "annual_rate", "import_hash",
+            "id", "date_start", "date_end", "account", "gross", "net",
+            "balance", "import_hash",
         ]
         extra_kwargs = {"id": {"read_only": False}}
 

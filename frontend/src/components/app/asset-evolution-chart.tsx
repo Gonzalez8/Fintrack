@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ComposedChart,
+  AreaChart,
   Area,
-  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -31,6 +30,8 @@ interface ChartPoint {
   captured_at: string;
   mv: number;
   cb: number;
+  pnl: number;
+  pnlPct: number;
 }
 
 function filterByRange(data: ChartPoint[], range: Range): ChartPoint[] {
@@ -66,8 +67,9 @@ function formatAxisDate(isoStr: string, range: Range): string {
 }
 
 interface HoverState {
-  value: number;
-  costBasis: number;
+  mv: number;
+  cb: number;
+  pnl: number;
   timestamp: string;
 }
 
@@ -80,6 +82,7 @@ export function AssetEvolutionChart({ position }: Props) {
   const t = useTranslations();
   const [range, setRange] = useState<Range>("1Y");
   const [hover, setHover] = useState<HoverState | null>(null);
+  const hoverRef = useRef<HoverState | null>(null);
 
   const { data: rawData = [], isLoading } = useQuery({
     queryKey: ["asset-position-history", position.asset_id],
@@ -92,11 +95,18 @@ export function AssetEvolutionChart({ position }: Props) {
 
   const allData = useMemo<ChartPoint[]>(
     () =>
-      rawData.map((p) => ({
-        captured_at: p.captured_at,
-        mv: parseFloat(p.market_value),
-        cb: parseFloat(p.cost_basis),
-      })),
+      rawData.map((p) => {
+        const mv = parseFloat(p.market_value);
+        const cb = parseFloat(p.cost_basis);
+        const pnl = parseFloat(p.unrealized_pnl);
+        return {
+          captured_at: p.captured_at,
+          mv,
+          cb,
+          pnl,
+          pnlPct: cb > 0 ? (pnl / cb) * 100 : 0,
+        };
+      }),
     [rawData],
   );
 
@@ -106,22 +116,21 @@ export function AssetEvolutionChart({ position }: Props) {
   );
   const hasEnoughData = chartData.length >= 2;
 
-  const firstMV = hasEnoughData ? chartData[0].mv : 0;
-  const lastMV = hasEnoughData ? chartData[chartData.length - 1].mv : 0;
-  const isPositive = lastMV >= firstMV;
-  const color = isPositive ? "#16a34a" : "#dc2626";
-  const gradientId = `asset-grad-${isPositive ? "g" : "r"}`;
+  // Live values from position prop
+  const liveMV = parseFloat(position.market_value);
+  const liveCB = parseFloat(position.cost_basis);
+  const livePnl = parseFloat(position.unrealized_pnl);
 
-  const periodReturnAbs = lastMV - firstMV;
-  const periodReturnPct =
-    firstMV > 0 ? (periodReturnAbs / firstMV) * 100 : 0;
-
-  const liveValue = parseFloat(position.market_value);
-  const displayValue = hover ? hover.value : liveValue;
-  const displayCostBasis = hover
-    ? hover.costBasis
-    : parseFloat(position.cost_basis);
+  // Display values: hover overrides live
+  const displayMV = hover ? hover.mv : liveMV;
+  const displayPnl = hover ? hover.pnl : livePnl;
+  const displayCB = hover ? hover.cb : liveCB;
+  const displayPnlPct = displayCB > 0 ? (displayPnl / displayCB) * 100 : 0;
   const displayTimestamp = hover ? hover.timestamp : null;
+
+  const isPositive = displayPnl >= 0;
+  const color = isPositive ? "#22c55e" : "#ef4444";
+  const gradientId = `asset-grad-${isPositive ? "g" : "r"}`;
 
   const xTicks = useMemo(() => {
     if (chartData.length <= 4) return chartData.map((p) => p.captured_at);
@@ -139,28 +148,31 @@ export function AssetEvolutionChart({ position }: Props) {
     [range],
   );
 
-  const handleMouseMove = useCallback(
-    (state: Record<string, unknown>) => {
-      const s = state as {
-        isTooltipActive?: boolean;
-        activePayload?: Array<{
-          value: number;
-          payload: ChartPoint;
-        }>;
-      };
-      if (s?.isTooltipActive && s.activePayload?.[0]) {
-        const payload = s.activePayload[0].payload;
-        setHover({
-          value: payload.mv,
-          costBasis: payload.cb,
-          timestamp: payload.captured_at,
-        });
+  // Recharts v3: use Tooltip content to capture active data
+  const tooltipContent = useCallback(
+    (props: { active?: boolean; payload?: Array<{ payload: ChartPoint }> }) => {
+      if (props.active && props.payload?.[0]) {
+        const p = props.payload[0].payload;
+        const next: HoverState = {
+          mv: p.mv,
+          cb: p.cb,
+          pnl: p.pnl,
+          timestamp: p.captured_at,
+        };
+        if (!hoverRef.current || hoverRef.current.timestamp !== next.timestamp) {
+          hoverRef.current = next;
+          queueMicrotask(() => setHover(next));
+        }
       }
+      return null;
     },
     [],
   );
 
-  const handleMouseLeave = useCallback(() => setHover(null), []);
+  const handleMouseLeave = useCallback(() => {
+    hoverRef.current = null;
+    setHover(null);
+  }, []);
 
   if (isLoading) {
     return (
@@ -183,32 +195,41 @@ export function AssetEvolutionChart({ position }: Props) {
   return (
     <div>
       <div className="flex items-start justify-between px-6 pt-4 pb-4">
-        <div>
+        <div className="min-w-0">
+          {/* Market value — big number */}
           <p className="text-2xl font-bold tabular-nums leading-none">
-            {formatMoney(displayValue)}
+            {formatMoney(displayMV)}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {t("portfolio.cost")}: {formatMoney(displayCostBasis)}
-          </p>
-          <div className="mt-2 h-5">
-            {displayTimestamp ? (
-              <p className="text-sm text-muted-foreground">
-                {formatTooltipDate(displayTimestamp)}
-              </p>
-            ) : !hasEnoughData ? (
-              <p className="text-sm text-muted-foreground">
-                {t("dashboard.insufficientData")}
-              </p>
-            ) : (
-              <p
-                className={`text-sm font-medium ${isPositive ? "text-green-500" : "text-red-500"}`}
-              >
-                {periodReturnAbs >= 0 ? "+" : ""}
-                {formatMoney(periodReturnAbs)}{" "}
-                <span className="text-xs">
-                  ({periodReturnPct >= 0 ? "+" : ""}
-                  {periodReturnPct.toFixed(2)}%)
+
+          {/* P&L + percentage */}
+          <div className="mt-1.5 flex items-baseline gap-1.5">
+            {hasEnoughData ? (
+              <>
+                <span
+                  className={`text-sm font-semibold tabular-nums ${isPositive ? "text-green-500" : "text-red-500"}`}
+                >
+                  {displayPnl >= 0 ? "+" : ""}
+                  {formatMoney(displayPnl)}
                 </span>
+                <span
+                  className={`text-xs font-medium tabular-nums ${isPositive ? "text-green-500" : "text-red-500"}`}
+                >
+                  ({displayPnlPct >= 0 ? "+" : ""}
+                  {displayPnlPct.toFixed(2)}%)
+                </span>
+              </>
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                {t("dashboard.insufficientData")}
+              </span>
+            )}
+          </div>
+
+          {/* Timestamp on hover */}
+          <div className="mt-1 h-4">
+            {displayTimestamp && (
+              <p className="text-xs text-muted-foreground">
+                {formatTooltipDate(displayTimestamp)}
               </p>
             )}
           </div>
@@ -221,6 +242,7 @@ export function AssetEvolutionChart({ position }: Props) {
               onClick={() => {
                 setRange(key);
                 setHover(null);
+                hoverRef.current = null;
               }}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150 ${
                 range === key
@@ -234,85 +256,69 @@ export function AssetEvolutionChart({ position }: Props) {
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={200}>
-        <ComposedChart
-          key={range}
-          data={chartData}
-          margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-        >
-          <defs>
-            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity={0.2} />
-              <stop offset="100%" stopColor={color} stopOpacity={0} />
-            </linearGradient>
-          </defs>
+      <div onMouseLeave={handleMouseLeave}>
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart
+            key={range}
+            data={chartData}
+            margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+          >
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={color} stopOpacity={0} />
+              </linearGradient>
+            </defs>
 
-          <XAxis
-            dataKey="captured_at"
-            ticks={xTicks}
-            tickLine={false}
-            axisLine={false}
-            tick={ct.axisTick}
-            tickFormatter={tickFormatter}
-            padding={{ left: 16, right: 16 }}
-          />
-          <YAxis hide domain={["auto", "auto"]} />
+            <XAxis
+              dataKey="captured_at"
+              ticks={xTicks}
+              tickLine={false}
+              axisLine={false}
+              tick={ct.axisTick}
+              tickFormatter={tickFormatter}
+              padding={{ left: 16, right: 16 }}
+            />
+            <YAxis
+              tick={ct.axisTick}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`}
+              width={60}
+              domain={["auto", "auto"]}
+            />
 
-          <Tooltip
-            cursor={{
-              stroke: color,
-              strokeWidth: 1,
-              strokeDasharray: "3 3",
-              opacity: 0.6,
-            }}
-            content={() => null}
-          />
+            <Tooltip
+              cursor={{
+                stroke: color,
+                strokeWidth: 1,
+                strokeDasharray: "3 3",
+                opacity: 0.6,
+              }}
+              content={tooltipContent}
+            />
 
-          <Area
-            type="monotone"
-            dataKey="mv"
-            stroke={color}
-            strokeWidth={2}
-            fill={`url(#${gradientId})`}
-            dot={false}
-            activeDot={{
-              r: 4,
-              fill: color,
-              stroke: "white",
-              strokeWidth: 2,
-            }}
-            isAnimationActive
-            animationDuration={400}
-            animationEasing="ease-out"
-          />
-          <Line
-            type="monotone"
-            dataKey="cb"
-            stroke="#9ca3af"
-            strokeWidth={1.5}
-            strokeDasharray="4 3"
-            dot={false}
-            activeDot={false}
-            isAnimationActive={false}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
-
-      <div className="flex items-center gap-4 px-6 pb-4 pt-1">
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span
-            className="inline-block h-0.5 w-4 rounded"
-            style={{ backgroundColor: color }}
-          />
-          {t("portfolio.value")}
-        </span>
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="inline-block h-0.5 w-4 rounded border-t-2 border-dashed border-gray-400" />
-          {t("portfolio.cost")}
-        </span>
+            <Area
+              type="monotone"
+              dataKey="pnlPct"
+              stroke={color}
+              strokeWidth={2}
+              fill={`url(#${gradientId})`}
+              dot={false}
+              activeDot={{
+                r: 4,
+                fill: color,
+                stroke: "white",
+                strokeWidth: 2,
+              }}
+              isAnimationActive
+              animationDuration={400}
+              animationEasing="ease-out"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
+
     </div>
   );
 }

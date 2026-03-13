@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AreaChart,
@@ -28,10 +28,29 @@ const RANGES: { key: Range; label: string }[] = [
   { key: "MAX", label: "MAX" },
 ];
 
-function filterByRange(
-  data: RVEvolutionPoint[],
-  range: Range,
-): RVEvolutionPoint[] {
+/** Pre-parsed numeric point for Recharts */
+interface ChartPoint {
+  captured_at: string;
+  mv: number;
+  cost: number;
+  pnl: number;
+  pnlPct: number;
+}
+
+function toChartPoint(p: RVEvolutionPoint): ChartPoint {
+  const mv = parseFloat(p.value);
+  const cost = parseFloat(p.cost);
+  const pnl = parseFloat(p.pnl);
+  return {
+    captured_at: p.captured_at,
+    mv,
+    cost,
+    pnl,
+    pnlPct: cost > 0 ? (pnl / cost) * 100 : 0,
+  };
+}
+
+function filterByRange(data: ChartPoint[], range: Range): ChartPoint[] {
   if (range === "MAX" || !data.length) return data;
   const now = new Date();
   const cutoff = new Date(now);
@@ -44,7 +63,7 @@ function filterByRange(
 }
 
 function formatTooltipDate(dateStr: string): string {
-  if (dateStr.length === 7) return dateStr; // YYYY-MM
+  if (dateStr.length === 7) return dateStr;
   const d = new Date(dateStr);
   return d.toLocaleDateString("es-ES", {
     day: "2-digit",
@@ -56,33 +75,23 @@ function formatTooltipDate(dateStr: string): string {
 }
 
 function formatAxisDate(dateStr: string, range: Range): string {
-  if (dateStr.length === 7) return dateStr; // YYYY-MM
+  if (dateStr.length === 7) return dateStr;
   const d = new Date(dateStr);
   if (range === "1D")
-    return d.toLocaleTimeString("es-ES", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
   if (range === "1W")
-    return d.toLocaleDateString("es-ES", {
-      weekday: "short",
-      day: "numeric",
-    });
+    return d.toLocaleDateString("es-ES", { weekday: "short", day: "numeric" });
   if (range === "1M")
-    return d.toLocaleDateString("es-ES", {
-      day: "2-digit",
-      month: "short",
-    });
+    return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
   if (range === "3M")
-    return d.toLocaleDateString("es-ES", {
-      day: "numeric",
-      month: "short",
-    });
+    return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
   return d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" });
 }
 
 interface HoverState {
-  value: number;
+  mv: number;
+  pnl: number;
+  cost: number;
   timestamp: string;
 }
 
@@ -91,6 +100,7 @@ export function RVEvolutionChart() {
   const t = useTranslations();
   const [range, setRange] = useState<Range>("1Y");
   const [hover, setHover] = useState<HoverState | null>(null);
+  const hoverRef = useRef<HoverState | null>(null);
 
   const { data: allData = [], isLoading } = useQuery({
     queryKey: ["rv-evolution"],
@@ -104,51 +114,60 @@ export function RVEvolutionChart() {
     staleTime: 30 * 1000,
   });
 
+  // Pre-parse all data to numeric ChartPoints
+  const allNumeric = useMemo(() => allData.map(toChartPoint), [allData]);
+
   const snapshotData = useMemo(
-    () => filterByRange(allData, range),
-    [allData, range],
+    () => filterByRange(allNumeric, range),
+    [allNumeric, range],
   );
   const hasEnoughData = snapshotData.length >= 2;
 
-  const firstSnapshotValue = hasEnoughData
-    ? parseFloat(snapshotData[0].value)
-    : 0;
-  const lastSnapshotValue = hasEnoughData
-    ? parseFloat(snapshotData[snapshotData.length - 1].value)
+  const lastSnapshotMV = hasEnoughData
+    ? snapshotData[snapshotData.length - 1].mv
     : 0;
 
-  const liveValue = portfolioData
+  // Live values from portfolio
+  const liveMV = portfolioData
     ? parseFloat(portfolioData.totals.total_market_value)
-    : lastSnapshotValue;
+    : lastSnapshotMV;
+  const livePnl = portfolioData
+    ? parseFloat(portfolioData.totals.total_unrealized_pnl)
+    : 0;
+  const liveCost = portfolioData
+    ? parseFloat(portfolioData.totals.total_cost)
+    : 0;
 
-  const chartData = useMemo(() => {
+  // Append live point to chart data
+  const chartData = useMemo<ChartPoint[]>(() => {
     if (!portfolioData || snapshotData.length === 0) return snapshotData;
     return [
       ...snapshotData,
       {
         captured_at: new Date().toISOString(),
-        value: portfolioData.totals.total_market_value,
+        mv: liveMV,
+        cost: liveCost,
+        pnl: livePnl,
+        pnlPct: liveCost > 0 ? (livePnl / liveCost) * 100 : 0,
       },
     ];
-  }, [snapshotData, portfolioData]);
+  }, [snapshotData, portfolioData, liveMV, liveCost, livePnl]);
 
-  const isPositive = liveValue >= firstSnapshotValue;
+  // Display values: hover overrides live
+  const displayMV = hover ? hover.mv : liveMV;
+  const displayPnl = hover ? hover.pnl : livePnl;
+  const displayCost = hover ? hover.cost : liveCost;
+  const displayPnlPct = displayCost > 0 ? (displayPnl / displayCost) * 100 : 0;
+  const displayTimestamp = hover ? hover.timestamp : null;
+
+  const isPositive = displayPnl >= 0;
   const color = isPositive ? "#22c55e" : "#ef4444";
   const gradientId = `rv-grad-${isPositive ? "green" : "red"}`;
-
-  const periodReturnAbs = liveValue - firstSnapshotValue;
-  const periodReturnPct =
-    firstSnapshotValue > 0
-      ? (periodReturnAbs / firstSnapshotValue) * 100
-      : 0;
 
   const isLiveUpdated =
     !hover &&
     hasEnoughData &&
-    Math.abs(liveValue - lastSnapshotValue) > 0.01;
-
-  const displayValue = hover ? hover.value : liveValue;
-  const displayTimestamp = hover ? hover.timestamp : null;
+    Math.abs(liveMV - lastSnapshotMV) > 0.01;
 
   const xTicks = useMemo(() => {
     if (chartData.length <= 4) return chartData.map((p) => p.captured_at);
@@ -166,17 +185,36 @@ export function RVEvolutionChart() {
     [range],
   );
 
-  const handleMouseMove = useCallback((state: Record<string, unknown>) => {
-    const s = state as { isTooltipActive?: boolean; activePayload?: Array<{ value: number; payload: { captured_at: string } }> };
-    if (s?.isTooltipActive && s.activePayload?.[0]) {
-      setHover({
-        value: s.activePayload[0].value,
-        timestamp: s.activePayload[0].payload.captured_at,
-      });
-    }
-  }, []);
+  // Recharts v3: use Tooltip content prop to capture active data
+  const tooltipContent = useCallback(
+    (props: { active?: boolean; payload?: Array<{ payload: ChartPoint }> }) => {
+      if (props.active && props.payload?.[0]) {
+        const p = props.payload[0].payload;
+        const next: HoverState = {
+          mv: p.mv,
+          pnl: p.pnl,
+          cost: p.cost,
+          timestamp: p.captured_at,
+        };
+        // Only update state if the hovered point changed (avoid re-render loop)
+        if (
+          !hoverRef.current ||
+          hoverRef.current.timestamp !== next.timestamp
+        ) {
+          hoverRef.current = next;
+          // Schedule state update outside render
+          queueMicrotask(() => setHover(next));
+        }
+      }
+      return null; // no visible tooltip
+    },
+    [],
+  );
 
-  const handleMouseLeave = useCallback(() => setHover(null), []);
+  const handleMouseLeave = useCallback(() => {
+    hoverRef.current = null;
+    setHover(null);
+  }, []);
 
   if (isLoading || allData.length === 0) return null;
 
@@ -184,7 +222,8 @@ export function RVEvolutionChart() {
     <Card className="overflow-hidden">
       <CardContent className="p-0">
         <div className="flex flex-wrap items-start justify-between gap-y-3 px-4 pt-5 pb-3 sm:px-6 sm:pt-6 sm:pb-4">
-          <div>
+          <div className="min-w-0">
+            {/* Label + LIVE badge */}
             <div className="flex items-center gap-2 mb-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 {t("dashboard.rvEvolution")}
@@ -196,34 +235,46 @@ export function RVEvolutionChart() {
               )}
             </div>
 
+            {/* Market value — big number */}
             <p className="text-2xl sm:text-3xl font-bold tabular-nums leading-none">
-              {formatMoney(displayValue)}
+              {formatMoney(displayMV)}
             </p>
 
-            <div className="mt-2 h-5">
-              {displayTimestamp ? (
-                <p className="text-sm text-muted-foreground">
-                  {formatTooltipDate(displayTimestamp)}
-                </p>
-              ) : !hasEnoughData ? (
-                <p className="text-sm text-muted-foreground">
-                  {t("dashboard.insufficientData")}
-                </p>
-              ) : (
-                <p
-                  className={`text-sm font-medium ${isPositive ? "text-green-500" : "text-red-500"}`}
-                >
-                  {periodReturnAbs >= 0 ? "+" : ""}
-                  {formatMoney(periodReturnAbs)}{" "}
-                  <span className="text-xs">
-                    ({periodReturnPct >= 0 ? "+" : ""}
-                    {periodReturnPct.toFixed(2)}%)
+            {/* P&L + percentage */}
+            <div className="mt-1.5 flex items-baseline gap-1.5">
+              {hasEnoughData ? (
+                <>
+                  <span
+                    className={`text-sm font-semibold tabular-nums ${isPositive ? "text-green-500" : "text-red-500"}`}
+                  >
+                    {displayPnl >= 0 ? "+" : ""}
+                    {formatMoney(displayPnl)}
                   </span>
+                  <span
+                    className={`text-xs font-medium tabular-nums ${isPositive ? "text-green-500" : "text-red-500"}`}
+                  >
+                    ({displayPnlPct >= 0 ? "+" : ""}
+                    {displayPnlPct.toFixed(2)}%)
+                  </span>
+                </>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  {t("dashboard.insufficientData")}
+                </span>
+              )}
+            </div>
+
+            {/* Timestamp on hover */}
+            <div className="mt-1 h-4">
+              {displayTimestamp && (
+                <p className="text-xs text-muted-foreground">
+                  {formatTooltipDate(displayTimestamp)}
                 </p>
               )}
             </div>
           </div>
 
+          {/* Range selector */}
           <div className="flex shrink-0 gap-0.5 bg-secondary/50 border border-border rounded-lg p-1">
             {RANGES.map(({ key, label }) => (
               <button
@@ -231,6 +282,7 @@ export function RVEvolutionChart() {
                 onClick={() => {
                   setRange(key);
                   setHover(null);
+                  hoverRef.current = null;
                 }}
                 className={`px-2 py-1 sm:px-3 sm:py-1.5 font-mono text-[10px] tracking-wide rounded-md transition-all duration-150 ${
                   range === key
@@ -244,61 +296,68 @@ export function RVEvolutionChart() {
           </div>
         </div>
 
-        <ResponsiveContainer width="100%" height={200}>
-          <AreaChart
-            key={range}
-            data={chartData}
-            margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
-          >
-            <defs>
-              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity={0.2} />
-                <stop offset="100%" stopColor={color} stopOpacity={0} />
-              </linearGradient>
-            </defs>
+        <div onMouseLeave={handleMouseLeave}>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart
+              key={range}
+              data={chartData}
+              margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.2} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0} />
+                </linearGradient>
+              </defs>
 
-            <XAxis
-              dataKey="captured_at"
-              ticks={xTicks}
-              tickLine={false}
-              axisLine={false}
-              tick={ct.axisTick}
-              tickFormatter={tickFormatter}
-              padding={{ left: 16, right: 16 }}
-            />
-            <YAxis hide domain={["auto", "auto"]} />
+              <XAxis
+                dataKey="captured_at"
+                ticks={xTicks}
+                tickLine={false}
+                axisLine={false}
+                tick={ct.axisTick}
+                tickFormatter={tickFormatter}
+                padding={{ left: 16, right: 16 }}
+              />
+              <YAxis
+                tick={ct.axisTick}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`}
+                width={60}
+                domain={["auto", "auto"]}
+              />
 
-            <Tooltip
-              cursor={{
-                stroke: color,
-                strokeWidth: 1,
-                strokeDasharray: "3 3",
-                opacity: 0.6,
-              }}
-              content={() => null}
-            />
+              <Tooltip
+                cursor={{
+                  stroke: color,
+                  strokeWidth: 1,
+                  strokeDasharray: "3 3",
+                  opacity: 0.6,
+                }}
+                content={tooltipContent}
+              />
 
-            <Area
-              type="monotone"
-              dataKey="value"
-              stroke={color}
-              strokeWidth={2}
-              fill={`url(#${gradientId})`}
-              dot={false}
-              activeDot={{
-                r: 4,
-                fill: color,
-                stroke: "white",
-                strokeWidth: 2,
-              }}
-              isAnimationActive
-              animationDuration={500}
-              animationEasing="ease-out"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+              <Area
+                type="monotone"
+                dataKey="pnlPct"
+                stroke={color}
+                strokeWidth={2}
+                fill={`url(#${gradientId})`}
+                dot={false}
+                activeDot={{
+                  r: 4,
+                  fill: color,
+                  stroke: "white",
+                  strokeWidth: 2,
+                }}
+                isAnimationActive
+                animationDuration={500}
+                animationEasing="ease-out"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );

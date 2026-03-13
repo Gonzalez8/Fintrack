@@ -111,17 +111,17 @@ class ExportInterestsCSV(APIView):
         qs = (
             Interest.objects.filter(owner=request.user)
             .select_related("account")
-            .order_by("date")
+            .order_by("date_end")
         )
         writer_buffer = Echo()
 
         def rows():
             writer = csv.writer(writer_buffer)
-            yield writer.writerow(["Date", "Account", "Gross", "Net", "Balance", "Annual Rate"])
+            yield writer.writerow(["Date Start", "Date End", "Days", "Account", "Gross", "Net", "Balance"])
             for i in qs.iterator():
                 yield writer.writerow([
-                    i.date, i.account.name, i.gross, i.net,
-                    i.balance or "", i.annual_rate or "",
+                    i.date_start, i.date_end, i.days, i.account.name,
+                    i.gross, i.net, i.balance or "",
                 ])
 
         response = StreamingHttpResponse(rows(), content_type="text/csv")

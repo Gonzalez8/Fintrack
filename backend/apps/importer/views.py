@@ -150,6 +150,12 @@ class BackupImportView(APIView):
                     counts["dividends"] += 1
 
                 for item in payload.get("interests", []):
+                    # Backward compat: old backups have "date" instead of "date_start"/"date_end"
+                    if "date" in item and "date_start" not in item:
+                        item["date_start"] = item.pop("date")
+                        item["date_end"] = item["date_start"]
+                    # Remove fields that no longer exist
+                    item.pop("annual_rate", None)
                     Interest.objects.update_or_create(
                         id=item["id"], owner=user,
                         defaults=to_defaults(item, fk_fields=("account",)),
