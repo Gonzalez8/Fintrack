@@ -490,7 +490,7 @@ function TransactionDialog({
 
           <div>
             <label className="text-sm font-medium">{t("common.name")} *</label>
-            <Select value={form.asset} onValueChange={handleAssetChange}>
+            <Select value={form.asset} onValueChange={(v) => v && handleAssetChange(v)}>
               <SelectTrigger className="w-full">
                 <span className="flex flex-1 text-left truncate" data-slot="select-value">
                   {selectedAssetLabel || <span className="text-muted-foreground">{t("common.select")}</span>}
