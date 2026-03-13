@@ -187,8 +187,8 @@ export function RVEvolutionChart() {
 
   // Recharts v3: use Tooltip content prop to capture active data
   const tooltipContent = useCallback(
-    (props: { active?: boolean; payload?: ReadonlyArray<{ payload: ChartPoint }> }) => {
-      if (props.active && props.payload?.[0]) {
+    (props: { active?: boolean; payload?: ReadonlyArray<{ payload?: ChartPoint }> }) => {
+      if (props.active && props.payload?.[0]?.payload) {
         const p = props.payload[0].payload;
         const next: HoverState = {
           mv: p.mv,
