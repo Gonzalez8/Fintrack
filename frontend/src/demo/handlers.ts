@@ -15,6 +15,8 @@ import {
   demoMonthlySavingsStats,
   demoSnapshotStatus,
   demoSettings,
+  getDemoPriceHistory,
+  getDemoPositionHistory,
 } from "./data";
 
 // Fake JWT that won't be rejected by middleware — three base64url segments,
@@ -163,14 +165,14 @@ const proxyHandlers = [
     return HttpResponse.json({ task_id: "demo-task-1", status: "queued" });
   }),
 
-  http.get("/api/proxy/assets/:id/price-history/", async () => {
+  http.get("/api/proxy/assets/:id/price-history/", async ({ params }) => {
     await delay(200);
-    return HttpResponse.json([]);
+    return HttpResponse.json(getDemoPriceHistory(params.id as string));
   }),
 
-  http.get("/api/proxy/assets/:id/position-history/", async () => {
+  http.get("/api/proxy/assets/:id/position-history/", async ({ params }) => {
     await delay(200);
-    return HttpResponse.json([]);
+    return HttpResponse.json(getDemoPositionHistory(params.id as string));
   }),
 
   http.post("/api/proxy/assets/:id/set-price/", async () => {

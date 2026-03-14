@@ -14,3 +14,4 @@ export {
   demoMonthlySavingsStats,
   demoSnapshotStatus,
 } from "./reports";
+export { getDemoPriceHistory, getDemoPositionHistory } from "./charts";
