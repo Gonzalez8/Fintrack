@@ -1,10 +1,32 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { DJANGO_INTERNAL_URL, COOKIE_ACCESS, COOKIE_REFRESH } from "@/lib/constants";
+import { DJANGO_INTERNAL_URL, COOKIE_ACCESS, COOKIE_REFRESH, IS_DEMO } from "@/lib/constants";
+
+// Fake JWT tokens for demo mode (exp year 2099)
+const DEMO_ACCESS = [
+  Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
+  Buffer.from(JSON.stringify({ user_id: 1, username: "demo", exp: 4102444800, iat: Math.floor(Date.now() / 1000) })).toString("base64url"),
+  "demo-sig",
+].join(".");
+const DEMO_REFRESH = [
+  Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
+  Buffer.from(JSON.stringify({ token_type: "refresh", user_id: 1, exp: 4102444800, iat: Math.floor(Date.now() / 1000) })).toString("base64url"),
+  "demo-ref-sig",
+].join(".");
+
+function demoCookieHeaders() {
+  return {
+    "Set-Cookie": [
+      `${COOKIE_ACCESS}=${DEMO_ACCESS}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
+      `${COOKIE_REFRESH}=${DEMO_REFRESH}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`,
+    ].join(", "),
+  };
+}
 
 /**
  * Auth proxy: handles /api/auth/* routes.
- * Forwards to Django and manages JWT cookies on login/refresh/logout.
+ * In demo mode, returns fake auth responses without Django.
+ * Otherwise forwards to Django and manages JWT cookies.
  */
 async function handler(
   req: NextRequest,
@@ -13,6 +35,12 @@ async function handler(
   const { path } = await params;
   const joined = path.join("/");
   const djangoPath = `/api/auth/${joined}${joined.endsWith("/") ? "" : "/"}`;
+
+  // Demo mode: return fake auth responses
+  if (IS_DEMO) {
+    return resolveDemoAuth(djangoPath, req.method);
+  }
+
   const target = `${DJANGO_INTERNAL_URL}${djangoPath}`;
 
   const cookieStore = await cookies();
@@ -71,6 +99,65 @@ async function handler(
     status: djangoRes.status,
     headers: resHeaders,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Demo mode auth resolver
+// ---------------------------------------------------------------------------
+
+async function resolveDemoAuth(
+  authPath: string,
+  method: string,
+): Promise<NextResponse> {
+  const cleanPath = authPath.split("?")[0].replace(/\/$/, "");
+  const { demoUser } = await import("@/demo/data");
+
+  // Login / token
+  if (cleanPath === "/api/auth/token" && method === "POST") {
+    return NextResponse.json(
+      { access: DEMO_ACCESS, user: demoUser },
+      { headers: demoCookieHeaders() },
+    );
+  }
+
+  // Token refresh
+  if (cleanPath === "/api/auth/token/refresh" && method === "POST") {
+    return NextResponse.json(
+      { access: DEMO_ACCESS },
+      { headers: demoCookieHeaders() },
+    );
+  }
+
+  // Logout
+  if (cleanPath === "/api/auth/logout" && method === "POST") {
+    return new NextResponse(null, { status: 204 });
+  }
+
+  // Me
+  if (cleanPath === "/api/auth/me") {
+    return NextResponse.json(demoUser);
+  }
+
+  // Profile
+  if (cleanPath === "/api/auth/profile") {
+    if (method === "PUT") return NextResponse.json({ ok: true });
+    return NextResponse.json({ username: demoUser.username, email: demoUser.email });
+  }
+
+  // Register / Google
+  if ((cleanPath === "/api/auth/register" || cleanPath === "/api/auth/google") && method === "POST") {
+    return NextResponse.json(
+      { access: DEMO_ACCESS, user: demoUser },
+      { headers: demoCookieHeaders() },
+    );
+  }
+
+  // Change password
+  if (cleanPath === "/api/auth/change-password" && method === "POST") {
+    return NextResponse.json({ ok: true });
+  }
+
+  return NextResponse.json({ ok: true });
 }
 
 export const GET = handler;

@@ -1,10 +1,12 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { DJANGO_INTERNAL_URL, COOKIE_ACCESS, COOKIE_REFRESH } from "@/lib/constants";
+import { DJANGO_INTERNAL_URL, COOKIE_ACCESS, COOKIE_REFRESH, IS_DEMO } from "@/lib/constants";
 
 /**
  * BFF proxy: forwards any request from the browser to Django API.
  * Browser calls /api/proxy/assets/ → Django http://backend:8000/api/assets/
+ *
+ * In demo mode, returns static demo data instead of calling Django.
  *
  * If the access token is expired, automatically refreshes it using the
  * refresh token and retries the original request once.
@@ -17,6 +19,12 @@ async function handler(
   const joined = path.join("/");
   const needsSlash = !joined.endsWith("/") && !joined.includes(".");
   const djangoPath = `/api/${joined}${needsSlash ? "/" : ""}`;
+
+  // Demo mode: return static data, no Django backend needed
+  if (IS_DEMO) {
+    return resolveDemoProxy(djangoPath, req.method);
+  }
+
   const url = new URL(req.url);
   const search = url.search;
   const target = `${DJANGO_INTERNAL_URL}${djangoPath}${search}`;
@@ -123,6 +131,61 @@ function buildResponseHeaders(djangoRes: Response): Headers {
     resHeaders.append("Set-Cookie", sc);
   }
   return resHeaders;
+}
+
+// ---------------------------------------------------------------------------
+// Demo mode resolver — returns static data without Django
+// ---------------------------------------------------------------------------
+
+async function resolveDemoProxy(
+  djangoPath: string,
+  method: string,
+): Promise<NextResponse> {
+  const { resolveDemoData } = await import("@/demo/server-data");
+
+  if (method === "DELETE") {
+    return new NextResponse(null, { status: 204 });
+  }
+
+  const cleanPath = djangoPath.split("?")[0].replace(/\/$/, "");
+
+  if (method === "POST" || method === "PUT" || method === "PATCH") {
+    if (cleanPath === "/api/assets/update-prices") {
+      return NextResponse.json({ task_id: "demo-task-1", status: "queued" });
+    }
+    if (/\/set-price$/.test(cleanPath) || /\/bulk-snapshot$/.test(cleanPath)) {
+      return NextResponse.json({ ok: true });
+    }
+    if (cleanPath === "/api/backup/import") {
+      return NextResponse.json({ ok: true, imported: true });
+    }
+    const data = await resolveDemoData(djangoPath);
+    return NextResponse.json(data);
+  }
+
+  // GET — CSV exports
+  if (cleanPath.startsWith("/api/export/")) {
+    return new NextResponse("date,demo,data\n", {
+      headers: { "Content-Type": "text/csv" },
+    });
+  }
+  if (cleanPath === "/api/backup/export") {
+    const d = await import("@/demo/data");
+    return NextResponse.json({
+      version: "2.0",
+      exported_at: new Date().toISOString(),
+      assets: d.demoAssets,
+      accounts: d.demoAccounts,
+      transactions: d.demoTransactions,
+      dividends: d.demoDividends,
+      interests: d.demoInterests,
+      settings: d.demoSettings,
+    });
+  }
+
+  // GET — standard data
+  const data = await resolveDemoData(djangoPath);
+  return NextResponse.json(data);
 }
 
 export const GET = handler;
