@@ -18,10 +18,11 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
   backend:
     image: ghcr.io/gonzalez8/fintrack-backend:latest

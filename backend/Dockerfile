@@ -17,6 +17,5 @@ CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
 # Production target
 FROM base AS production
-RUN pip install --no-cache-dir gunicorn
 EXPOSE 8000
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]
