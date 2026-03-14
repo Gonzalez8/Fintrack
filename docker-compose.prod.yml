@@ -27,7 +27,7 @@ services:
   backend:
     image: ghcr.io/gonzalez8/fintrack-backend:latest
     restart: unless-stopped
-    command: ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120"]
+    command: ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && (python manage.py createsuperuser --noinput || true) && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120"]
     ports:
       - "8001:8000"
     environment:
@@ -46,6 +46,7 @@ services:
       - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-true}
       - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:-admin}
       - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-admin}
+      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-admin@fintrack.local}
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/api/health/\")'"]
       interval: 10s
