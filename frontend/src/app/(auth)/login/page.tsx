@@ -2,20 +2,61 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import { TrendingUp, ArrowRight } from "lucide-react";
+  TrendingUp,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  PieChart,
+  Shield,
+  Zap,
+} from "lucide-react";
 import { authApi, ApiClientError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
-const ALLOW_REGISTRATION = process.env.NEXT_PUBLIC_ALLOW_REGISTRATION !== "false";
+const ALLOW_REGISTRATION =
+  process.env.NEXT_PUBLIC_ALLOW_REGISTRATION !== "false";
 
-// ── Login form ───────────────────────────────────────────────────
+// ── Password input with toggle ──────────────────────────────────
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+  id,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  id?: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className="h-10 pr-10"
+      />
+      <button
+        type="button"
+        onClick={() => setShow(!show)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+        tabIndex={-1}
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
+
+// ── Login form ──────────────────────────────────────────────────
 function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -37,32 +78,50 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium">Usuario</label>
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="space-y-2">
+        <label htmlFor="login-user" className="text-sm font-medium">
+          Usuario
+        </label>
         <Input
+          id="login-user"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          placeholder="Tu nombre de usuario"
+          className="h-10"
           autoFocus
         />
       </div>
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium">Contrasena</label>
-        <Input
-          type="password"
+      <div className="space-y-2">
+        <label htmlFor="login-pass" className="text-sm font-medium">
+          Contrasena
+        </label>
+        <PasswordInput
+          id="login-pass"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          placeholder="Tu contrasena"
         />
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button type="submit" className="w-full" disabled={loading}>
+
+      {error && (
+        <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2">
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
+
+      <Button
+        type="submit"
+        className="w-full h-10 bg-gradient-to-r from-[#1d4ed8] to-[#3b82f6] hover:from-[#1e40af] hover:to-[#2563eb] shadow-[0_2px_12px_rgba(59,130,246,0.3)]"
+        disabled={loading}
+      >
         {loading ? "Iniciando sesion..." : "Iniciar sesion"}
       </Button>
     </form>
   );
 }
 
-// ── Register form ────────────────────────────────────────────────
+// ── Register form ───────────────────────────────────────────────
 function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
   const [form, setForm] = useState({
     username: "",
@@ -104,58 +163,83 @@ function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium">Usuario</label>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <label htmlFor="reg-user" className="text-sm font-medium">
+          Usuario
+        </label>
         <Input
+          id="reg-user"
           value={form.username}
           onChange={(e) => setField("username", e.target.value)}
+          placeholder="Elige un nombre de usuario"
+          className="h-10"
           autoFocus
         />
         {errors.username && (
           <p className="text-xs text-destructive">{errors.username}</p>
         )}
       </div>
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium text-muted-foreground">
+      <div className="space-y-2">
+        <label
+          htmlFor="reg-email"
+          className="text-sm font-medium text-muted-foreground"
+        >
           Email <span className="text-xs">(opcional)</span>
         </label>
         <Input
+          id="reg-email"
           type="email"
           value={form.email}
           onChange={(e) => setField("email", e.target.value)}
+          placeholder="tu@email.com"
+          className="h-10"
         />
         {errors.email && (
           <p className="text-xs text-destructive">{errors.email}</p>
         )}
       </div>
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium">Contrasena</label>
-        <Input
-          type="password"
+      <div className="space-y-2">
+        <label htmlFor="reg-pass" className="text-sm font-medium">
+          Contrasena
+        </label>
+        <PasswordInput
+          id="reg-pass"
           value={form.password}
           onChange={(e) => setField("password", e.target.value)}
+          placeholder="Min. 8 caracteres"
         />
         {errors.password && (
           <p className="text-xs text-destructive">{errors.password}</p>
         )}
       </div>
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium">Confirmar contrasena</label>
-        <Input
-          type="password"
+      <div className="space-y-2">
+        <label htmlFor="reg-pass2" className="text-sm font-medium">
+          Confirmar contrasena
+        </label>
+        <PasswordInput
+          id="reg-pass2"
           value={form.password2}
           onChange={(e) => setField("password2", e.target.value)}
+          placeholder="Repite la contrasena"
         />
         {errors.password2 && (
           <p className="text-xs text-destructive">{errors.password2}</p>
         )}
       </div>
+
       {errors.non_field_errors && (
-        <p className="text-sm text-destructive">{errors.non_field_errors}</p>
+        <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2">
+          <p className="text-sm text-destructive">{errors.non_field_errors}</p>
+        </div>
       )}
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "Registrando..." : "Registrarse"}
+
+      <Button
+        type="submit"
+        className="w-full h-10 bg-gradient-to-r from-[#1d4ed8] to-[#3b82f6] hover:from-[#1e40af] hover:to-[#2563eb] shadow-[0_2px_12px_rgba(59,130,246,0.3)]"
+        disabled={loading}
+      >
+        {loading ? "Registrando..." : "Crear cuenta"}
       </Button>
     </form>
   );
@@ -164,20 +248,11 @@ function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
 // ── Page ─────────────────────────────────────────────────────────
 export default function LoginPage() {
   const router = useRouter();
-  const [authOpen, setAuthOpen] = useState(false);
-  const [authTab, setAuthTab] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register">("login");
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoError, setDemoError] = useState("");
 
   const onSuccess = () => router.push("/");
-  const openLogin = () => {
-    setAuthTab("login");
-    setAuthOpen(true);
-  };
-  const openRegister = () => {
-    setAuthTab("register");
-    setAuthOpen(true);
-  };
 
   const handleDemo = async () => {
     setDemoLoading(true);
@@ -198,175 +273,221 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* ── Navbar ── */}
-      <nav className="fixed top-0 z-50 w-full border-b border-border/30 bg-background/60 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-background">
+      {/* ── Left panel: branding ── */}
+      <div className="relative hidden lg:flex lg:w-1/2 xl:w-[55%] flex-col justify-between overflow-hidden bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a]">
+        {/* Background effects */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_30%_20%,rgba(59,130,246,0.2),transparent_70%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_40%_at_70%_80%,rgba(99,102,241,0.1),transparent_70%)]" />
+          <div
+            className="absolute inset-0 opacity-[0.04]"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)",
+              backgroundSize: "40px 40px",
+            }}
+          />
+        </div>
+
+        {/* Logo */}
+        <div className="relative z-10 p-8 lg:p-10">
+          <Link href="/welcome" className="flex items-center gap-3 group">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#3b82f6] to-[#6366f1] shadow-[0_0_24px_rgba(59,130,246,0.5)] transition-shadow group-hover:shadow-[0_0_32px_rgba(59,130,246,0.6)]">
+              <TrendingUp className="h-5 w-5 text-white" />
+            </div>
+            <span className="font-mono text-sm font-bold tracking-[3px] uppercase text-white/90">
+              Fintrack
+            </span>
+          </Link>
+        </div>
+
+        {/* Central content */}
+        <div className="relative z-10 flex-1 flex items-center px-8 lg:px-10 xl:px-16">
+          <div className="max-w-lg">
+            <h1 className="text-3xl xl:text-4xl font-bold tracking-tight text-white leading-[1.2]">
+              Todas tus inversiones,
+              <br />
+              <span className="bg-gradient-to-r from-[#60a5fa] to-[#818cf8] bg-clip-text text-transparent">
+                un unico panel.
+              </span>
+            </h1>
+            <p className="mt-4 text-base text-white/50 leading-relaxed max-w-md">
+              Controla cartera, operaciones, dividendos, intereses y
+              fiscalidad con total privacidad.
+            </p>
+
+            {/* Feature highlights */}
+            <div className="mt-10 space-y-5">
+              {[
+                {
+                  icon: PieChart,
+                  title: "Cartera completa",
+                  desc: "FIFO, LIFO y WAC con P&L en tiempo real",
+                },
+                {
+                  icon: Shield,
+                  title: "100% privado",
+                  desc: "Self-hosted, sin tracking, tus datos son tuyos",
+                },
+                {
+                  icon: Zap,
+                  title: "Listo en minutos",
+                  desc: "Docker Compose y a funcionar",
+                },
+              ].map((item) => (
+                <div key={item.title} className="flex items-start gap-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] border border-white/[0.08]">
+                    <item.icon className="h-4 w-4 text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white/90">
+                      {item.title}
+                    </p>
+                    <p className="text-sm text-white/40">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom stats bar */}
+        <div className="relative z-10 border-t border-white/[0.06] px-8 lg:px-10 xl:px-16 py-6">
+          <div className="flex items-center gap-8">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[2px] text-white/30">
+                Stack
+              </p>
+              <p className="mt-1 text-sm text-white/60">
+                Django + Next.js + PostgreSQL
+              </p>
+            </div>
+            <div className="h-8 w-px bg-white/[0.06]" />
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[2px] text-white/30">
+                Licencia
+              </p>
+              <p className="mt-1 text-sm text-white/60">Open Source</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Right panel: auth forms ── */}
+      <div className="flex flex-1 flex-col">
+        {/* Mobile header */}
+        <div className="flex items-center justify-between p-4 lg:hidden">
+          <Link href="/welcome" className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#1d4ed8] to-[#3b82f6] shadow-[0_0_20px_rgba(59,130,246,0.4)]">
               <TrendingUp className="h-4 w-4 text-white" />
             </div>
             <span className="font-mono text-sm font-bold tracking-[3px] uppercase">
               Fintrack
             </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {IS_DEMO && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDemo}
-                disabled={demoLoading}
-                className="hidden sm:inline-flex"
-              >
-                {demoLoading ? "Cargando..." : "Probar Demo"}
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={openLogin}
-              className="hidden sm:inline-flex"
-            >
-              Iniciar sesion
-            </Button>
-            <Button
-              size="sm"
-              onClick={ALLOW_REGISTRATION ? openRegister : openLogin}
-              className="bg-gradient-to-r from-[#1d4ed8] to-[#3b82f6] hover:from-[#1e40af] hover:to-[#2563eb] shadow-[0_0_20px_rgba(59,130,246,0.3)]"
-            >
-              Comenzar
-            </Button>
-          </div>
-        </div>
-      </nav>
-
-      {/* ── Hero ── */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(59,130,246,0.15),transparent_70%)]" />
-          <div
-            className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle, currentColor 1px, transparent 1px)",
-              backgroundSize: "32px 32px",
-            }}
-          />
+          </Link>
         </div>
 
-        <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-20 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 mb-8">
-            <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            <span className="font-mono text-[10px] tracking-[2px] uppercase text-primary">
-              Open Source &middot; Self-Hosted
-            </span>
-          </div>
-
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.1]">
-            <span className="bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
-              Controla tus
-            </span>
-            <br />
-            <span className="bg-gradient-to-r from-[#1d4ed8] to-[#60a5fa] bg-clip-text text-transparent">
-              inversiones
-            </span>
-          </h1>
-
-          <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Cartera, operaciones, dividendos, intereses y fiscalidad.
-            Todo en un unico panel, con total privacidad.
-          </p>
-
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button
-              size="lg"
-              onClick={ALLOW_REGISTRATION ? openRegister : openLogin}
-              className="h-12 px-8 text-base bg-gradient-to-r from-[#1d4ed8] to-[#3b82f6] hover:from-[#1e40af] hover:to-[#2563eb] shadow-[0_4px_24px_rgba(59,130,246,0.4)] gap-2"
-            >
-              Comenzar <ArrowRight className="h-4 w-4" />
-            </Button>
-            {IS_DEMO && (
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={handleDemo}
-                disabled={demoLoading}
-                className="h-12 px-8 text-base"
-              >
-                {demoLoading ? "Cargando demo..." : "Ver demo"}
-              </Button>
-            )}
-          </div>
-
-          {demoError && (
-            <p className="mt-4 text-sm text-destructive">{demoError}</p>
-          )}
-        </div>
-      </section>
-
-      {/* ── Auth Dialog ── */}
-      <Dialog open={authOpen} onOpenChange={setAuthOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader className="items-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[8px] bg-gradient-to-br from-[#1d4ed8] to-[#3b82f6] shadow-[0_0_16px_rgba(59,130,246,0.5)] mb-2">
-              <TrendingUp className="h-5 w-5 text-white" />
+        {/* Form container */}
+        <div className="flex flex-1 items-center justify-center px-4 py-8 sm:px-8">
+          <div className="w-full max-w-[380px]">
+            {/* Header */}
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold tracking-tight">
+                {mode === "login"
+                  ? "Bienvenido de nuevo"
+                  : "Crea tu cuenta"}
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {mode === "login"
+                  ? "Introduce tus credenciales para acceder"
+                  : "Registrate para empezar a gestionar tus inversiones"}
+              </p>
             </div>
-            <DialogTitle className="font-mono text-[18px] font-bold tracking-[4px] uppercase">
-              Fintrack
-            </DialogTitle>
-            <p className="font-mono text-[9px] tracking-[4px] uppercase text-primary">
-              Investment Tracker
-            </p>
-          </DialogHeader>
 
-          <div className="space-y-4">
-            {ALLOW_REGISTRATION ? (
-              <Tabs
-                value={authTab}
-                onValueChange={(v) =>
-                  setAuthTab(v as "login" | "register")
-                }
-              >
-                <TabsList className="w-full mb-1">
-                  <TabsTrigger value="login" className="flex-1">
-                    Iniciar sesion
-                  </TabsTrigger>
-                  <TabsTrigger value="register" className="flex-1">
-                    Registrarse
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="login" className="mt-3">
-                  <LoginForm onSuccess={onSuccess} />
-                </TabsContent>
-                <TabsContent value="register" className="mt-3">
-                  <RegisterForm onSuccess={onSuccess} />
-                </TabsContent>
-              </Tabs>
-            ) : (
+            {/* Form */}
+            {mode === "login" ? (
               <LoginForm onSuccess={onSuccess} />
+            ) : (
+              <RegisterForm onSuccess={onSuccess} />
             )}
 
+            {/* Toggle login/register */}
+            {ALLOW_REGISTRATION && (
+              <p className="mt-6 text-center text-sm text-muted-foreground">
+                {mode === "login" ? (
+                  <>
+                    No tienes cuenta?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setMode("register")}
+                      className="font-medium text-primary hover:text-primary/80 transition-colors"
+                    >
+                      Registrate
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Ya tienes cuenta?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setMode("login")}
+                      className="font-medium text-primary hover:text-primary/80 transition-colors"
+                    >
+                      Inicia sesion
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
+
+            {/* Demo button */}
             {IS_DEMO && (
-              <div className="border-t pt-4">
-                <p className="mb-2 text-center text-xs text-muted-foreground">
-                  Sin cuenta? Prueba la demo
-                </p>
+              <div className="mt-8">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground font-mono tracking-wider">
+                      o
+                    </span>
+                  </div>
+                </div>
+
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full"
+                  className="mt-4 w-full h-10 gap-2"
                   disabled={demoLoading}
                   onClick={handleDemo}
                 >
-                  {demoLoading ? "Cargando..." : "Probar Demo"}
+                  {demoLoading ? (
+                    "Cargando demo..."
+                  ) : (
+                    <>
+                      Probar Demo <ArrowRight className="h-3.5 w-3.5" />
+                    </>
+                  )}
                 </Button>
+
+                {demoError && (
+                  <p className="mt-2 text-center text-sm text-destructive">
+                    {demoError}
+                  </p>
+                )}
               </div>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 py-4 sm:px-8">
+          <p className="text-center text-xs text-muted-foreground">
+            Open Source &middot; Self-Hosted &middot; 100% Privado
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

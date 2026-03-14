@@ -66,6 +66,19 @@ function SelectLabel({ label, placeholder }: { label: string; placeholder?: stri
   );
 }
 
+// ── Field wrapper: label + control, consistent with asset detail page ──
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <p className="font-mono text-[9px] tracking-[1.5px] uppercase text-muted-foreground">
+        {label}
+      </p>
+      {children}
+    </div>
+  );
+}
+
 export function SettingsContent() {
   const t = useTranslations();
   const queryClient = useQueryClient();
@@ -74,6 +87,7 @@ export function SettingsContent() {
   const { data: settings } = useQuery({
     queryKey: ["settings"],
     queryFn: () => api.get<Settings>("/settings/"),
+    staleTime: 10 * 60_000,
   });
 
   const { data: snapshotStatus } = useQuery({
@@ -225,9 +239,23 @@ export function SettingsContent() {
 
   if (!settings) return null;
 
+  const hasPendingChanges = Object.keys(form).length > 0;
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-lg font-semibold">{t("settings.title")}</h1>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-semibold">{t("settings.title")}</h1>
+        <div className="flex items-center gap-2">
+          {settingsSaved && <span className="text-xs text-green-500">{t("settings.settingsSaved")}</span>}
+          <Button
+            size="sm"
+            onClick={() => settingsMut.mutate(form)}
+            disabled={!hasPendingChanges || settingsMut.isPending}
+          >
+            {settingsMut.isPending ? t("common.saving") : t("settings.saveSettings")}
+          </Button>
+        </div>
+      </div>
 
       {/* Cost method change warning dialog */}
       <Dialog open={methodWarning !== null} onOpenChange={(open) => { if (!open) setMethodWarning(null); }}>
@@ -251,279 +279,289 @@ export function SettingsContent() {
         </DialogContent>
       </Dialog>
 
-      {/* General settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("settings.generalSettings")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 max-w-xl">
-            <div>
-              <label className="text-sm font-medium">{t("settings.baseCurrency")}</label>
-              <Input value={current.base_currency ?? "EUR"} onChange={(e) => setForm((f) => ({ ...f, base_currency: e.target.value }))} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">{t("settings.costMethod")}</label>
-              <Select value={current.cost_basis_method} onValueChange={(v) => v && handleCostMethodChange("cost_basis_method", v)}>
-                <SelectTrigger>
-                  <SelectLabel label={COST_METHOD_LABELS[current.cost_basis_method] ?? ""} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="FIFO">{t("settings.fifo")}</SelectItem>
-                  <SelectItem value="LIFO">{t("settings.lifo")}</SelectItem>
-                  <SelectItem value="WAC">{t("settings.wac")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">{t("settings.fiscalMethod")}</label>
-              <Select value={current.fiscal_cost_method} onValueChange={(v) => v && handleCostMethodChange("fiscal_cost_method", v)}>
-                <SelectTrigger>
-                  <SelectLabel label={COST_METHOD_LABELS[current.fiscal_cost_method] ?? ""} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="FIFO">{t("settings.fifo")}</SelectItem>
-                  <SelectItem value="LIFO">{t("settings.lifo")}</SelectItem>
-                  <SelectItem value="WAC">{t("settings.wac")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">{t("settings.giftCost")}</label>
-              <Select value={current.gift_cost_mode} onValueChange={(v) => v && setForm((f) => ({ ...f, gift_cost_mode: v as Settings["gift_cost_mode"] }))}>
-                <SelectTrigger>
-                  <SelectLabel label={GIFT_COST_LABELS[current.gift_cost_mode] ?? ""} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ZERO">{t("settings.zeroCost")}</SelectItem>
-                  <SelectItem value="MARKET">{t("settings.marketPrice")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">{t("settings.moneyDecimals")}</label>
-              <Input type="number" value={current.rounding_money ?? 2} onChange={(e) => setForm((f) => ({ ...f, rounding_money: parseInt(e.target.value) }))} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">{t("settings.quantityDecimals")}</label>
-              <Input type="number" value={current.rounding_qty ?? 6} onChange={(e) => setForm((f) => ({ ...f, rounding_qty: parseInt(e.target.value) }))} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">{t("settings.priceUpdateFreq")}</label>
-              <Select value={String(current.price_update_interval ?? 0)} onValueChange={(v) => v && setForm((f) => ({ ...f, price_update_interval: parseInt(v) }))}>
-                <SelectTrigger>
-                  <SelectLabel label={PRICE_UPDATE_LABELS[String(current.price_update_interval ?? 0)] ?? ""} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">{t("settings.manual")}</SelectItem>
-                  <SelectItem value="5">{t("settings.min5")}</SelectItem>
-                  <SelectItem value="15">{t("settings.min15")}</SelectItem>
-                  <SelectItem value="30">{t("settings.min30")}</SelectItem>
-                  <SelectItem value="60">{t("settings.hour1")}</SelectItem>
-                  <SelectItem value="360">{t("settings.hours6")}</SelectItem>
-                  <SelectItem value="1440">{t("settings.hours24")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">{t("settings.priceSource")}</label>
-              <Select value={current.default_price_source ?? "YAHOO"} onValueChange={(v) => v && setForm((f) => ({ ...f, default_price_source: v as Settings["default_price_source"] }))}>
-                <SelectTrigger>
-                  <SelectLabel label={PRICE_SOURCE_LABELS[current.default_price_source ?? "YAHOO"] ?? ""} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="YAHOO">Yahoo Finance</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="sm:col-span-2">
-              <label className="text-sm font-medium">{t("settings.snapshotFreq")}</label>
-              <Select value={String(current.snapshot_frequency ?? 1440)} onValueChange={(v) => v && setForm((f) => ({ ...f, snapshot_frequency: parseInt(v) }))}>
-                <SelectTrigger>
-                  <SelectLabel label={SNAPSHOT_FREQ_LABELS[String(current.snapshot_frequency ?? 1440)] ?? ""} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">{t("settings.snapshotDisabled")}</SelectItem>
-                  <SelectItem value="15">{t("settings.every15min")}</SelectItem>
-                  <SelectItem value="30">{t("settings.every30min")}</SelectItem>
-                  <SelectItem value="60">{t("settings.every1h")}</SelectItem>
-                  <SelectItem value="180">{t("settings.every3h")}</SelectItem>
-                  <SelectItem value="360">{t("settings.every6h")}</SelectItem>
-                  <SelectItem value="720">{t("settings.every12h")}</SelectItem>
-                  <SelectItem value="1440">{t("settings.every24h")}</SelectItem>
-                </SelectContent>
-              </Select>
+      {/* ── Two-column card layout (like asset detail) ── */}
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
 
-              {snapshotStatus && (
-                <div className="mt-2 flex flex-wrap gap-3">
-                  {snapshotStatus.frequency_minutes === 0 ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" />
-                      {t("settings.snapshotsDisabled")}
-                    </span>
-                  ) : (
-                    <>
-                      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                        {snapshotStatus.last_snapshot
-                          ? <>{t("settings.lastSnapshot")}: <span className="font-medium text-foreground">{formatRelative(new Date(snapshotStatus.last_snapshot), now)}</span> &middot; {formatDateTime(snapshotStatus.last_snapshot)}</>
-                          : t("settings.noSnapshots")}
-                      </span>
-                      {snapshotStatus.next_snapshot && (
-                        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                          {t("settings.nextSnapshot")}: <span className="font-medium text-foreground">{formatRelative(new Date(snapshotStatus.next_snapshot), now)}</span> &middot; {formatDateTime(snapshotStatus.next_snapshot)}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="mt-4 flex items-center gap-3">
-            <Button onClick={() => settingsMut.mutate(form)} disabled={Object.keys(form).length === 0 || settingsMut.isPending}>
-              {settingsMut.isPending ? t("common.saving") : t("settings.saveSettings")}
-            </Button>
-            {settingsSaved && <span className="text-sm text-green-600">{t("settings.settingsSaved")}</span>}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Storage */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("settings.storage")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4 max-w-xl">
-            <div>
-              <p className="text-sm text-muted-foreground mb-2">{t("settings.storageDesc")}</p>
-              <div className="flex items-baseline gap-1.5">
-                {storageLoading ? (
-                  <span className="text-sm text-muted-foreground">{t("settings.calculating")}</span>
-                ) : (
-                  <>
-                    <span className="text-2xl font-semibold tabular-nums">
-                      {storageInfo ? storageInfo.total_mb.toFixed(2) : "—"}
-                    </span>
-                    <span className="text-sm text-muted-foreground">{t("settings.mb")}</span>
-                  </>
-                )}
-              </div>
-              {storageInfo && storageInfo.tables.length > 0 && (
-                <TooltipProvider delay={200}>
-                  <div className="mt-3 space-y-1">
-                    {storageInfo.tables.map((tbl) => {
-                      const tooltipKey = TABLE_TOOLTIP_KEYS[tbl.table];
-                      return (
-                        <div key={tbl.table} className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1 font-mono">
-                            {tbl.table}
-                            {tooltipKey && (
-                              <Tooltip>
-                                <TooltipTrigger className="inline-flex">
-                                  <Info className="h-3 w-3 shrink-0 cursor-help text-muted-foreground/60" />
-                                </TooltipTrigger>
-                                <TooltipContent side="right" className="max-w-xs">
-                                  {t(tooltipKey)}
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </span>
-                          <span className="tabular-nums">{tbl.size_mb.toFixed(3)} {t("settings.mb")}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </TooltipProvider>
-              )}
-            </div>
-
-            {/* Data retention */}
-            <div className="pt-2 border-t">
-              <label className="text-sm font-medium">{t("settings.dataRetention")}</label>
-              <p className="text-xs text-muted-foreground mt-0.5 mb-2">
-                {t("settings.dataRetentionDesc")}
-              </p>
-              <div className="flex items-center gap-3">
-                <Select
-                  value={currentRetention === null || currentRetention === undefined ? "never" : String(currentRetention)}
-                  onValueChange={(v) => v && setRetentionDays(v === "never" ? null : parseInt(v))}
-                >
-                  <SelectTrigger className="w-56">
-                    <SelectLabel label={RETENTION_LABELS[currentRetention === null || currentRetention === undefined ? "never" : String(currentRetention)] ?? ""} />
+        {/* Portfolio Calculation */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="font-mono text-[9px] tracking-[2px] uppercase text-muted-foreground">
+              {t("settings.generalSettings")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4 sm:gap-x-6">
+              <Field label={t("settings.baseCurrency")}>
+                <Input value={current.base_currency ?? "EUR"} onChange={(e) => setForm((f) => ({ ...f, base_currency: e.target.value }))} />
+              </Field>
+              <Field label={t("settings.costMethod")}>
+                <Select value={current.cost_basis_method} onValueChange={(v) => v && handleCostMethodChange("cost_basis_method", v)}>
+                  <SelectTrigger>
+                    <SelectLabel label={COST_METHOD_LABELS[current.cost_basis_method] ?? ""} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="never">{t("settings.neverDelete")}</SelectItem>
-                    <SelectItem value="365">{t("settings.olderThan1y")}</SelectItem>
-                    <SelectItem value="1825">{t("settings.olderThan5y")}</SelectItem>
-                    <SelectItem value="3650">{t("settings.olderThan10y")}</SelectItem>
+                    <SelectItem value="FIFO">{t("settings.fifo")}</SelectItem>
+                    <SelectItem value="LIFO">{t("settings.lifo")}</SelectItem>
+                    <SelectItem value="WAC">{t("settings.wac")}</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const payload: Partial<Settings> = { data_retention_days: currentRetention };
-                    if (purgePortfolio !== undefined) payload.purge_portfolio_snapshots = purgePortfolio;
-                    if (purgePosition !== undefined) payload.purge_position_snapshots = purgePosition;
-                    settingsMut.mutate(payload);
-                    setRetentionDays(undefined);
-                    setPurgePortfolio(undefined);
-                    setPurgePosition(undefined);
-                  }}
-                  disabled={(retentionDays === undefined && purgePortfolio === undefined && purgePosition === undefined) || settingsMut.isPending}
-                >
-                  {t("common.save")}
-                </Button>
-              </div>
+              </Field>
+              <Field label={t("settings.fiscalMethod")}>
+                <Select value={current.fiscal_cost_method} onValueChange={(v) => v && handleCostMethodChange("fiscal_cost_method", v)}>
+                  <SelectTrigger>
+                    <SelectLabel label={COST_METHOD_LABELS[current.fiscal_cost_method] ?? ""} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="FIFO">{t("settings.fifo")}</SelectItem>
+                    <SelectItem value="LIFO">{t("settings.lifo")}</SelectItem>
+                    <SelectItem value="WAC">{t("settings.wac")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label={t("settings.giftCost")}>
+                <Select value={current.gift_cost_mode} onValueChange={(v) => v && setForm((f) => ({ ...f, gift_cost_mode: v as Settings["gift_cost_mode"] }))}>
+                  <SelectTrigger>
+                    <SelectLabel label={GIFT_COST_LABELS[current.gift_cost_mode] ?? ""} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ZERO">{t("settings.zeroCost")}</SelectItem>
+                    <SelectItem value="MARKET">{t("settings.marketPrice")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label={t("settings.moneyDecimals")}>
+                <Input type="number" value={current.rounding_money ?? 2} onChange={(e) => setForm((f) => ({ ...f, rounding_money: parseInt(e.target.value) }))} />
+              </Field>
+              <Field label={t("settings.quantityDecimals")}>
+                <Input type="number" value={current.rounding_qty ?? 6} onChange={(e) => setForm((f) => ({ ...f, rounding_qty: parseInt(e.target.value) }))} />
+              </Field>
+            </div>
+          </CardContent>
+        </Card>
 
-              {currentRetention !== null && currentRetention !== undefined && (
-                <div className="mt-3 space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">{t("settings.purgeTargets")}</p>
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
-                      checked={currentPurgePortfolio}
-                      onChange={(e) => setPurgePortfolio(e.target.checked)}
-                    />
-                    <span className="text-xs">
-                      <span className="font-medium">{t("settings.purgePortfolioSnapshots")}</span>
-                      <span className="text-muted-foreground"> — {t("settings.purgePortfolioSnapshotsDesc")}</span>
+        {/* Prices & Snapshots */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="font-mono text-[9px] tracking-[2px] uppercase text-muted-foreground">
+              {t("settings.priceUpdateFreq")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4 sm:gap-x-6">
+              <Field label={t("settings.priceUpdateFreq")}>
+                <Select value={String(current.price_update_interval ?? 0)} onValueChange={(v) => v && setForm((f) => ({ ...f, price_update_interval: parseInt(v) }))}>
+                  <SelectTrigger>
+                    <SelectLabel label={PRICE_UPDATE_LABELS[String(current.price_update_interval ?? 0)] ?? ""} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">{t("settings.manual")}</SelectItem>
+                    <SelectItem value="5">{t("settings.min5")}</SelectItem>
+                    <SelectItem value="15">{t("settings.min15")}</SelectItem>
+                    <SelectItem value="30">{t("settings.min30")}</SelectItem>
+                    <SelectItem value="60">{t("settings.hour1")}</SelectItem>
+                    <SelectItem value="360">{t("settings.hours6")}</SelectItem>
+                    <SelectItem value="1440">{t("settings.hours24")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label={t("settings.priceSource")}>
+                <Select value={current.default_price_source ?? "YAHOO"} onValueChange={(v) => v && setForm((f) => ({ ...f, default_price_source: v as Settings["default_price_source"] }))}>
+                  <SelectTrigger>
+                    <SelectLabel label={PRICE_SOURCE_LABELS[current.default_price_source ?? "YAHOO"] ?? ""} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="YAHOO">Yahoo Finance</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <div className="sm:col-span-2">
+                <Field label={t("settings.snapshotFreq")}>
+                  <Select value={String(current.snapshot_frequency ?? 1440)} onValueChange={(v) => v && setForm((f) => ({ ...f, snapshot_frequency: parseInt(v) }))}>
+                    <SelectTrigger>
+                      <SelectLabel label={SNAPSHOT_FREQ_LABELS[String(current.snapshot_frequency ?? 1440)] ?? ""} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">{t("settings.snapshotDisabled")}</SelectItem>
+                      <SelectItem value="15">{t("settings.every15min")}</SelectItem>
+                      <SelectItem value="30">{t("settings.every30min")}</SelectItem>
+                      <SelectItem value="60">{t("settings.every1h")}</SelectItem>
+                      <SelectItem value="180">{t("settings.every3h")}</SelectItem>
+                      <SelectItem value="360">{t("settings.every6h")}</SelectItem>
+                      <SelectItem value="720">{t("settings.every12h")}</SelectItem>
+                      <SelectItem value="1440">{t("settings.every24h")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+
+                {snapshotStatus && snapshotStatus.frequency_minutes > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-green-500" />
+                      {snapshotStatus.last_snapshot
+                        ? <>{t("settings.lastSnapshot")}: <span className="font-medium text-foreground">{formatRelative(new Date(snapshotStatus.last_snapshot), now)}</span> · {formatDateTime(snapshotStatus.last_snapshot)}</>
+                        : t("settings.noSnapshots")}
                     </span>
-                  </label>
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
-                      checked={currentPurgePosition}
-                      onChange={(e) => setPurgePosition(e.target.checked)}
-                    />
-                    <span className="text-xs">
-                      <span className="font-medium">{t("settings.purgePositionSnapshots")}</span>
-                      <span className="text-muted-foreground"> — {t("settings.purgePositionSnapshotsDesc")}</span>
-                    </span>
-                  </label>
-                </div>
+                    {snapshotStatus.next_snapshot && (
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
+                        {t("settings.nextSnapshot")}: <span className="font-medium text-foreground">{formatRelative(new Date(snapshotStatus.next_snapshot), now)}</span> · {formatDateTime(snapshotStatus.next_snapshot)}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {snapshotStatus && snapshotStatus.frequency_minutes === 0 && (
+                  <span className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" />
+                    {t("settings.snapshotsDisabled")}
+                  </span>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Storage & Retention ── */}
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="font-mono text-[9px] tracking-[2px] uppercase text-muted-foreground">
+              {t("settings.storage")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-3">{t("settings.storageDesc")}</p>
+            <div className="flex items-baseline gap-1.5 mb-3">
+              {storageLoading ? (
+                <span className="text-sm text-muted-foreground">{t("settings.calculating")}</span>
+              ) : (
+                <>
+                  <span className="text-xl sm:text-2xl font-bold tabular-nums">
+                    {storageInfo ? storageInfo.total_mb.toFixed(2) : "—"}
+                  </span>
+                  <span className="text-sm text-muted-foreground">{t("settings.mb")}</span>
+                </>
               )}
             </div>
-          </div>
-        </CardContent>
-      </Card>
+            {storageInfo && storageInfo.tables.length > 0 && (
+              <TooltipProvider delay={200}>
+                <div className="space-y-1">
+                  {storageInfo.tables.map((tbl) => {
+                    const tooltipKey = TABLE_TOOLTIP_KEYS[tbl.table];
+                    return (
+                      <div key={tbl.table} className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1 font-mono truncate min-w-0">
+                          {tbl.table}
+                          {tooltipKey && (
+                            <Tooltip>
+                              <TooltipTrigger className="inline-flex">
+                                <Info className="h-3 w-3 shrink-0 cursor-help text-muted-foreground/60" />
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs">
+                                {t(tooltipKey)}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </span>
+                        <span className="tabular-nums shrink-0 ml-2">{tbl.size_mb.toFixed(3)} {t("settings.mb")}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </TooltipProvider>
+            )}
+          </CardContent>
+        </Card>
 
-      {/* Backup */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="font-mono text-[9px] tracking-[2px] uppercase text-muted-foreground">
+              {t("settings.dataRetention")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-3">
+              {t("settings.dataRetentionDesc")}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+              <Select
+                value={currentRetention === null || currentRetention === undefined ? "never" : String(currentRetention)}
+                onValueChange={(v) => v && setRetentionDays(v === "never" ? null : parseInt(v))}
+              >
+                <SelectTrigger className="w-full sm:w-56">
+                  <SelectLabel label={RETENTION_LABELS[currentRetention === null || currentRetention === undefined ? "never" : String(currentRetention)] ?? ""} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="never">{t("settings.neverDelete")}</SelectItem>
+                  <SelectItem value="365">{t("settings.olderThan1y")}</SelectItem>
+                  <SelectItem value="1825">{t("settings.olderThan5y")}</SelectItem>
+                  <SelectItem value="3650">{t("settings.olderThan10y")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const payload: Partial<Settings> = { data_retention_days: currentRetention };
+                  if (purgePortfolio !== undefined) payload.purge_portfolio_snapshots = purgePortfolio;
+                  if (purgePosition !== undefined) payload.purge_position_snapshots = purgePosition;
+                  settingsMut.mutate(payload);
+                  setRetentionDays(undefined);
+                  setPurgePortfolio(undefined);
+                  setPurgePosition(undefined);
+                }}
+                disabled={(retentionDays === undefined && purgePortfolio === undefined && purgePosition === undefined) || settingsMut.isPending}
+              >
+                {t("common.save")}
+              </Button>
+            </div>
+
+            {currentRetention !== null && currentRetention !== undefined && (
+              <div className="mt-4 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">{t("settings.purgeTargets")}</p>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
+                    checked={currentPurgePortfolio}
+                    onChange={(e) => setPurgePortfolio(e.target.checked)}
+                  />
+                  <span className="text-xs">
+                    <span className="font-medium">{t("settings.purgePortfolioSnapshots")}</span>
+                    <span className="text-muted-foreground"> — {t("settings.purgePortfolioSnapshotsDesc")}</span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
+                    checked={currentPurgePosition}
+                    onChange={(e) => setPurgePosition(e.target.checked)}
+                  />
+                  <span className="text-xs">
+                    <span className="font-medium">{t("settings.purgePositionSnapshots")}</span>
+                    <span className="text-muted-foreground"> — {t("settings.purgePositionSnapshotsDesc")}</span>
+                  </span>
+                </label>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Backup ── */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("settings.backup")}</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="font-mono text-[9px] tracking-[2px] uppercase text-muted-foreground">
+            {t("settings.backup")}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
+          <p className="text-xs text-muted-foreground mb-4">
             {t("settings.backupDesc")}
           </p>
           <div className="flex flex-wrap gap-3 items-center">
-            <Button variant="outline" onClick={handleExport}>
+            <Button variant="outline" size="sm" onClick={handleExport}>
               {t("settings.downloadBackup")}
             </Button>
             <input
@@ -533,7 +571,7 @@ export function SettingsContent() {
               className="hidden"
               onChange={handleFileChange}
             />
-            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing}>
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={importing}>
               {importing ? `${t("common.loading")}...` : t("settings.importBackup")}
             </Button>
           </div>
@@ -541,7 +579,7 @@ export function SettingsContent() {
           {importResult && (
             <div className="mt-4 rounded-md bg-green-500/10 border border-green-500/20 p-3 text-sm text-green-700 dark:text-green-400">
               <p className="font-medium mb-1">{t("settings.backupImported")}</p>
-              <ul className="space-y-0.5">
+              <ul className="space-y-0.5 text-xs">
                 <li>{t("settings.backupAssets")}: {importResult.assets}</li>
                 <li>{t("settings.backupAccounts")}: {importResult.accounts}</li>
                 <li>{t("settings.backupAccountHistory")}: {importResult.account_snapshots}</li>

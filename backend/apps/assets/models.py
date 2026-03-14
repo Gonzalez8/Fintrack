@@ -42,6 +42,10 @@ class Asset(UserOwnedModel):
     class Meta:
         ordering = ["name"]
         unique_together = [("owner", "ticker"), ("owner", "isin")]
+        indexes = [
+            models.Index(fields=["owner", "type"], name="idx_asset_owner_type"),
+            models.Index(fields=["owner", "price_status"], name="idx_asset_owner_pstatus"),
+        ]
 
     def save(self, *args, **kwargs):
         if self.isin and not self.issuer_country:
@@ -82,6 +86,10 @@ class AccountSnapshot(UserOwnedModel):
     class Meta:
         unique_together = ["account", "date"]
         ordering = ["-date"]
+        indexes = [
+            models.Index(fields=["owner", "date"], name="idx_accsnapshot_owner_date"),
+            models.Index(fields=["account", "-date"], name="idx_accsnapshot_acc_date"),
+        ]
 
     def __str__(self):
         return f"{self.account.name} @ {self.date}: {self.balance}"
@@ -146,6 +154,9 @@ class PositionSnapshot(models.Model):
                 name="unique_positionsnapshot_batch_asset",
             )
         ]
+        indexes = [
+            models.Index(fields=["owner", "asset_id", "captured_at"], name="idx_possnapshot_owner_asset"),
+        ]
 
     def __str__(self):
         return f"{self.asset.name} @ {self.captured_at}: {self.market_value}"
@@ -203,7 +214,12 @@ class Settings(models.Model):
 
     @classmethod
     def load(cls, user):
+        from apps.core.cache import get_user_cache, set_user_cache, NS_SETTINGS
+        cached = get_user_cache(user.pk, NS_SETTINGS)
+        if cached is not None:
+            return cached
         obj, _ = cls.objects.get_or_create(user=user)
+        set_user_cache(user.pk, NS_SETTINGS, obj, timeout=3600)
         return obj
 
     def __str__(self):

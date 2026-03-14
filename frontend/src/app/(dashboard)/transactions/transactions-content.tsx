@@ -21,6 +21,7 @@ import { TRANSACTION_TYPE_LABELS } from "@/lib/constants";
 import { formatMoney, formatQty } from "@/lib/utils";
 import { useTranslations } from "@/i18n/use-translations";
 import type { Transaction, TransactionFormData, Asset, Account, PaginatedResponse, PortfolioData } from "@/types";
+import { useDebounce } from "@/hooks/use-debounce";
 
 const PAGE_SIZE = 25;
 
@@ -46,8 +47,17 @@ export function TransactionsContent() {
   const dateTo = searchParams.get("date_to") || "";
   const accountFilter = searchParams.get("account") || "";
 
+  const [searchInput, setSearchInput] = useState(search);
+  const debouncedSearch = useDebounce(searchInput, 300);
+
+  useEffect(() => {
+    if (debouncedSearch !== search) {
+      setParam("search", debouncedSearch);
+    }
+  }, [debouncedSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const { data, isLoading } = useQuery({
-    queryKey: ["transactions", page, search, typeFilter, dateFrom, dateTo, accountFilter],
+    queryKey: ["transactions", page, debouncedSearch, typeFilter, dateFrom, dateTo, accountFilter],
     queryFn: () => {
       const p = new URLSearchParams();
       p.set("page", String(page));
@@ -89,8 +99,8 @@ export function TransactionsContent() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/transactions/${id}/`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["portfolio"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"], refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: ["portfolio"], refetchType: "active" });
       toast.success(t("common.deleted"));
     },
   });
@@ -100,6 +110,12 @@ export function TransactionsContent() {
     if (value) params.set(key, value); else params.delete(key);
     if (key !== "page") params.delete("page");
     router.push(`?${params}`);
+  };
+
+  const prefetchDialogData = () => {
+    queryClient.prefetchQuery({ queryKey: ["assets-list"], queryFn: () => api.get<Asset[]>("/assets/?page_size=1000") });
+    queryClient.prefetchQuery({ queryKey: ["accounts"], queryFn: () => api.get<Account[]>("/accounts/") });
+    queryClient.prefetchQuery({ queryKey: ["portfolio"], queryFn: () => api.get<PortfolioData>("/portfolio/") });
   };
 
   const openNew = (type: "BUY" | "SELL" | "GIFT") => {
@@ -165,13 +181,13 @@ export function TransactionsContent() {
           <Button variant="outline" size="sm" onClick={handleExportCsv}>
             <Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">CSV</span>
           </Button>
-          <Button size="sm" onClick={() => openNew("BUY")}>
+          <Button size="sm" onClick={() => openNew("BUY")} onMouseEnter={prefetchDialogData}>
             <ShoppingCart className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">{t("transactions.buy")}</span>
           </Button>
-          <Button size="sm" variant="destructive" onClick={() => openNew("SELL")}>
+          <Button size="sm" variant="destructive" onClick={() => openNew("SELL")} onMouseEnter={prefetchDialogData}>
             <TrendingDown className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">{t("transactions.sell")}</span>
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => openNew("GIFT")}>
+          <Button size="sm" variant="ghost" onClick={() => openNew("GIFT")} onMouseEnter={prefetchDialogData}>
             <Gift className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">{t("transactions.gift")}</span>
           </Button>
         </div>
@@ -181,7 +197,7 @@ export function TransactionsContent() {
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder={t("transactions.searchPlaceholder")} className="pl-9" defaultValue={search} onChange={(e) => setParam("search", e.target.value)} />
+          <Input placeholder={t("transactions.searchPlaceholder")} className="pl-9" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
         </div>
         <Input type="date" className="w-full sm:w-[140px]" value={dateFrom} onChange={(e) => setParam("date_from", e.target.value)} />
         <Input type="date" className="w-full sm:w-[140px]" value={dateTo} onChange={(e) => setParam("date_to", e.target.value)} />
@@ -367,8 +383,8 @@ function TransactionDialog({
         await api.post("/transactions/", form);
         toast.success(t("transactions.new"));
       }
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["portfolio"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"], refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: ["portfolio"], refetchType: "active" });
       onOpenChange(false);
     } catch (err: unknown) {
       if (err && typeof err === "object" && "body" in err) {

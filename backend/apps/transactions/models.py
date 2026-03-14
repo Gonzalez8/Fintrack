@@ -33,6 +33,9 @@ class Transaction(UserOwnedModel):
     class Meta:
         ordering = ["-date", "-created_at"]
         unique_together = [("owner", "import_hash")]
+        indexes = [
+            models.Index(fields=["owner", "date", "created_at"], name="idx_tx_owner_date"),
+        ]
 
     def __str__(self):
         return f"{self.date} {self.type} {self.asset.name} x{self.quantity}"

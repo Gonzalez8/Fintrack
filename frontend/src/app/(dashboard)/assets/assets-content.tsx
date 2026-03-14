@@ -15,18 +15,89 @@ import {
 } from "@/components/ui/select";
 import { DataTable, type Column } from "@/components/app/data-table";
 import { MoneyCell } from "@/components/app/money-cell";
-import { Plus, Search, Pencil, Trash2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, Clock, MinusCircle } from "lucide-react";
 import { toast } from "sonner";
 import type { Asset, AssetFormData, PaginatedResponse } from "@/types";
 import { ASSET_TYPE_LABELS, ASSET_TYPE_BADGE_COLORS } from "@/lib/constants";
 import { useTranslations } from "@/i18n/use-translations";
 import { cn } from "@/lib/utils";
+import { useDebounce } from "@/hooks/use-debounce";
 
 const PAGE_SIZE = 25;
+
+/* ── Sync Status Helper ────────────────────────────────────── */
+
+function formatSyncDate(iso: string | null) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "Ahora";
+  if (diffMins < 60) return `${diffMins}m`;
+  if (diffHours < 24) return `${diffHours}h`;
+  if (diffDays < 7) return `${diffDays}d`;
+  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" });
+}
+
+function SyncStatusBadge({ asset }: { asset: Asset }) {
+  const status = asset.price_status;
+  const timeAgo = formatSyncDate(asset.price_updated_at);
+
+  if (asset.price_mode === "MANUAL") {
+    return (
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        <MinusCircle className="h-3.5 w-3.5" />
+        <span className="text-xs">Manual</span>
+      </div>
+    );
+  }
+
+  if (status === "OK") {
+    return (
+      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        <span className="text-xs font-medium">OK</span>
+        {timeAgo && <span className="text-[10px] text-muted-foreground">{timeAgo}</span>}
+      </div>
+    );
+  }
+
+  if (status === "ERROR") {
+    return (
+      <div className="flex items-center gap-1.5 text-destructive">
+        <AlertCircle className="h-3.5 w-3.5" />
+        <span className="text-xs font-medium">Error</span>
+        {timeAgo && <span className="text-[10px] text-muted-foreground">{timeAgo}</span>}
+      </div>
+    );
+  }
+
+  if (status === "NO_TICKER") {
+    return (
+      <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+        <AlertCircle className="h-3.5 w-3.5" />
+        <span className="text-xs font-medium">Sin ticker</span>
+      </div>
+    );
+  }
+
+  // PENDING or null
+  return (
+    <div className="flex items-center gap-1.5 text-muted-foreground">
+      <Clock className="h-3.5 w-3.5" />
+      <span className="text-xs">Pendiente</span>
+    </div>
+  );
+}
 
 /* ── Swipeable Asset Card (mobile) ──────────────────────────── */
 
 const SWIPE_THRESHOLD = 72;
+const SWIPE_DEAD_ZONE = 12;
 const ACTION_WIDTH = 144;
 
 function AssetCard({
@@ -45,7 +116,9 @@ function AssetCard({
   const startX = useRef(0);
   const currentX = useRef(0);
   const swiping = useRef(false);
+  const locked = useRef(false); // true once dead zone exceeded
   const isOpen = useRef(false);
+  const [actionsVisible, setActionsVisible] = useState(false);
 
   const badgeColor = ASSET_TYPE_BADGE_COLORS[asset.type] ?? "";
   const accentColor = asset.type === "STOCK"
@@ -66,9 +139,12 @@ function AssetCard({
   const resetPosition = useCallback(() => {
     setTranslate(0, true);
     isOpen.current = false;
+    // Hide actions after the slide-back animation
+    setTimeout(() => { if (!isOpen.current) setActionsVisible(false); }, 300);
   }, [setTranslate]);
 
   const openActions = useCallback(() => {
+    setActionsVisible(true);
     setTranslate(-ACTION_WIDTH, true);
     isOpen.current = true;
   }, [setTranslate]);
@@ -77,20 +153,28 @@ function AssetCard({
     startX.current = e.touches[0].clientX;
     currentX.current = 0;
     swiping.current = false;
+    locked.current = false;
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     const dx = e.touches[0].clientX - startX.current;
+    currentX.current = dx;
+
+    // Don't move the card until the finger exceeds the dead zone
+    if (!locked.current) {
+      if (Math.abs(dx) < SWIPE_DEAD_ZONE) return;
+      locked.current = true;
+      swiping.current = true;
+      setActionsVisible(true);
+    }
+
     const offset = isOpen.current ? -ACTION_WIDTH + dx : dx;
     // Only allow swiping left
     if (offset > 0) {
-      currentX.current = 0;
       setTranslate(0);
       return;
     }
     const clamped = Math.max(offset, -ACTION_WIDTH);
-    currentX.current = dx;
-    if (Math.abs(dx) > 8) swiping.current = true;
     setTranslate(clamped);
   }, [setTranslate]);
 
@@ -126,8 +210,8 @@ function AssetCard({
 
   return (
     <div className="relative overflow-hidden rounded-lg sm:hidden">
-      {/* Swipe-behind actions */}
-      <div className="absolute inset-y-0 right-0 flex">
+      {/* Swipe-behind actions — hidden until swiping to prevent flash on tap */}
+      <div className={`absolute inset-y-0 right-0 flex ${actionsVisible ? "" : "invisible"}`}>
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); resetPosition(); }}
           className="flex w-[72px] items-center justify-center bg-blue-500 text-white active:bg-blue-600"
@@ -173,11 +257,7 @@ function AssetCard({
               >
                 {ASSET_TYPE_LABELS[asset.type] || asset.type}
               </Badge>
-              {asset.price_mode === "MANUAL" && (
-                <Badge variant="outline" className="text-[9px] px-1.5 h-4 font-mono">
-                  MANUAL
-                </Badge>
-              )}
+              <SyncStatusBadge asset={asset} />
             </div>
           </div>
 
@@ -262,8 +342,18 @@ export function AssetsContent() {
   const search = searchParams.get("search") || "";
   const typeFilter = searchParams.get("type") || "";
 
+  const [searchInput, setSearchInput] = useState(search);
+  const debouncedSearch = useDebounce(searchInput, 300);
+
+  // Sync debounced search to URL
+  useEffect(() => {
+    if (debouncedSearch !== search) {
+      setParam("search", debouncedSearch);
+    }
+  }, [debouncedSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const { data, isLoading } = useQuery({
-    queryKey: ["assets", page, search, typeFilter],
+    queryKey: ["assets", page, debouncedSearch, typeFilter],
     queryFn: () => {
       const params = new URLSearchParams();
       params.set("page", String(page));
@@ -276,7 +366,7 @@ export function AssetsContent() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/assets/${id}/`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
+      queryClient.invalidateQueries({ queryKey: ["assets"], refetchType: "active" });
       toast.success(t("common.deleted"));
     },
   });
@@ -290,8 +380,8 @@ export function AssetsContent() {
       if (taskResult.status === "FAILURE") throw new Error(taskResult.error ?? "Error");
       const result = taskResult.result as { updated: number; errors: string[] };
       setPriceResult({ updated: result.updated, errors: result.errors });
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
-      queryClient.invalidateQueries({ queryKey: ["portfolio"] });
+      queryClient.invalidateQueries({ queryKey: ["assets"], refetchType: "active" });
+      queryClient.invalidateQueries({ queryKey: ["portfolio"], refetchType: "active" });
     } catch {
       setPriceResult({ updated: 0, errors: [t("common.error")] });
     } finally {
@@ -334,13 +424,9 @@ export function AssetsContent() {
     { key: "currency", header: t("common.currency"), render: (a) => <span className="text-sm">{a.currency}</span> },
     { key: "price", header: t("transactions.price"), className: "text-right", render: (a) => <MoneyCell value={a.current_price} currency={a.currency} /> },
     {
-      key: "mode",
-      header: t("assets.priceMode"),
-      render: (a) => (
-        <Badge variant={a.price_mode === "AUTO" ? "default" : "secondary"}>
-          {a.price_mode}
-        </Badge>
-      ),
+      key: "sync",
+      header: "Sync",
+      render: (a) => <SyncStatusBadge asset={a} />,
     },
     {
       key: "actions",
@@ -403,8 +489,8 @@ export function AssetsContent() {
           <Input
             placeholder={`${t("common.search")}...`}
             className="pl-9"
-            defaultValue={search}
-            onChange={(e) => setParam("search", e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
           />
         </div>
         <div className="flex gap-2">
@@ -550,7 +636,7 @@ function AssetDialog({
         await api.post("/assets/", form);
         toast.success(t("common.success"));
       }
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
+      queryClient.invalidateQueries({ queryKey: ["assets"], refetchType: "active" });
       onOpenChange(false);
     } catch {
       toast.error(t("common.errorSaving"));

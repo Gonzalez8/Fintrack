@@ -21,6 +21,9 @@ def update_prices_task(self, user_id: int) -> dict:
     try:
         result = update_prices(user)
         result["user_id"] = user.pk
+        # Invalidate cached portfolio/reports since prices changed
+        from apps.core.cache import invalidate_user_cache, FINANCIAL_NAMESPACES
+        invalidate_user_cache(user.pk, *FINANCIAL_NAMESPACES)
         return result
     except Exception as exc:
         logger.warning("update_prices_task failed for user %s: %s", user_id, exc)

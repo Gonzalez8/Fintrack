@@ -33,6 +33,7 @@ export function AccountsContent() {
   const { data: rawAccounts } = useQuery({
     queryKey: ["accounts"],
     queryFn: () => api.get<PaginatedResponse<Account>>("/accounts/"),
+    staleTime: 5 * 60_000,
   });
   const accounts = rawAccounts?.results;
 
@@ -400,7 +401,7 @@ function BulkSnapshotDialog({
           </div>
           {accounts.map((a) => (
             <div key={a.id} className="flex items-center gap-3">
-              <span className="text-sm font-medium w-40 truncate">{a.name}</span>
+              <span className="text-sm font-medium w-24 sm:w-40 shrink-0 truncate">{a.name}</span>
               <Input
                 type="number"
                 step="0.01"

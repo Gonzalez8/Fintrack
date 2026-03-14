@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { formatMoney } from "@/lib/utils";
 import { useTranslations } from "@/i18n/use-translations";
 import type { Dividend, DividendFormData, Asset, PaginatedResponse, PortfolioData } from "@/types";
+import { useDebounce } from "@/hooks/use-debounce";
 
 const PAGE_SIZE = 25;
 const currentYear = new Date().getFullYear();
@@ -36,8 +37,17 @@ export function DividendsContent() {
   const search = searchParams.get("search") || "";
   const yearFilter = searchParams.get("year") || "";
 
+  const [searchInput, setSearchInput] = useState(search);
+  const debouncedSearch = useDebounce(searchInput, 300);
+
+  useEffect(() => {
+    if (debouncedSearch !== search) {
+      setParam("search", debouncedSearch);
+    }
+  }, [debouncedSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const { data, isLoading } = useQuery({
-    queryKey: ["dividends", page, search, yearFilter],
+    queryKey: ["dividends", page, debouncedSearch, yearFilter],
     queryFn: () => {
       const p = new URLSearchParams();
       p.set("page", String(page));
@@ -50,7 +60,7 @@ export function DividendsContent() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/dividends/${id}/`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dividends"] });
+      queryClient.invalidateQueries({ queryKey: ["dividends"], refetchType: "active" });
       toast.success(t("common.deleted"));
     },
   });
@@ -60,6 +70,11 @@ export function DividendsContent() {
     if (value) params.set(key, value); else params.delete(key);
     if (key !== "page") params.delete("page");
     router.push(`?${params}`);
+  };
+
+  const prefetchDialogData = () => {
+    queryClient.prefetchQuery({ queryKey: ["assets-list"], queryFn: () => api.get<Asset[]>("/assets/?page_size=1000") });
+    queryClient.prefetchQuery({ queryKey: ["portfolio"], queryFn: () => api.get<PortfolioData>("/portfolio/") });
   };
 
   const handleExportCsv = () => {
@@ -119,7 +134,7 @@ export function DividendsContent() {
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder={`${t("common.search")}...`} className="pl-9" defaultValue={search} onChange={(e) => setParam("search", e.target.value)} />
+          <Input placeholder={`${t("common.search")}...`} className="pl-9" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
         </div>
         <Select value={yearFilter} onValueChange={(v) => setParam("year", v === "all" || !v ? "" : v)}>
           <SelectTrigger className="w-full sm:w-[120px]"><SelectValue placeholder={t("common.all")} /></SelectTrigger>
@@ -133,7 +148,7 @@ export function DividendsContent() {
         <Button variant="outline" size="icon" onClick={handleExportCsv} title="CSV">
           <Download className="h-4 w-4" />
         </Button>
-        <Button className="hidden sm:flex" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+        <Button className="hidden sm:flex" onClick={() => { setEditing(null); setDialogOpen(true); }} onMouseEnter={prefetchDialogData}>
           <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">{t("common.new")}</span>
         </Button>
       </div>
@@ -302,7 +317,7 @@ function DividendDialog({
         await api.post("/dividends/", form);
         toast.success(t("common.success"));
       }
-      queryClient.invalidateQueries({ queryKey: ["dividends"] });
+      queryClient.invalidateQueries({ queryKey: ["dividends"], refetchType: "active" });
       onOpenChange(false);
     } catch {
       toast.error(t("common.errorSaving"));

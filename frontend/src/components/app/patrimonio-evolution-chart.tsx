@@ -88,10 +88,10 @@ export function PatrimonioEvolutionChart() {
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
               {t("dashboard.patrimonioEvolution")}
             </p>
-            <p className="text-2xl sm:text-3xl font-bold tabular-nums leading-none">
+            <p className="text-xl sm:text-3xl font-bold tabular-nums leading-none">
               {formatMoney(evoTotal)}
             </p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 break-words">
               {t("dashboard.investments")}: {formatMoney(evoInvestments)} ·{" "}
               {t("dashboard.cash")}: {formatMoney(evoCash)}
             </p>

@@ -6,30 +6,57 @@ from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.cache import (
+    get_user_cache, set_user_cache,
+    NS_REPORTS_YEAR, NS_REPORTS_PATRIMONIO, NS_REPORTS_RV, NS_REPORTS_SAVINGS,
+)
 from apps.transactions.models import Transaction, Dividend, Interest
 from .services import year_summary, patrimonio_evolution, rv_evolution, monthly_savings
+
+_REPORT_TTL = 120  # 2 minutes
 
 
 class YearSummaryView(APIView):
     def get(self, request):
-        return Response(year_summary(request.user))
+        cached = get_user_cache(request.user.pk, NS_REPORTS_YEAR)
+        if cached is not None:
+            return Response(cached)
+        data = year_summary(request.user)
+        set_user_cache(request.user.pk, NS_REPORTS_YEAR, data, timeout=_REPORT_TTL)
+        return Response(data)
 
 
 class PatrimonioEvolutionView(APIView):
     def get(self, request):
-        return Response(patrimonio_evolution(request.user))
+        cached = get_user_cache(request.user.pk, NS_REPORTS_PATRIMONIO)
+        if cached is not None:
+            return Response(cached)
+        data = patrimonio_evolution(request.user)
+        set_user_cache(request.user.pk, NS_REPORTS_PATRIMONIO, data, timeout=_REPORT_TTL)
+        return Response(data)
 
 
 class RVEvolutionView(APIView):
     def get(self, request):
-        return Response(rv_evolution(request.user))
+        cached = get_user_cache(request.user.pk, NS_REPORTS_RV)
+        if cached is not None:
+            return Response(cached)
+        data = rv_evolution(request.user)
+        set_user_cache(request.user.pk, NS_REPORTS_RV, data, timeout=_REPORT_TTL)
+        return Response(data)
 
 
 class MonthlySavingsView(APIView):
     def get(self, request):
         from_month = request.query_params.get("from")
         to_month = request.query_params.get("to")
+        if not from_month and not to_month:
+            cached = get_user_cache(request.user.pk, NS_REPORTS_SAVINGS)
+            if cached is not None:
+                return Response(cached)
         result = monthly_savings(request.user, start_date=from_month, end_date=to_month)
+        if not from_month and not to_month:
+            set_user_cache(request.user.pk, NS_REPORTS_SAVINGS, result, timeout=_REPORT_TTL)
         return Response(result)
 
 

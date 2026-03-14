@@ -11,8 +11,11 @@ function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 60 * 1000,
+        staleTime: 2 * 60 * 1000,        // 2 min — data stays fresh longer
+        gcTime: 10 * 60 * 1000,           // 10 min — keep unused cache longer
         refetchOnWindowFocus: false,
+        retry: 1,                          // 1 retry on network errors
+        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
       },
     },
   });

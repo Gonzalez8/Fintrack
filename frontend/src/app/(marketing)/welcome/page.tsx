@@ -145,7 +145,7 @@ export default function MarketingPage() {
               {t("marketing.ctaStart")} <ArrowRight className="h-4 w-4" />
             </Link>
             <a
-              href="https://github.com"
+              href="https://github.com/Gonzalez8/fintrack"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 rounded-md text-base font-medium h-12 px-8 border border-border hover:bg-accent transition-colors"
@@ -385,7 +385,7 @@ export default function MarketingPage() {
               {t("marketing.ctaCreate")} <ChevronRight className="h-4 w-4" />
             </Link>
             <a
-              href="https://github.com"
+              href="https://github.com/Gonzalez8/fintrack"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 rounded-md text-base font-medium h-12 px-8 border border-border hover:bg-accent transition-colors"

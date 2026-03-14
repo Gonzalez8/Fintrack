@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { formatMoney } from "@/lib/utils";
 import { useTranslations } from "@/i18n/use-translations";
 import type { Interest, InterestFormData, Account, PaginatedResponse } from "@/types";
+import { useDebounce } from "@/hooks/use-debounce";
 
 const PAGE_SIZE = 25;
 const currentYear = new Date().getFullYear();
@@ -52,8 +53,17 @@ export function InterestsContent() {
   const search = searchParams.get("search") || "";
   const yearFilter = searchParams.get("year") || "";
 
+  const [searchInput, setSearchInput] = useState(search);
+  const debouncedSearch = useDebounce(searchInput, 300);
+
+  useEffect(() => {
+    if (debouncedSearch !== search) {
+      setParam("search", debouncedSearch);
+    }
+  }, [debouncedSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const { data, isLoading } = useQuery({
-    queryKey: ["interests", page, search, yearFilter],
+    queryKey: ["interests", page, debouncedSearch, yearFilter],
     queryFn: () => {
       const p = new URLSearchParams();
       p.set("page", String(page));
@@ -66,7 +76,7 @@ export function InterestsContent() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/interests/${id}/`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["interests"] });
+      queryClient.invalidateQueries({ queryKey: ["interests"], refetchType: "active" });
       toast.success(t("common.deleted"));
     },
   });
@@ -76,6 +86,10 @@ export function InterestsContent() {
     if (value) params.set(key, value); else params.delete(key);
     if (key !== "page") params.delete("page");
     router.push(`?${params}`);
+  };
+
+  const prefetchDialogData = () => {
+    queryClient.prefetchQuery({ queryKey: ["accounts"], queryFn: () => api.get<Account[]>("/accounts/") });
   };
 
   const handleExportCsv = () => {
@@ -152,7 +166,7 @@ export function InterestsContent() {
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder={`${t("common.search")}...`} className="pl-9" defaultValue={search} onChange={(e) => setParam("search", e.target.value)} />
+          <Input placeholder={`${t("common.search")}...`} className="pl-9" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
         </div>
         <Select value={yearFilter} onValueChange={(v) => setParam("year", v === "all" || !v ? "" : v)}>
           <SelectTrigger className="w-full sm:w-[120px]"><SelectValue placeholder={t("common.all")} /></SelectTrigger>
@@ -166,7 +180,7 @@ export function InterestsContent() {
         <Button variant="outline" size="icon" onClick={handleExportCsv} title="CSV">
           <Download className="h-4 w-4" />
         </Button>
-        <Button className="hidden sm:flex" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+        <Button className="hidden sm:flex" onClick={() => { setEditing(null); setDialogOpen(true); }} onMouseEnter={prefetchDialogData}>
           <Plus className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">{t("common.new")}</span>
         </Button>
       </div>
@@ -325,7 +339,7 @@ function InterestDialog({
         await api.post("/interests/", form);
         toast.success(t("common.success"));
       }
-      queryClient.invalidateQueries({ queryKey: ["interests"] });
+      queryClient.invalidateQueries({ queryKey: ["interests"], refetchType: "active" });
       onOpenChange(false);
     } catch {
       toast.error(t("common.errorSaving"));

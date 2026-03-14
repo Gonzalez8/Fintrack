@@ -428,7 +428,7 @@ docker compose logs -f celery_worker
 
 ### Conventions
 
-- **UI labels** in Spanish, **code** (variables, comments) in English
+- **UI labels** use i18n (es, en, de, fr, it), **code** (variables, comments) in English
 - **Money**: Always `Decimal`, never `float`
 - **IDs**: UUID via `TimeStampedModel`
 - **Multi-tenancy**: Every model has `owner` FK, ViewSets use `OwnedByUserMixin`

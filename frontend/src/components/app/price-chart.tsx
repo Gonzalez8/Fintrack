@@ -51,7 +51,7 @@ function buildChartOptions(isDark: boolean) {
     crosshair: { mode: CrosshairMode.Normal },
     rightPriceScale: {
       borderColor: border,
-      minimumWidth: mobile ? 52 : 64,
+      minimumWidth: mobile ? 58 : 64,
     },
     timeScale: {
       borderColor: border,

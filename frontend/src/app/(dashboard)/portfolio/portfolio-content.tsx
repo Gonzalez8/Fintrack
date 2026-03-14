@@ -36,6 +36,7 @@ export function PortfolioContent() {
   const { data: portfolio, isLoading } = useQuery({
     queryKey: ["portfolio"],
     queryFn: () => api.get<PortfolioData>("/portfolio/"),
+    staleTime: 5 * 60_000,
   });
 
   const handleUpdatePrices = async () => {
@@ -349,16 +350,16 @@ export function PortfolioContent() {
         }}
       >
         <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] p-0 overflow-hidden gap-0">
-          <DialogHeader className="px-6 pt-6 pb-2">
-            <DialogTitle className="flex items-center gap-2">
-              {selectedPosition?.asset_name}
+          <DialogHeader className="px-4 sm:px-6 pt-5 sm:pt-6 pb-2">
+            <DialogTitle className="flex items-center gap-2 flex-wrap min-w-0">
+              <span className="truncate">{selectedPosition?.asset_name}</span>
               {selectedPosition?.asset_ticker && (
-                <span className="text-sm font-normal text-muted-foreground">
+                <span className="text-sm font-normal text-muted-foreground shrink-0">
                   {selectedPosition.asset_ticker}
                 </span>
               )}
               {selectedPosition?.asset_type && (
-                <Badge variant="secondary">
+                <Badge variant="secondary" className="shrink-0">
                   {selectedPosition.asset_type}
                 </Badge>
               )}

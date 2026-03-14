@@ -148,6 +148,7 @@ function MobileMonthCard({
   const hasComments = (m.comments?.length ?? 0) > 0;
   return (
     <div
+      data-month={m.month}
       className={`py-3 ${indent ? "pl-8 pr-4" : "px-4"} transition-colors ${
         selected
           ? "bg-primary/5 border-l-2 border-primary"
@@ -222,13 +223,12 @@ export function SavingsContent() {
     ? `${RANGE_LABELS[range]}${stats.is_normalized ? ` · ${t("savings.noOutliers")}` : ""}`
     : undefined;
 
+  // Track whether we need to scroll to a month after render
+  const scrollToMonthRef = useRef<string | null>(null);
+
   const handleMonthSelect = useCallback((month: string | null) => {
     setSelectedMonth(month);
-    if (month && tableRef.current) {
-      requestAnimationFrame(() => {
-        tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    }
+    scrollToMonthRef.current = month;
   }, []);
 
   // ── Comments drawer state ──
@@ -278,6 +278,24 @@ export function SavingsContent() {
       return next;
     });
   }, [selectedMonth, groupByYear]);
+
+  // Scroll to the selected row after React has rendered (including expanded year groups)
+  useEffect(() => {
+    const month = scrollToMonthRef.current;
+    if (!month || !tableRef.current) return;
+
+    requestAnimationFrame(() => {
+      // Find the visible element with data-month (skip hidden mobile cards)
+      const candidates = tableRef.current?.querySelectorAll(`[data-month="${month}"]`);
+      const row = candidates
+        ? Array.from(candidates).find((el) => (el as HTMLElement).offsetParent !== null)
+        : null;
+      if (row) {
+        scrollToMonthRef.current = null;
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
+  }, [selectedMonth, collapsedYears]);
 
   const toggleYear = (year: string) => {
     setCollapsedYears((prev) => {
@@ -561,6 +579,7 @@ export function SavingsContent() {
                                 return (
                                   <TableRow
                                     key={m.month}
+                                    data-month={m.month}
                                     style={isSelected ? highlightStyle : undefined}
                                     className={`transition-colors cursor-pointer hover:bg-secondary/30`}
                                     onClick={() => handleRowClick(m.month)}
@@ -598,6 +617,7 @@ export function SavingsContent() {
                         return (
                           <TableRow
                             key={m.month}
+                            data-month={m.month}
                             style={isSelected ? highlightStyle : undefined}
                             className={`transition-colors cursor-pointer hover:bg-secondary/30`}
                             onClick={() => handleRowClick(m.month)}

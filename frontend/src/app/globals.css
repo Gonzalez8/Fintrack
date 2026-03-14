@@ -223,6 +223,14 @@
     font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
   }
 
+  /* Recharts — remove focus outline on all chart elements */
+  .recharts-wrapper,
+  .recharts-wrapper *,
+  .recharts-responsive-container,
+  .recharts-responsive-container * {
+    outline: none !important;
+  }
+
   /* Scrollbar styling — 5px APEX style */
   ::-webkit-scrollbar {
     width: 5px;

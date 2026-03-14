@@ -7,7 +7,9 @@ from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from django.core.cache import cache as django_cache
 from apps.core.mixins import OwnedByUserMixin
+from apps.core.cache import invalidate_user_cache, FINANCIAL_NAMESPACES
 from .models import Asset, Account, AccountSnapshot, Settings, PositionSnapshot
 from .serializers import (
     AssetSerializer, AccountSerializer, AccountSnapshotSerializer,
@@ -62,6 +64,12 @@ class AssetViewSet(OwnedByUserMixin, viewsets.ModelViewSet):
         if period not in {"1mo", "3mo", "6mo", "1y", "2y", "5y", "max"}:
             period = "1y"
 
+        # Cache yfinance results for 1 hour
+        cache_key = f"ft:price_hist:{asset.ticker}:{period}"
+        cached = django_cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
         try:
             hist = yf.Ticker(asset.ticker).history(period=period)
         except Exception as e:
@@ -80,6 +88,7 @@ class AssetViewSet(OwnedByUserMixin, viewsets.ModelViewSet):
             }
             for date, row in hist.iterrows()
         ]
+        django_cache.set(cache_key, data, 3600)
         return Response(data)
 
     @action(detail=True, methods=["post"], url_path="set-price")
@@ -111,6 +120,7 @@ class AssetViewSet(OwnedByUserMixin, viewsets.ModelViewSet):
         asset.save(update_fields=[
             "current_price", "price_source", "price_status", "price_updated_at", "updated_at",
         ])
+        invalidate_user_cache(request.user.pk, *FINANCIAL_NAMESPACES)
         return Response(AssetSerializer(asset).data)
 
 
@@ -193,6 +203,11 @@ class SettingsView(RetrieveUpdateAPIView):
 
     def get_object(self):
         return Settings.load(self.request.user)
+
+    def perform_update(self, serializer):
+        from apps.core.cache import NS_SETTINGS
+        super().perform_update(serializer)
+        invalidate_user_cache(self.request.user.pk, NS_SETTINGS, *FINANCIAL_NAMESPACES)
 
 
 _APP_TABLE_PREFIXES = ("assets_", "transactions_", "portfolio_", "reports_", "importer_", "core_")

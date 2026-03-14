@@ -51,7 +51,7 @@ frontend/         Next.js 15+ App Router
 
 ## Key Conventions
 
-- **Language:** UI labels in Spanish. Code (variables, comments) in English.
+- **Language:** UI labels use i18n (es, en, de, fr, it). Code (variables, comments) in English.
 - **Money:** Always `Decimal`, never float.
 - **IDs:** UUID (TimeStampedModel base).
 - **Multi-tenancy:** Every model has `owner` FK. ViewSets use `OwnedByUserMixin`.

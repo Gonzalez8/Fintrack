@@ -194,15 +194,15 @@ export function AssetEvolutionChart({ position }: Props) {
 
   return (
     <div>
-      <div className="flex items-start justify-between px-6 pt-4 pb-4">
+      <div className="flex flex-col gap-3 px-4 sm:px-6 pt-4 pb-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           {/* Market value — big number */}
-          <p className="text-2xl font-bold tabular-nums leading-none">
+          <p className="text-xl sm:text-2xl font-bold tabular-nums leading-none">
             {formatMoney(displayMV)}
           </p>
 
           {/* P&L + percentage */}
-          <div className="mt-1.5 flex items-baseline gap-1.5">
+          <div className="mt-1.5 flex items-baseline gap-1.5 flex-wrap">
             {hasEnoughData ? (
               <>
                 <span
@@ -235,7 +235,7 @@ export function AssetEvolutionChart({ position }: Props) {
           </div>
         </div>
 
-        <div className="flex gap-0.5 bg-secondary/50 border border-border rounded-lg p-1">
+        <div className="flex shrink-0 gap-0.5 bg-secondary/50 border border-border rounded-lg p-1 self-start">
           {RANGES.map(({ key, label }) => (
             <button
               key={key}
@@ -244,7 +244,7 @@ export function AssetEvolutionChart({ position }: Props) {
                 setHover(null);
                 hoverRef.current = null;
               }}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150 ${
+              className={`px-2 sm:px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150 ${
                 range === key
                   ? "bg-background shadow-sm text-primary border border-primary/20"
                   : "text-muted-foreground hover:text-foreground"

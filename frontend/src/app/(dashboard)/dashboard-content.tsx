@@ -30,11 +30,13 @@ export function DashboardContent() {
   const { data: portfolio } = useQuery({
     queryKey: ["portfolio"],
     queryFn: () => api.get<PortfolioData>("/portfolio/"),
+    staleTime: 5 * 60_000,
   });
 
   const { data: yearSummary } = useQuery({
     queryKey: ["year-summary"],
     queryFn: () => api.get<YearSummary[]>("/reports/year-summary/"),
+    staleTime: 10 * 60_000,
   });
 
   const totals = portfolio?.totals;
@@ -107,7 +109,7 @@ export function DashboardContent() {
               {formatMoney(totals?.grand_total)}
             </div>
             {totals && parseFloat(totals.total_cash) > 0 && (
-              <div className="text-xs text-muted-foreground mt-1">
+              <div className="text-[10px] sm:text-xs text-muted-foreground mt-1 break-words">
                 {t("dashboard.investments")}:{" "}
                 {formatMoney(totals.total_market_value)} +{" "}
                 {t("dashboard.cash")}: {formatMoney(totals.total_cash)}
@@ -127,8 +129,8 @@ export function DashboardContent() {
               {formatMoney(currentYearData?.total_income ?? "0")}
             </div>
             {currentYearData && (
-              <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                <div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground mt-1 space-y-0.5">
+                <div className="break-words">
                   {t("dashboard.dividends")}:{" "}
                   {formatMoney(currentYearData.dividends_net)} ·{" "}
                   {t("dashboard.interests")}:{" "}
@@ -169,9 +171,9 @@ export function DashboardContent() {
       </div>
 
       {/* 3 Chart cards */}
-      <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 md:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
         {/* Allocation pie */}
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">
               {t("dashboard.assetAllocation")}
@@ -271,7 +273,7 @@ export function DashboardContent() {
         </Card>
 
         {/* Income by year */}
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base">
               {t("dashboard.incomeByYear")}

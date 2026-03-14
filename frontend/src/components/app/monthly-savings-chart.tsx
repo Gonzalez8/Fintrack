@@ -121,10 +121,9 @@ export function MonthlySavingsChart({
 
   const minWidth = Math.max(chartData.length * 30, 260);
 
-  const handleBarClick = (data: Record<string, unknown>) => {
+  const handleBarClick = (data: { month?: string }) => {
     if (!onMonthSelect) return;
-    const ap = data?.activePayload as Array<{ payload: { month: string } }> | undefined;
-    const month = ap?.[0]?.payload?.month;
+    const month = data?.month;
     if (!month) return;
     onMonthSelect(selectedMonth === month ? null : month);
   };
@@ -184,7 +183,6 @@ export function MonthlySavingsChart({
               <BarChart
                 data={chartData}
                 margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
-                onClick={onMonthSelect ? handleBarClick : undefined}
                 style={onMonthSelect ? { cursor: "pointer" } : undefined}
               >
                 <XAxis
@@ -223,6 +221,7 @@ export function MonthlySavingsChart({
                   dataKey="real_savings"
                   radius={[3, 3, 0, 0]}
                   maxBarSize={36}
+                  onClick={onMonthSelect ? handleBarClick : undefined}
                 >
                   {chartData.map((entry, index) => {
                     const isSelected = entry.month === selectedMonth;
