@@ -110,7 +110,6 @@ No source code needed — uses images from GitHub Container Registry.
 ```bash
 mkdir fintrack && cd fintrack
 curl -O https://raw.githubusercontent.com/Gonzalez8/Fintrack/main/docker-compose.prod.yml
-curl -O https://raw.githubusercontent.com/Gonzalez8/Fintrack/main/nginx.conf
 curl -O https://raw.githubusercontent.com/Gonzalez8/Fintrack/main/.env.production.example
 cp .env.production.example .env
 # Edit .env with your values (DB_PASSWORD, DJANGO_SECRET_KEY, etc.)
@@ -280,8 +279,7 @@ fintrack/
 │   ├── ci.yml                     Backend tests + frontend typecheck
 │   └── docker-publish.yml         Build & push to GHCR
 ├── docker-compose.yml             Development (6 services)
-├── docker-compose.prod.yml        Production (7 services + nginx)
-├── nginx.conf                     Reverse proxy config
+├── docker-compose.prod.yml        Production (pre-built images from GHCR)
 └── .env.example                   Environment variable template
 ```
 
@@ -343,15 +341,16 @@ GET     /api/health/                      Liveness probe
 | `DJANGO_SECRET_KEY` | **yes** | — | Django secret key |
 | `DB_NAME` | | `fintrack` | Database name |
 | `DB_USER` | | `fintrack` | Database user |
-| `ALLOWED_HOSTS` | | `*` | Comma-separated allowed hostnames |
-| `CORS_ALLOWED_ORIGINS` | | — | Comma-separated allowed origins |
-| `CSRF_TRUSTED_ORIGINS` | | — | Comma-separated CSRF trusted origins |
+| `ALLOWED_HOSTS` | | `*` | Comma-separated allowed hostnames. `backend` is added automatically for internal Docker communication. |
+| `CORS_ALLOWED_ORIGINS` | | — | Comma-separated allowed origins (e.g., `https://fintrack.example.com`) |
+| `CSRF_TRUSTED_ORIGINS` | | same as CORS | Comma-separated CSRF trusted origins (e.g., `https://fintrack.example.com`) |
 | `REDIS_URL` | | `redis://redis:6379/0` | Celery broker + result backend |
 | `GOOGLE_CLIENT_ID` | | _(empty)_ | Google OAuth2 client ID |
 | `ALLOW_REGISTRATION` | | `true` | `false` = admin creates users via Django admin |
 | `DJANGO_SUPERUSER_USERNAME` | | `admin` | Initial superuser username |
 | `DJANGO_SUPERUSER_PASSWORD` | | `admin` | Initial superuser password |
-| `APP_PORT` | | `80` | Host port for nginx (prod) |
+| `DJANGO_SUPERUSER_EMAIL` | | `admin@fintrack.local` | Initial superuser email |
+| `APP_PORT` | | `8080` | Host port for frontend (prod) |
 
 ### Frontend
 
@@ -399,6 +398,36 @@ docker compose logs -f celery_worker
 
 ## Production Deployment
 
+### Reverse proxy setup (Nginx Proxy Manager)
+
+Point your domain to the frontend container:
+
+| Setting | Value |
+|---|---|
+| **Domain** | `fintrack.example.com` |
+| **Scheme** | `http` |
+| **Forward Hostname/IP** | server local IP (e.g., `192.168.1.171`) |
+| **Forward Port** | `8080` (or your `APP_PORT`) |
+| **Websockets Support** | enabled |
+| **SSL** | Let's Encrypt |
+
+The Django admin panel is available at `http://<server-ip>:8001/admin/` (add the IP to `ALLOWED_HOSTS`).
+
+### Startup sequence
+
+The backend container runs automatically on each start:
+1. `migrate` — apply database migrations
+2. `collectstatic` — collect static files
+3. `createsuperuser` — create admin user (skips if already exists)
+4. `gunicorn` — start the application server
+
+### Updating
+
+After pushing to `main`, GitHub Actions rebuilds and publishes Docker images to GHCR.
+
+- **Portainer**: Stack → Editor → "Update the stack" with "Re-pull image" enabled
+- **CLI**: `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d`
+
 ### Security settings (automatic when `DEBUG=False`)
 
 - `JWT_AUTH_COOKIE_SECURE = True`
@@ -412,12 +441,22 @@ docker compose logs -f celery_worker
 - [ ] Set a strong `DJANGO_SECRET_KEY` (50+ random chars)
 - [ ] Set `DB_PASSWORD` to a secure value
 - [ ] Configure `ALLOWED_HOSTS` and `CORS_ALLOWED_ORIGINS`
-- [ ] Set `CSRF_TRUSTED_ORIGINS` for your domain
+- [ ] Set `CSRF_TRUSTED_ORIGINS` for your domain (e.g., `https://fintrack.example.com`)
 - [ ] Configure `GOOGLE_CLIENT_ID` if using Google login
 - [ ] Set `ALLOW_REGISTRATION=false` if single-user
-- [ ] Set up SSL termination (Caddy, Traefik, or cloud LB in front of nginx)
+- [ ] Set up SSL termination (NPM, Caddy, Traefik, or cloud LB)
 - [ ] Configure backup strategy for PostgreSQL
 - [ ] Change `DJANGO_SUPERUSER_PASSWORD`
+
+### Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Bad Request (400)` | Domain/IP not in `ALLOWED_HOSTS` | Add it to `ALLOWED_HOSTS` env var |
+| `400` on login (POST) | `CSRF_TRUSTED_ORIGINS` not set | Set to `https://your-domain.com` |
+| `ECONNREFUSED` on login | Backend not ready | Wait — healthcheck has 30s start period |
+| `502 Bad Gateway` | Backend crashed | Check logs: `docker logs fintrack-backend-1` |
+| Admin login fails | Superuser not created | Verify `DJANGO_SUPERUSER_*` env vars are set |
 
 ---
 
