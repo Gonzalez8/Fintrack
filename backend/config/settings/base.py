@@ -124,11 +124,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # ---------------------------------------------------------------------------
 # CORS
 # ---------------------------------------------------------------------------
-CORS_ALLOWED_ORIGINS = [
-    o.strip()
-    for o in os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
-]
+_cors = os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000").strip()
+CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors.split(",") if o.strip()] if _cors else ["http://localhost:3000"]
 CORS_ALLOW_CREDENTIALS = True
+
+_csrf = os.environ.get("CSRF_TRUSTED_ORIGINS", "").strip()
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf.split(",") if o.strip()] if _csrf else CORS_ALLOWED_ORIGINS
 
 # ---------------------------------------------------------------------------
 # Django REST Framework
