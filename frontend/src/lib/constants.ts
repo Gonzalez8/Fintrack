@@ -4,10 +4,27 @@ export const DJANGO_INTERNAL_URL =
 export const NEXT_PUBLIC_API_URL =
   process.env.NEXT_PUBLIC_API_URL || "";
 
+/** Demo button is available (doesn't mean the whole app is demo) */
 export const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
 export const COOKIE_ACCESS = "access_token";
 export const COOKIE_REFRESH = "refresh_token";
+
+/**
+ * Check if a token (access or refresh) belongs to a demo session
+ * by reading the `demo: true` flag from the JWT payload.
+ */
+export function isDemoToken(token: string | undefined): boolean {
+  if (!token) return false;
+  try {
+    const payload = JSON.parse(
+      Buffer.from(token.split(".")[1], "base64url").toString(),
+    );
+    return payload.demo === true;
+  } catch {
+    return false;
+  }
+}
 export const COOKIE_LANG = "fintrack_lang";
 
 export const DEFAULT_LOCALE = "es";

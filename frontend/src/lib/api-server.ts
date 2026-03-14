@@ -1,22 +1,23 @@
 import { cookies } from "next/headers";
-import { DJANGO_INTERNAL_URL, COOKIE_ACCESS, COOKIE_REFRESH, IS_DEMO } from "./constants";
+import { DJANGO_INTERNAL_URL, COOKIE_ACCESS, COOKIE_REFRESH, isDemoToken } from "./constants";
 
 /**
  * Server-side fetch to Django API.
- * In demo mode, returns static data instead of calling Django.
+ * Demo sessions (token has demo flag) get static data instead of calling Django.
  */
 export async function djangoFetch<T = unknown>(
   path: string,
   options: RequestInit & { revalidate?: number | false } = {},
 ): Promise<T> {
-  if (IS_DEMO) {
-    const { resolveDemoData } = await import("@/demo/server-data");
-    return resolveDemoData<T>(path);
-  }
-
   const cookieStore = await cookies();
   const access = cookieStore.get(COOKIE_ACCESS)?.value;
   const refresh = cookieStore.get(COOKIE_REFRESH)?.value;
+
+  // Demo session: return static data, no backend needed
+  if (isDemoToken(access)) {
+    const { resolveDemoData } = await import("@/demo/server-data");
+    return resolveDemoData<T>(path);
+  }
 
   const cookieHeader = [
     access && `${COOKIE_ACCESS}=${access}`,

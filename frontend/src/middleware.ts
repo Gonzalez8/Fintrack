@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { COOKIE_ACCESS, COOKIE_REFRESH, COOKIE_LANG, DEFAULT_LOCALE, SUPPORTED_LOCALES } from "@/lib/constants";
+import { COOKIE_ACCESS, COOKIE_REFRESH, COOKIE_LANG, DEFAULT_LOCALE, SUPPORTED_LOCALES, isDemoToken } from "@/lib/constants";
 
 const DJANGO_INTERNAL_URL = process.env.DJANGO_INTERNAL_URL || "http://backend:8000";
 
-const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 const PUBLIC_PATHS = ["/login", "/welcome"];
 
 export async function middleware(req: NextRequest) {
@@ -49,8 +48,8 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Demo mode: no Django backend to refresh against
-  if (IS_DEMO) {
+  // Demo session: token expired, no backend to refresh against → back to welcome
+  if (isDemoToken(access) || isDemoToken(refresh)) {
     return NextResponse.redirect(new URL("/welcome", req.url));
   }
 

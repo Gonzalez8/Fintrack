@@ -1,16 +1,16 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { DJANGO_INTERNAL_URL, COOKIE_ACCESS, COOKIE_REFRESH, IS_DEMO } from "@/lib/constants";
+import { DJANGO_INTERNAL_URL, COOKIE_ACCESS, COOKIE_REFRESH, IS_DEMO, isDemoToken } from "@/lib/constants";
 
-// Fake JWT tokens for demo mode (exp year 2099)
+// Fake JWT tokens for demo mode (exp year 2099, demo: true flag)
 const DEMO_ACCESS = [
   Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
-  Buffer.from(JSON.stringify({ user_id: 1, username: "demo", exp: 4102444800, iat: Math.floor(Date.now() / 1000) })).toString("base64url"),
+  Buffer.from(JSON.stringify({ user_id: 1, username: "demo", exp: 4102444800, iat: Math.floor(Date.now() / 1000), demo: true })).toString("base64url"),
   "demo-sig",
 ].join(".");
 const DEMO_REFRESH = [
   Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
-  Buffer.from(JSON.stringify({ token_type: "refresh", user_id: 1, exp: 4102444800, iat: Math.floor(Date.now() / 1000) })).toString("base64url"),
+  Buffer.from(JSON.stringify({ token_type: "refresh", user_id: 1, exp: 4102444800, iat: Math.floor(Date.now() / 1000), demo: true })).toString("base64url"),
   "demo-ref-sig",
 ].join(".");
 
@@ -25,8 +25,10 @@ function demoCookieHeaders() {
 
 /**
  * Auth proxy: handles /api/auth/* routes.
- * In demo mode, returns fake auth responses without Django.
- * Otherwise forwards to Django and manages JWT cookies.
+ *
+ * When IS_DEMO is enabled, demo login (username "demo") returns fake tokens.
+ * Requests from an active demo session (token has demo flag) get fake responses.
+ * Everything else is proxied to the real backend (Django / Supabase / etc).
  */
 async function handler(
   req: NextRequest,
@@ -36,11 +38,33 @@ async function handler(
   const joined = path.join("/");
   const djangoPath = `/api/auth/${joined}${joined.endsWith("/") ? "" : "/"}`;
 
-  // Demo mode: return fake auth responses
+  // Buffer body for POST/PUT so we can read it and still forward it
+  const body = req.method !== "GET" && req.method !== "HEAD"
+    ? await req.arrayBuffer()
+    : undefined;
+
   if (IS_DEMO) {
-    return resolveDemoAuth(djangoPath, req.method);
+    const cleanPath = djangoPath.split("?")[0].replace(/\/$/, "");
+
+    // Login: only intercept if username is "demo"
+    if (cleanPath === "/api/auth/token" && req.method === "POST" && body) {
+      try {
+        const parsed = JSON.parse(new TextDecoder().decode(body));
+        if (parsed.username === "demo") {
+          return resolveDemoAuth(djangoPath, req.method);
+        }
+      } catch { /* not JSON, fall through to real backend */ }
+    }
+
+    // For all other routes, check if the current session is a demo session
+    const cookieStore = await cookies();
+    const access = cookieStore.get(COOKIE_ACCESS)?.value;
+    if (isDemoToken(access)) {
+      return resolveDemoAuth(djangoPath, req.method);
+    }
   }
 
+  // ── Real backend proxy ──
   const target = `${DJANGO_INTERNAL_URL}${djangoPath}`;
 
   const cookieStore = await cookies();
@@ -58,10 +82,6 @@ async function handler(
   const contentType = req.headers.get("content-type");
   if (contentType) headers.set("Content-Type", contentType);
   if (cookieHeader) headers.set("Cookie", cookieHeader);
-
-  const body = req.method !== "GET" && req.method !== "HEAD"
-    ? await req.arrayBuffer()
-    : undefined;
 
   let djangoRes: Response;
   try {

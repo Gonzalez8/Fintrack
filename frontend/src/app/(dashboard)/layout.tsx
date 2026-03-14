@@ -6,7 +6,7 @@ import { Sidebar } from "@/components/app/sidebar";
 import { TopBar } from "@/components/app/top-bar";
 import { MobileNav } from "@/components/app/mobile-nav";
 import { getDictionary } from "@/i18n/config";
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES, IS_DEMO } from "@/lib/constants";
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, COOKIE_ACCESS, isDemoToken } from "@/lib/constants";
 import { DemoBanner } from "@/components/app/demo-banner";
 import type { Locale } from "@/lib/constants";
 import type { User } from "@/types";
@@ -27,6 +27,7 @@ export default async function DashboardLayout({
   }
 
   const cookieStore = await cookies();
+  const isDemo = isDemoToken(cookieStore.get(COOKIE_ACCESS)?.value);
   const langCookie = cookieStore.get("fintrack_lang")?.value ?? DEFAULT_LOCALE;
   const locale = (SUPPORTED_LOCALES as readonly string[]).includes(langCookie)
     ? (langCookie as Locale)
@@ -35,7 +36,7 @@ export default async function DashboardLayout({
 
   return (
     <Providers user={user} dictionary={dictionary}>
-      {IS_DEMO && <DemoBanner />}
+      {isDemo && <DemoBanner />}
       <div className="flex min-h-screen">
         <Sidebar />
         <div className="flex flex-1 flex-col min-w-0">

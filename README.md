@@ -128,9 +128,9 @@ The superuser is created automatically on first start (`admin` / `admin` by defa
 3. Add the required [environment variables](#environment-variables)
 4. Click **Deploy the stack**
 
-### Option 4: Live Demo (Vercel, no backend)
+### Option 4: Live Demo (Vercel, with or without backend)
 
-A static frontend-only demo using [MSW (Mock Service Worker)](https://mswjs.io/) — no database or backend needed.
+Enabling the demo flag adds a "Try Demo" button on the login page. Clicking it starts a [MSW (Mock Service Worker)](https://mswjs.io/) session with static data — no database needed. Real login and registration still work normally if a backend is configured.
 
 | Vercel Setting | Value |
 |---|---|
@@ -143,6 +143,8 @@ A static frontend-only demo using [MSW (Mock Service Worker)](https://mswjs.io/)
 ```bash
 cd frontend && NEXT_PUBLIC_DEMO_MODE=true npm run dev
 ```
+
+> `NEXT_PUBLIC_DEMO_MODE=true` enables the demo button — it does **not** replace real auth. Demo sessions are identified by a `demo: true` flag in the JWT token, so they coexist with real users on the same deployment.
 
 ---
 
@@ -356,7 +358,7 @@ GET     /api/health/                      Liveness probe
 | Variable | Default | Description |
 |---|---|---|
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | Public API URL |
-| `NEXT_PUBLIC_DEMO_MODE` | `false` | `true` enables MSW demo layer |
+| `NEXT_PUBLIC_DEMO_MODE` | `false` | `true` shows "Try Demo" button (coexists with real auth) |
 | `DJANGO_INTERNAL_URL` | `http://backend:8000` | Internal Django URL (SSR) |
 
 ---

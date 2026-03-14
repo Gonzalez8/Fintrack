@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { DJANGO_INTERNAL_URL, COOKIE_ACCESS, COOKIE_REFRESH, IS_DEMO } from "@/lib/constants";
+import { DJANGO_INTERNAL_URL, COOKIE_ACCESS, COOKIE_REFRESH, isDemoToken } from "@/lib/constants";
 
 /**
  * BFF proxy: forwards any request from the browser to Django API.
@@ -20,18 +20,18 @@ async function handler(
   const needsSlash = !joined.endsWith("/") && !joined.includes(".");
   const djangoPath = `/api/${joined}${needsSlash ? "/" : ""}`;
 
-  // Demo mode: return static data, no Django backend needed
-  if (IS_DEMO) {
+  const cookieStore = await cookies();
+  let access = cookieStore.get(COOKIE_ACCESS)?.value;
+  const refresh = cookieStore.get(COOKIE_REFRESH)?.value;
+
+  // Demo session: return static data, no backend needed
+  if (isDemoToken(access)) {
     return resolveDemoProxy(djangoPath, req.method);
   }
 
   const url = new URL(req.url);
   const search = url.search;
   const target = `${DJANGO_INTERNAL_URL}${djangoPath}${search}`;
-
-  const cookieStore = await cookies();
-  let access = cookieStore.get(COOKIE_ACCESS)?.value;
-  const refresh = cookieStore.get(COOKIE_REFRESH)?.value;
 
   // For non-GET requests, buffer the body so we can retry after refresh
   const body = req.method !== "GET" && req.method !== "HEAD"
