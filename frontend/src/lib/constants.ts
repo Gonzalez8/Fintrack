@@ -11,14 +11,19 @@ export const COOKIE_ACCESS = "access_token";
 export const COOKIE_REFRESH = "refresh_token";
 
 /**
- * Check if a token (access or refresh) belongs to a demo session
- * by reading the `demo: true` flag from the JWT payload.
+ * Check if a token (access or refresh) belongs to a demo session.
+ * Checks for the `demo: true` flag in the JWT payload, and also
+ * recognises legacy demo tokens (signature "demo-sig" / "demo-ref-sig").
  */
 export function isDemoToken(token: string | undefined): boolean {
   if (!token) return false;
   try {
+    const parts = token.split(".");
+    // Legacy demo tokens used a fixed signature
+    const sig = parts[2];
+    if (sig === "demo-sig" || sig === "demo-ref-sig") return true;
     const payload = JSON.parse(
-      Buffer.from(token.split(".")[1], "base64url").toString(),
+      Buffer.from(parts[1], "base64url").toString(),
     );
     return payload.demo === true;
   } catch {

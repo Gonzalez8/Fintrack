@@ -23,6 +23,10 @@ export default async function DashboardLayout({
     if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
       redirect("/login");
     }
+    // Network error (e.g. no backend on Vercel demo) → send to login
+    if (!(err instanceof ApiError)) {
+      redirect("/login");
+    }
     throw err;
   }
 
