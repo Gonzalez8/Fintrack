@@ -4,7 +4,7 @@ WORKDIR /app
 # Development target
 FROM base AS development
 COPY package*.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 COPY . .
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
@@ -12,10 +12,10 @@ CMD ["npm", "run", "dev"]
 # Build target
 FROM base AS builder
 COPY package*.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+RUN --mount=type=cache,target=/app/.next/cache npm run build
 
 # Production target
 FROM base AS production
