@@ -448,6 +448,24 @@ After pushing to `main`, GitHub Actions rebuilds and publishes Docker images to 
 - [ ] Configure backup strategy for PostgreSQL
 - [ ] Change `DJANGO_SUPERUSER_PASSWORD`
 
+### Database Backups
+
+```bash
+# Manual backup (compressed)
+docker compose -f docker-compose.prod.yml exec -T db pg_dump -U fintrack fintrack | gzip > backups/fintrack_$(date +%Y%m%d).sql.gz
+
+# Restore from backup
+gunzip -c backups/fintrack_20260315.sql.gz | docker compose -f docker-compose.prod.yml exec -T db psql -U fintrack fintrack
+```
+
+**Automated daily backup with 30-day retention** — add to your server's crontab (`crontab -e`):
+
+```
+0 3 * * * cd /path/to/fintrack && mkdir -p backups && docker compose -f docker-compose.prod.yml exec -T db pg_dump -U fintrack fintrack | gzip > backups/fintrack_$(date +\%Y\%m\%d).sql.gz && find backups/ -name "fintrack_*.sql.gz" -mtime +30 -delete
+```
+
+This runs at 3:00 AM daily, creates a compressed dump (~10-50 MB), and deletes backups older than 30 days.
+
 ### Troubleshooting
 
 | Symptom | Cause | Fix |
