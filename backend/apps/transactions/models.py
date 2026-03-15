@@ -32,7 +32,9 @@ class Transaction(UserOwnedModel):
 
     class Meta:
         ordering = ["-date", "-created_at"]
-        unique_together = [("owner", "import_hash")]
+        constraints = [
+            models.UniqueConstraint(fields=["owner", "import_hash"], name="unique_tx_owner_import_hash"),
+        ]
         indexes = [
             models.Index(fields=["owner", "date", "created_at"], name="idx_tx_owner_date"),
         ]
@@ -54,7 +56,9 @@ class Dividend(UserOwnedModel):
 
     class Meta:
         ordering = ["-date", "-created_at"]
-        unique_together = [("owner", "import_hash")]
+        constraints = [
+            models.UniqueConstraint(fields=["owner", "import_hash"], name="unique_div_owner_import_hash"),
+        ]
 
     def __str__(self):
         return f"{self.date} Dividend {self.asset.name} {self.net}"
@@ -73,7 +77,9 @@ class Interest(UserOwnedModel):
 
     class Meta:
         ordering = ["-date_end", "-created_at"]
-        unique_together = [("owner", "import_hash")]
+        constraints = [
+            models.UniqueConstraint(fields=["owner", "import_hash"], name="unique_int_owner_import_hash"),
+        ]
 
     @property
     def days(self):

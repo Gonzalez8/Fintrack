@@ -93,6 +93,20 @@ export function SwipeCard({
     onTap?.();
   }, [onTap, resetPosition]);
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      if (!isOpen.current) openActions();
+    } else if (e.key === "ArrowRight" || e.key === "Escape") {
+      e.preventDefault();
+      if (isOpen.current) resetPosition();
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (isOpen.current) resetPosition();
+      else onTap?.();
+    }
+  }, [openActions, resetPosition, onTap]);
+
   useEffect(() => {
     const close = () => { if (isOpen.current) resetPosition(); };
     window.addEventListener("scroll", close, { passive: true });
@@ -102,17 +116,22 @@ export function SwipeCard({
   return (
     <div className="relative overflow-hidden rounded-lg">
       {/* Swipe-behind actions */}
-      <div className={`absolute inset-y-0 right-0 flex ${actionsVisible ? "" : "invisible"}`}>
+      <div
+        className={`absolute inset-y-0 right-0 flex ${actionsVisible ? "" : "invisible"}`}
+        aria-hidden={!actionsVisible}
+      >
         <button
+          tabIndex={actionsVisible ? 0 : -1}
           onClick={(e) => { e.stopPropagation(); onEdit(); resetPosition(); }}
-          className="flex w-[72px] items-center justify-center bg-blue-500 text-white active:bg-blue-600"
+          className="flex w-[72px] items-center justify-center bg-blue-500 text-white active:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
           aria-label={t("common.edit")}
         >
           <Pencil className="h-5 w-5" />
         </button>
         <button
+          tabIndex={actionsVisible ? 0 : -1}
           onClick={(e) => { e.stopPropagation(); onDelete(); resetPosition(); }}
-          className="flex w-[72px] items-center justify-center bg-red-500 text-white active:bg-red-600"
+          className="flex w-[72px] items-center justify-center bg-red-500 text-white active:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300"
           aria-label={t("common.delete")}
         >
           <Trash2 className="h-5 w-5" />
@@ -122,13 +141,18 @@ export function SwipeCard({
       {/* Card foreground */}
       <div
         ref={trackRef}
+        tabIndex={0}
+        role="group"
+        aria-expanded={actionsVisible}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
         className={cn(
           "relative z-10 cursor-pointer bg-card px-3.5 py-3 active:bg-accent/50 transition-colors",
           "border border-border rounded-lg",
+          "focus:outline-none focus:ring-2 focus:ring-primary/50",
           accentColor && `border-l-[3px] ${accentColor}`,
           className,
         )}

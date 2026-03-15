@@ -185,7 +185,7 @@ class BackupImportView(APIView):
 
         except Exception as e:
             return Response(
-                {"detail": f"Import failed: {str(e)}"},
+                {"detail": "Import failed. Check file format and try again."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

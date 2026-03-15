@@ -41,7 +41,10 @@ class Asset(UserOwnedModel):
 
     class Meta:
         ordering = ["name"]
-        unique_together = [("owner", "ticker"), ("owner", "isin")]
+        constraints = [
+            models.UniqueConstraint(fields=["owner", "ticker"], name="unique_asset_owner_ticker"),
+            models.UniqueConstraint(fields=["owner", "isin"], name="unique_asset_owner_isin"),
+        ]
         indexes = [
             models.Index(fields=["owner", "type"], name="idx_asset_owner_type"),
             models.Index(fields=["owner", "price_status"], name="idx_asset_owner_pstatus"),
@@ -71,7 +74,9 @@ class Account(UserOwnedModel):
 
     class Meta:
         ordering = ["name"]
-        unique_together = [("owner", "name")]
+        constraints = [
+            models.UniqueConstraint(fields=["owner", "name"], name="unique_account_owner_name"),
+        ]
 
     def __str__(self):
         return self.name
@@ -84,8 +89,10 @@ class AccountSnapshot(UserOwnedModel):
     note = models.CharField(max_length=200, blank=True, default="")
 
     class Meta:
-        unique_together = ["account", "date"]
         ordering = ["-date"]
+        constraints = [
+            models.UniqueConstraint(fields=["account", "date"], name="unique_snapshot_account_date"),
+        ]
         indexes = [
             models.Index(fields=["owner", "date"], name="idx_accsnapshot_owner_date"),
             models.Index(fields=["account", "-date"], name="idx_accsnapshot_acc_date"),

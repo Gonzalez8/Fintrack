@@ -8,6 +8,9 @@ DEBUG = False
 if SECRET_KEY == "insecure-dev-key-change-me":  # noqa: F405
     raise RuntimeError("DJANGO_SECRET_KEY must be set in production.")
 
+if ALLOWED_HOSTS == ["*"]:  # noqa: F405
+    raise RuntimeError("ALLOWED_HOSTS must not be '*' in production. Set a specific hostname.")
+
 # In production, cookies must be secure
 JWT_AUTH_COOKIE_SECURE = True
 JWT_AUTH_COOKIE_SAMESITE = "Lax"

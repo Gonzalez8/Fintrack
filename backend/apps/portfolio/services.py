@@ -15,6 +15,88 @@ def _fetch_transactions(user):
     )
 
 
+def compute_investment_cost_by_month(user):
+    """Compute running investment cost at end of each month.
+
+    Uses the user's fiscal_cost_method (FIFO/LIFO/WAC) to track lots.
+    Returns dict mapping "YYYY-MM" → Decimal running investment cost.
+    """
+    settings = Settings.load(user)
+    method = settings.fiscal_cost_method
+    use_wac = method == "WAC"
+    use_lifo = method == "LIFO"
+    gift_market = settings.gift_cost_mode == "MARKET"
+
+    lots: dict = {}
+    wac_state: dict = {}
+    running_cost = Decimal("0")
+    cost_by_month: dict[str, Decimal] = {}
+
+    for tx in Transaction.objects.filter(owner=user).order_by("date", "created_at").values(
+        "date", "type", "asset_id", "quantity", "price", "commission", "tax"
+    ):
+        month_key = tx["date"].strftime("%Y-%m")
+        aid = tx["asset_id"]
+        qty = tx["quantity"] or Decimal("0")
+        price = tx["price"] or Decimal("0")
+        commission = tx["commission"] or Decimal("0")
+        tax = tx["tax"] or Decimal("0")
+
+        if tx["type"] == "BUY":
+            ppu = price + (commission + tax) / qty if qty else Decimal("0")
+            running_cost += qty * ppu
+            if use_wac:
+                if aid not in wac_state:
+                    wac_state[aid] = {"total_qty": Decimal("0"), "total_cost": Decimal("0")}
+                wac_state[aid]["total_qty"] += qty
+                wac_state[aid]["total_cost"] += qty * ppu
+            else:
+                if aid not in lots:
+                    lots[aid] = deque()
+                lots[aid].append({"qty": qty, "ppu": ppu})
+
+        elif tx["type"] == "GIFT":
+            ppu = price if gift_market else Decimal("0")
+            running_cost += qty * ppu
+            if use_wac:
+                if aid not in wac_state:
+                    wac_state[aid] = {"total_qty": Decimal("0"), "total_cost": Decimal("0")}
+                wac_state[aid]["total_qty"] += qty
+                wac_state[aid]["total_cost"] += qty * ppu
+            else:
+                if aid not in lots:
+                    lots[aid] = deque()
+                lots[aid].append({"qty": qty, "ppu": ppu})
+
+        elif tx["type"] == "SELL":
+            if use_wac:
+                state = wac_state.get(aid)
+                if state and state["total_qty"] > 0:
+                    avg = state["total_cost"] / state["total_qty"]
+                    running_cost -= avg * qty
+                    state["total_qty"] -= qty
+                    state["total_cost"] -= avg * qty
+                    if state["total_qty"] <= 0:
+                        state["total_qty"] = Decimal("0")
+                        state["total_cost"] = Decimal("0")
+            else:
+                if aid not in lots:
+                    lots[aid] = deque()
+                remaining = qty
+                while remaining > 0 and lots.get(aid):
+                    lot = lots[aid][-1] if use_lifo else lots[aid][0]
+                    consumed = min(remaining, lot["qty"])
+                    running_cost -= consumed * lot["ppu"]
+                    lot["qty"] -= consumed
+                    remaining -= consumed
+                    if lot["qty"] <= 0:
+                        lots[aid].pop() if use_lifo else lots[aid].popleft()
+
+        cost_by_month[month_key] = running_cost
+
+    return cost_by_month
+
+
 def _process_lot_based(user, lifo=False):
     settings = Settings.load(user)
     money_exp = Decimal(10) ** -settings.rounding_money

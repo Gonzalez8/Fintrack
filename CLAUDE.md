@@ -69,6 +69,21 @@ frontend/         Next.js 15+ App Router
 - **Tap on mobile card:** Opens a `DetailDrawer` (bottom sheet, read-only) showing all fields. Never opens the edit form — editing is only via swipe action. Component: `components/app/detail-drawer.tsx`.
 - **New item button:** Use a `Button` with `Plus` icon in the page header area.
 
+## Database Backup
+
+```bash
+# Manual backup (compressed)
+docker compose exec -T db pg_dump -U fintrack fintrack | gzip > backups/fintrack_$(date +%Y%m%d).sql.gz
+
+# Restore from backup
+gunzip -c backups/fintrack_20260315.sql.gz | docker compose exec -T db psql -U fintrack fintrack
+
+# Automated daily backup with 30-day retention (add to crontab):
+# 0 3 * * * cd /path/to/fintrack && docker compose exec -T db pg_dump -U fintrack fintrack | gzip > backups/fintrack_$(date +\%Y\%m\%d).sql.gz && find backups/ -name "fintrack_*.sql.gz" -mtime +30 -delete
+```
+
+The cron line does 3 things: creates a compressed daily dump, then deletes any backup older than 30 days. A typical Fintrack database is 10-50 MB compressed, so 30 days ≈ 300 MB - 1.5 GB.
+
 ## Common Commands
 
 ```bash
