@@ -122,16 +122,6 @@ function ProfileCard() {
                     )
                   : "—"}
               </span>
-              {profile?.id && (
-                <>
-                  <span className="text-muted-foreground">
-                    {t("profile.userId")}
-                  </span>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {profile.id}
-                  </span>
-                </>
-              )}
             </div>
             <div className="flex items-center gap-2">
               <Button size="sm" variant="outline" onClick={startEditing}>
@@ -209,9 +199,9 @@ function ProfileCard() {
 function ChangePasswordCard() {
   const t = useTranslations();
   const [form, setForm] = useState<ChangePasswordData>({
-    old_password: "",
+    current_password: "",
     new_password: "",
-    new_password2: "",
+    new_password_confirm: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
@@ -220,7 +210,7 @@ function ChangePasswordCard() {
     mutationFn: (data: ChangePasswordData) =>
       api.post("/auth/change-password/", data),
     onSuccess: () => {
-      setForm({ old_password: "", new_password: "", new_password2: "" });
+      setForm({ current_password: "", new_password: "", new_password_confirm: "" });
       setErrors({});
       setSuccess(true);
       setTimeout(() => setSuccess(false), 4000);
@@ -265,9 +255,9 @@ function ChangePasswordCard() {
             </label>
             <Input
               type="password"
-              value={form.old_password}
+              value={form.current_password}
               onChange={(e) =>
-                setForm((f) => ({ ...f, old_password: e.target.value }))
+                setForm((f) => ({ ...f, current_password: e.target.value }))
               }
             />
             {errors.current_password && (
@@ -304,14 +294,14 @@ function ChangePasswordCard() {
             </label>
             <Input
               type="password"
-              value={form.new_password2}
+              value={form.new_password_confirm}
               onChange={(e) =>
-                setForm((f) => ({ ...f, new_password2: e.target.value }))
+                setForm((f) => ({ ...f, new_password_confirm: e.target.value }))
               }
             />
-            {errors.new_password2 && (
+            {errors.new_password_confirm && (
               <p className="text-xs text-destructive">
-                {errors.new_password2}
+                {errors.new_password_confirm}
               </p>
             )}
           </div>

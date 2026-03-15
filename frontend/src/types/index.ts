@@ -25,9 +25,9 @@ export interface ProfileData {
 }
 
 export interface ChangePasswordData {
-  old_password: string;
+  current_password: string;
   new_password: string;
-  new_password2: string;
+  new_password_confirm: string;
 }
 
 export interface AuthResponse {
