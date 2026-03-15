@@ -51,7 +51,7 @@ frontend/         Next.js 15+ App Router
 
 ## Key Conventions
 
-- **Language:** UI labels use i18n (es, en, de, fr, it). Code (variables, comments) in English.
+- **Language:** UI labels use i18n (es, en, de, fr, it). Code (variables, comments) in English. **Every new or modified i18n key MUST be added to ALL 5 locale files** (`frontend/src/i18n/messages/{es,en,de,fr,it}.json`). Never add a key to just es/en — incomplete translations break the UI for other languages.
 - **Money:** Always `Decimal`, never float.
 - **IDs:** UUID (TimeStampedModel base).
 - **Multi-tenancy:** Every model has `owner` FK. ViewSets use `OwnedByUserMixin`.
