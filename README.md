@@ -61,13 +61,23 @@ Track your portfolio, transactions, dividends, interests and taxes from a single
 - **Multiple account types** — Operativa, Ahorro, Inversion, Depositos, Alternativos
 - **Balance snapshots** — Historical balance tracking with auto-sync
 - **Portfolio snapshots** — Periodic automated snapshots via Celery Beat
+- **Bulk snapshot** — Update all account balances in one action
 
 ### Reports & Analytics
 - **Year summary** — Dividends, interests, realized P&L, total income by year
 - **Patrimonio evolution** — Total net worth over time (cash + investments)
 - **Portfolio evolution** — Market value, cost basis, unrealized P&L charts
 - **Monthly savings** — Cashflow and savings rate analysis
+- **Annual savings** — Yearly savings aggregates and breakdown
+- **Savings goals** — Target-based goals with 3-scenario projections (conservative, average, optimistic)
 - **CSV exports** — Transactions, dividends, and interests
+
+### Data Management
+- **Snapshot scheduling** — Configurable auto-snapshot frequency (15min to 24h)
+- **Data retention** — Automated purge of old snapshots (configurable: 1y, 5y, 10y, never)
+- **Storage monitoring** — Per-user database space tracking
+- **Bulk snapshots** — Update all account balances at once
+- **JSON backup/restore** — Full data export and import
 
 ### Security & Auth
 - **JWT in httpOnly cookies** — Access + refresh tokens, SameSite=Lax
@@ -253,7 +263,7 @@ fintrack/
 │   │   ├── assets/                Assets, accounts, snapshots, settings
 │   │   ├── transactions/          Transaction, Dividend, Interest
 │   │   ├── portfolio/             Cost basis engine (FIFO/LIFO/WAC)
-│   │   ├── reports/               Tax summaries, evolution, savings
+│   │   ├── reports/               Tax summaries, evolution, savings, goals
 │   │   └── importer/              JSON backup / restore
 │   └── config/
 │       ├── settings/              base.py · development.py · production.py
@@ -319,6 +329,13 @@ GET     /api/reports/year-summary/
 GET     /api/reports/patrimonio-evolution/
 GET     /api/reports/rv-evolution/
 GET     /api/reports/monthly-savings/
+GET     /api/reports/annual-savings/
+GET     /api/reports/snapshot-status/
+
+CRUD    /api/savings-goals/
+GET     /api/savings-goals/{id}/projection/   Goal progress projection
+
+GET     /api/storage-info/                    Database space usage
 
 GET     /api/export/transactions.csv
 GET     /api/export/dividends.csv

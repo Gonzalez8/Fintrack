@@ -20,14 +20,14 @@ backend/          Django 5.1 + DRF (API pura)
     assets/       Asset, Account, Settings, Snapshots + Yahoo Finance
     transactions/ Transaction (BUY/SELL/GIFT), Dividend, Interest
     portfolio/    FIFO/LIFO/WAC engine
-    reports/      Fiscal, patrimonio, ahorro, evolution
+    reports/      Tax, net worth, savings, evolution, savings goals
     importer/     JSON backup/restore
   config/
     settings/     base.py, development.py, production.py
     celery.py     Celery app
     urls.py       Root URL conf
 
-frontend/         Next.js 15+ App Router
+frontend/         Next.js 16 App Router
   src/
     app/
       (marketing)/  Landing page (SSG)
