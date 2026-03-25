@@ -54,14 +54,26 @@ def snapshot_all_users_task() -> None:
 
 @shared_task
 def snapshot_single_user_task(user_id: int) -> None:
-    """Create a PortfolioSnapshot for a single user."""
+    """Update prices from Yahoo Finance, then create a PortfolioSnapshot for a single user."""
     from django.contrib.auth import get_user_model
-    from apps.assets.services import create_portfolio_snapshot_now
+    from apps.assets.services import create_portfolio_snapshot_now, update_prices
 
     try:
         user = get_user_model().objects.get(pk=user_id)
     except get_user_model().DoesNotExist:
         return
+
+    # Refresh prices before snapshot so it captures up-to-date market data
+    try:
+        result = update_prices(user)
+        if result["updated"]:
+            logger.info("Prices updated for user %s: %d assets", user, result["updated"])
+            from apps.core.cache import invalidate_user_cache, FINANCIAL_NAMESPACES
+            invalidate_user_cache(user.pk, *FINANCIAL_NAMESPACES)
+        if result["errors"]:
+            logger.warning("Price errors for user %s: %s", user, result["errors"])
+    except Exception as exc:
+        logger.warning("Price update failed for user %s: %s (proceeding with snapshot)", user, exc)
 
     create_portfolio_snapshot_now(user)
     logger.info("Portfolio snapshot created for user %s", user)
