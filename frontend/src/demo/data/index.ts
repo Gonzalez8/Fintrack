@@ -18,3 +18,4 @@ export {
   demoSavingsProjection,
 } from "./reports";
 export { getDemoPriceHistory, getDemoPositionHistory } from "./charts";
+export { demoProperties, demoAmortizations, demoSimulationResult } from "./properties";

@@ -20,6 +20,9 @@ import {
   demoSettings,
   getDemoPriceHistory,
   getDemoPositionHistory,
+  demoProperties,
+  demoAmortizations,
+  demoSimulationResult,
 } from "./data";
 
 // Fake JWT that won't be rejected by middleware — three base64url segments,
@@ -340,6 +343,53 @@ const proxyHandlers = [
   http.get("/api/proxy/savings-goals/:id/projection/", async () => {
     await delay(300);
     return HttpResponse.json(demoSavingsProjection);
+  }),
+
+  // ---- Properties ----
+  http.get("/api/proxy/properties/", async () => {
+    await delay(200);
+    return HttpResponse.json(paginated(demoProperties));
+  }),
+
+  http.post("/api/proxy/properties/", async () => {
+    await delay(200);
+    return HttpResponse.json(demoProperties[0], { status: 201 });
+  }),
+
+  http.put("/api/proxy/properties/:id/", async () => {
+    await delay(200);
+    return HttpResponse.json(demoProperties[0]);
+  }),
+
+  http.delete("/api/proxy/properties/:id/", async () => {
+    await delay(200);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post("/api/proxy/properties/simulate/", async () => {
+    await delay(300);
+    return HttpResponse.json(demoSimulationResult);
+  }),
+
+  // ---- Amortizations ----
+  http.get("/api/proxy/amortizations/", async () => {
+    await delay(200);
+    return HttpResponse.json(paginated(demoAmortizations));
+  }),
+
+  http.post("/api/proxy/amortizations/", async () => {
+    await delay(200);
+    return HttpResponse.json(demoAmortizations[0], { status: 201 });
+  }),
+
+  http.put("/api/proxy/amortizations/:id/", async () => {
+    await delay(200);
+    return HttpResponse.json(demoAmortizations[0]);
+  }),
+
+  http.delete("/api/proxy/amortizations/:id/", async () => {
+    await delay(200);
+    return new HttpResponse(null, { status: 204 });
   }),
 
   // ---- Settings ----

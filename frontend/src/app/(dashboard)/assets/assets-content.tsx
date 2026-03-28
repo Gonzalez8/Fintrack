@@ -144,6 +144,7 @@ function AssetCard({
             value={asset.current_price}
             currency={asset.currency}
             className="text-sm font-semibold"
+            isPublic
           />
           <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
             {asset.currency}
@@ -301,7 +302,7 @@ export function AssetsContent() {
       ),
     },
     { key: "currency", header: t("common.currency"), render: (a) => <span className="text-sm">{a.currency}</span> },
-    { key: "price", header: t("transactions.price"), className: "text-right", render: (a) => <MoneyCell value={a.current_price} currency={a.currency} /> },
+    { key: "price", header: t("transactions.price"), className: "text-right", render: (a) => <MoneyCell value={a.current_price} currency={a.currency} isPublic /> },
     {
       key: "sync",
       header: "Sync",

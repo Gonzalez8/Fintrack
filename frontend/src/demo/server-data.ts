@@ -40,6 +40,10 @@ export async function resolveDemoData<T>(path: string): Promise<T> {
     "/api/reports/annual-savings": data.demoAnnualSavings,
     "/api/savings-goals": paginatedResponse(data.demoSavingsGoals),
 
+    "/api/properties": paginatedResponse(data.demoProperties),
+    "/api/properties/simulate": data.demoSimulationResult,
+    "/api/amortizations": paginatedResponse(data.demoAmortizations),
+
     "/api/settings": data.demoSettings,
     "/api/storage-info": { total_mb: 12.4, tables: [] },
     "/api/health": { status: "ok" },
@@ -69,6 +73,10 @@ export async function resolveDemoData<T>(path: string): Promise<T> {
   if (/^\/api\/savings-goals\/[^/]+/.test(cleanPath)) {
     const id = cleanPath.split("/")[3];
     return (data.demoSavingsGoals.find((g) => g.id === id) ?? data.demoSavingsGoals[0]) as T;
+  }
+  if (/^\/api\/properties\/[^/]+/.test(cleanPath)) {
+    const id = cleanPath.split("/")[3];
+    return (data.demoProperties.find((p) => p.id === id) ?? data.demoProperties[0]) as T;
   }
   if (/^\/api\/tasks\//.test(cleanPath)) {
     return { task_id: "demo", status: "SUCCESS", result: { updated: 8 } } as T;

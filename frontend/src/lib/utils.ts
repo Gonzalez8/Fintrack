@@ -1,21 +1,27 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { isPrivacyMode } from "@/lib/privacy"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+const MASK = "•••••";
+
 /**
  * Format a numeric string or number as money (European style).
  * E.g. 12345.67 → "12.345,67 €"
+ * Returns masked value when privacy mode is active.
  */
 export function formatMoney(
   value: string | number | null | undefined,
   currency = "EUR",
+  isPublic = false,
 ): string {
   if (value == null || value === "") return "—";
   const num = typeof value === "string" ? parseFloat(value) : value;
   if (isNaN(num)) return "—";
+  if (!isPublic && isPrivacyMode()) return MASK;
 
   return new Intl.NumberFormat("es-ES", {
     style: "currency",

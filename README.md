@@ -85,6 +85,21 @@ Track your portfolio, transactions, dividends, interests and taxes from a single
 - **Rate limiting** — Per-endpoint throttling (login, register, password change)
 - **Multi-tenancy** — Strict owner-based data isolation
 
+### Real Estate & Mortgage
+- **Property tracking** — Current value, purchase price, net equity per property
+- **Smart mortgage setup** — Enter loan amount, term (years), rate type (fixed/variable) and rate. Monthly payment, months paid, and outstanding balance auto-calculated from purchase date
+- **Interactive amortization table** — Click any row (past or future) to add an early amortization. Choose reduce payment or reduce term per event. Schedule recalculates instantly
+- **Multiple amortizations** — Add several events at different months, each cascading into the next
+- **Timeline chart** — Balance curve (original vs modified), event markers, current position
+- **Payment breakdown** — Principal vs interest stacked bars per month
+- **Mortgage summary** — Side-by-side comparison: original vs modified for payment, installments, term, end date, total to pay, total interest, with savings highlighted
+- **Amortization persistence** — Events stored in database, optimistic UI updates
+
+### Privacy Mode
+- **One-click toggle** — Eye icon in sidebar / mobile nav masks all personal monetary amounts
+- **Smart masking** — Only personal amounts hidden (balances, gains, dividends). Public data stays visible: asset prices, percentages, share quantities
+- **Persistent** — Stored in cookie, survives page reload
+
 ### Internationalization
 - **5 languages** — Spanish, English, German, French, Italian
 
@@ -264,6 +279,7 @@ fintrack/
 │   │   ├── transactions/          Transaction, Dividend, Interest
 │   │   ├── portfolio/             Cost basis engine (FIFO/LIFO/WAC)
 │   │   ├── reports/               Tax summaries, evolution, savings, goals
+│   │   ├── realestate/            Property, Amortization, mortgage simulation
 │   │   └── importer/              JSON backup / restore
 │   └── config/
 │       ├── settings/              base.py · development.py · production.py
@@ -280,7 +296,7 @@ fintrack/
 │       ├── components/
 │       │   ├── ui/                shadcn/ui (Radix + Tailwind v4)
 │       │   └── app/               Domain-specific components
-│       ├── lib/                   api-server.ts, api-client.ts, utils
+│       ├── lib/                   api-client, utils, mortgage-math, privacy
 │       ├── types/                 TypeScript interfaces
 │       ├── demo/                  MSW handlers (demo mode)
 │       └── i18n/                  Translations (es, en, de, fr, it)
@@ -334,6 +350,10 @@ GET     /api/reports/snapshot-status/
 
 CRUD    /api/savings-goals/
 GET     /api/savings-goals/{id}/projection/   Goal progress projection
+
+CRUD    /api/properties/                      Real estate properties
+POST    /api/properties/simulate/             Mortgage amortization simulation
+CRUD    /api/amortizations/                   Early amortization events (?property=uuid)
 
 GET     /api/storage-info/                    Database space usage
 

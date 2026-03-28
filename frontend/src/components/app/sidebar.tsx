@@ -6,9 +6,10 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Briefcase, Landmark, Wallet, ArrowLeftRight,
   Coins, Percent, FileText, Settings, LogOut, Moon, Sun,
-  TrendingUp, PiggyBank, UserCircle, Globe,
+  TrendingUp, PiggyBank, UserCircle, Globe, Home, Eye, EyeOff,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { usePrivacy } from "@/lib/privacy";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -49,6 +50,7 @@ function useNavSections() {
         label: t("nav.analysis"),
         links: [
           { href: "/savings", icon: PiggyBank, label: t("nav.savings") },
+          { href: "/properties", icon: Home, label: t("nav.properties") },
         ],
       },
     ],
@@ -96,6 +98,7 @@ function SidebarLink({
 
 export function Sidebar() {
   const { resolvedTheme, setTheme } = useTheme();
+  const { privacyMode, togglePrivacy } = usePrivacy();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -163,6 +166,18 @@ export function Sidebar() {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <button
+          onClick={togglePrivacy}
+          className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-muted-foreground transition-all border-l-2 border-transparent hover:bg-secondary hover:text-foreground"
+        >
+          {privacyMode ? (
+            <EyeOff className="h-4 w-4 shrink-0" />
+          ) : (
+            <Eye className="h-4 w-4 shrink-0" />
+          )}
+          {privacyMode ? t("nav.showAmounts") : t("nav.hideAmounts")}
+        </button>
 
         <button
           onClick={() => setTheme(isDark ? "light" : "dark")}

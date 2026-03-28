@@ -6,9 +6,10 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Briefcase, ArrowLeftRight, Settings,
   Menu, Coins, Landmark, Wallet, Percent, FileText,
-  LogOut, Moon, Sun, PiggyBank, UserCircle,
+  LogOut, Moon, Sun, PiggyBank, UserCircle, Home, Eye, EyeOff,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { usePrivacy } from "@/lib/privacy";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
 } from "@/components/ui/sheet";
@@ -31,12 +32,14 @@ export function MobileNav() {
     { href: "/accounts", icon: Wallet, label: t("nav.accounts") },
     { href: "/tax", icon: FileText, label: t("nav.fiscal") },
     { href: "/savings", icon: PiggyBank, label: t("nav.savings") },
+    { href: "/properties", icon: Home, label: t("nav.properties") },
     { href: "/profile", icon: UserCircle, label: t("nav.profile") },
   ];
   const [sheetOpen, setSheetOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
+  const { privacyMode, togglePrivacy } = usePrivacy();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const isDark = mounted && resolvedTheme === "dark";
@@ -114,22 +117,38 @@ export function MobileNav() {
             </div>
 
             {/* Utility actions */}
-            <div className="mt-4 border-t px-4 pt-3 pb-2 flex gap-2">
-              <button
-                onClick={() => setTheme(isDark ? "light" : "dark")}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-muted py-3 text-sm font-medium active:scale-95 transition-transform"
-              >
-                {isDark ? (
-                  <Sun className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  <Moon className="h-4 w-4" aria-hidden="true" />
-                )}
-                {isDark ? t("nav.lightMode") : t("nav.darkMode")}
-              </button>
+            <div className="mt-4 border-t px-4 pt-3 pb-2 space-y-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={togglePrivacy}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-3 text-sm font-medium active:scale-95 transition-transform ${
+                    privacyMode ? "bg-primary/10 text-primary" : "bg-muted"
+                  }`}
+                >
+                  {privacyMode ? (
+                    <EyeOff className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  {privacyMode ? t("nav.showAmounts") : t("nav.hideAmounts")}
+                </button>
+
+                <button
+                  onClick={() => setTheme(isDark ? "light" : "dark")}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-muted py-3 text-sm font-medium active:scale-95 transition-transform"
+                >
+                  {isDark ? (
+                    <Sun className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Moon className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  {isDark ? t("nav.lightMode") : t("nav.darkMode")}
+                </button>
+              </div>
 
               <button
                 onClick={handleLogout}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-destructive/10 py-3 text-sm font-medium text-destructive active:scale-95 transition-transform"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-destructive/10 py-3 text-sm font-medium text-destructive active:scale-95 transition-transform"
               >
                 <LogOut className="h-4 w-4" aria-hidden="true" />
                 {t("nav.logout")}

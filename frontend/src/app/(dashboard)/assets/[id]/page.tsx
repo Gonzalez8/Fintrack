@@ -231,7 +231,7 @@ export default function AssetDetailPage({
                       {t("portfolio.currentPrice")}
                     </p>
                     <p className="text-xl sm:text-2xl font-bold tabular-nums">
-                      <MoneyCell value={asset.current_price} className="text-xl sm:text-2xl" />
+                      <MoneyCell value={asset.current_price} className="text-xl sm:text-2xl" isPublic />
                     </p>
                   </div>
                   <div>

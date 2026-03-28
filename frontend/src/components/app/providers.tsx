@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { createContext, useContext, useState } from "react";
 import { DictionaryContext } from "@/i18n/use-translations";
+import { PrivacyProvider } from "@/lib/privacy";
 import type { User } from "@/types";
 
 // ── React Query ──────────────────────────────────────────────────
@@ -55,7 +56,9 @@ export function Providers({
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <UserContext value={user}>
           <DictionaryContext value={dictionary}>
-            {children}
+            <PrivacyProvider>
+              {children}
+            </PrivacyProvider>
           </DictionaryContext>
         </UserContext>
       </ThemeProvider>

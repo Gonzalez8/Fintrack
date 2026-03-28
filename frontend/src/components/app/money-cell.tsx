@@ -1,10 +1,14 @@
 import { cn } from "@/lib/utils";
+import { usePrivacy } from "@/lib/privacy";
+
+const MASK = "•••••";
 
 interface MoneyCellProps {
   value: string | number | null | undefined;
   className?: string;
   colored?: boolean;
   prefix?: string;
+  isPublic?: boolean;
   currency?: string;
 }
 
@@ -13,8 +17,11 @@ export function MoneyCell({
   className,
   colored = false,
   prefix,
+  isPublic = false,
   currency = "EUR",
 }: MoneyCellProps) {
+  const { privacyMode } = usePrivacy();
+
   if (value == null || value === "") {
     return <span className={cn("font-mono text-sm tabular-nums text-muted-foreground", className)}>—</span>;
   }
@@ -22,6 +29,10 @@ export function MoneyCell({
   const num = typeof value === "string" ? parseFloat(value) : value;
   if (isNaN(num)) {
     return <span className={cn("font-mono text-sm tabular-nums text-muted-foreground", className)}>—</span>;
+  }
+
+  if (!isPublic && privacyMode) {
+    return <span className={cn("font-mono text-sm tabular-nums text-muted-foreground", className)}>{MASK}</span>;
   }
 
   const formatted = new Intl.NumberFormat("es-ES", {

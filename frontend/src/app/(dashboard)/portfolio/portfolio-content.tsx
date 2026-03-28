@@ -110,7 +110,7 @@ export function PortfolioContent() {
       key: "price",
       header: t("portfolio.currentPrice"),
       className: "text-right",
-      render: (p) => <MoneyCell value={p.current_price} />,
+      render: (p) => <MoneyCell value={p.current_price} isPublic />,
     },
     {
       key: "value",

@@ -1,0 +1,87 @@
+import type { Property, AmortizationEvent, MortgageSimulationResult } from "@/types";
+
+export const demoProperties: Property[] = [
+  {
+    id: "a1b2c3d4-e5f6-7890-abcd-111111111111",
+    name: "Piso en Madrid Centro",
+    current_value: "285000.00",
+    purchase_price: "220000.00",
+    purchase_date: "2019-06-15",
+    currency: "EUR",
+    notes: "3 habitaciones, 90m², zona Chamberí",
+    original_loan_amount: "176000.00",
+    outstanding_balance: "142350.00",
+    annual_interest_rate: "2.5000",
+    total_term_months: 360,
+    months_paid: 68,
+    monthly_payment: "695.37",
+    net_equity: "142650.00",
+    amortized_capital: "33650.00",
+    has_mortgage: true,
+    created_at: "2024-01-15T10:00:00Z",
+    updated_at: "2025-12-01T08:30:00Z",
+  },
+  {
+    id: "a1b2c3d4-e5f6-7890-abcd-222222222222",
+    name: "Garaje Centro",
+    current_value: "28000.00",
+    purchase_price: "22000.00",
+    purchase_date: "2021-03-10",
+    currency: "EUR",
+    notes: "Plaza de garaje en el mismo edificio",
+    original_loan_amount: null,
+    outstanding_balance: null,
+    annual_interest_rate: null,
+    total_term_months: null,
+    months_paid: null,
+    monthly_payment: null,
+    net_equity: "28000.00",
+    amortized_capital: null,
+    has_mortgage: false,
+    created_at: "2024-02-20T12:00:00Z",
+    updated_at: "2025-11-15T09:00:00Z",
+  },
+];
+
+export const demoAmortizations: AmortizationEvent[] = [
+  {
+    id: "b1b2c3d4-e5f6-7890-abcd-333333333333",
+    property: "a1b2c3d4-e5f6-7890-abcd-111111111111",
+    month: 9,
+    amount: "20000.00",
+    strategy: "REDUCE_TERM",
+    created_at: "2020-07-01T10:00:00Z",
+    updated_at: "2020-07-01T10:00:00Z",
+  },
+];
+
+export const demoSimulationResult: MortgageSimulationResult = {
+  monthly_interest_rate: "0.2083",
+  current: {
+    monthly_payment: "695.37",
+    remaining_installments: 292,
+    total_remaining: "203048.04",
+    total_interest: "60698.04",
+    remaining_years: 24,
+    remaining_months: 4,
+    monthly_interest_rate: "0.2083",
+  },
+  new: {
+    monthly_payment: "645.80",
+    remaining_installments: 292,
+    total_remaining: "188573.60",
+    total_interest: "56223.60",
+    remaining_years: 24,
+    remaining_months: 4,
+    monthly_interest_rate: "0.2083",
+  },
+  difference: {
+    monthly_payment: "-49.57",
+    remaining_installments: 0,
+    total_remaining: "-14474.44",
+    total_interest: "-4474.44",
+    remaining_years: 0,
+    remaining_months: 0,
+  },
+  strategy: "REDUCE_PAYMENT",
+};

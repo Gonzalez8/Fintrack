@@ -431,6 +431,130 @@ export interface SavingsProjection {
   deadline_shortfall: string | null;
 }
 
+// ── Real Estate ─────────────────────────────────────────────────
+export interface Property {
+  id: string;
+  name: string;
+  current_value: string;
+  purchase_price: string | null;
+  purchase_date: string | null;
+  currency: string;
+  notes: string;
+  original_loan_amount: string | null;
+  outstanding_balance: string | null;
+  annual_interest_rate: string | null;
+  total_term_months: number | null;
+  months_paid: number | null;
+  monthly_payment: string | null;
+  // computed
+  net_equity: string;
+  amortized_capital: string | null;
+  has_mortgage: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PropertyFormData {
+  name: string;
+  current_value: string;
+  purchase_price?: string;
+  purchase_date?: string;
+  currency?: string;
+  notes?: string;
+  original_loan_amount?: string;
+  outstanding_balance?: string;
+  annual_interest_rate?: string;
+  total_term_months?: number;
+  months_paid?: number;
+  monthly_payment?: string;
+}
+
+export type SimulationStrategy = "REDUCE_PAYMENT" | "REDUCE_TERM";
+
+export interface MortgageSimulationInput {
+  outstanding_balance: string;
+  annual_interest_rate: string;
+  remaining_months: number;
+  monthly_payment: string;
+  extra_payment: string;
+  strategy: SimulationStrategy;
+}
+
+export interface SimulationScenario {
+  monthly_payment: string;
+  remaining_installments: number;
+  total_remaining: string;
+  total_interest: string;
+  remaining_years: number;
+  remaining_months: number;
+  monthly_interest_rate: string;
+}
+
+export interface MortgageSimulationResult {
+  monthly_interest_rate: string;
+  current: SimulationScenario;
+  new: SimulationScenario;
+  difference: Omit<SimulationScenario, "monthly_interest_rate">;
+  strategy: SimulationStrategy;
+}
+
+// ── Amortization Schedule ────────────────────────────────────────
+export interface AmortizationRow {
+  month: number;
+  date: string;
+  payment: number;
+  principal: number;
+  interest: number;
+  remainingBalance: number;
+  totalInterestPaid: number;
+  totalPrincipalPaid: number;
+}
+
+export interface AmortizationComparison {
+  original: AmortizationRow[];
+  modified: AmortizationRow[];
+  amortizationMonth: number;
+  extraPayment: number;
+  strategy: SimulationStrategy;
+  savings: {
+    interestSaved: number;
+    monthsReduced: number;
+    newMonthlyPayment: number | null;
+    originalEndDate: string;
+    newEndDate: string;
+  };
+}
+
+export interface AmortizationEvent {
+  id: string;
+  property: string;
+  month: number;
+  amount: string;
+  strategy: SimulationStrategy;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AmortizationEventFormData {
+  property: string;
+  month: number;
+  amount: string;
+  strategy: SimulationStrategy;
+}
+
+export interface MultiAmortizationResult {
+  original: AmortizationRow[];
+  modified: AmortizationRow[];
+  events: AmortizationEvent[];
+  savings: {
+    interestSaved: number;
+    monthsReduced: number;
+    totalExtraPayments: number;
+    originalEndDate: string;
+    newEndDate: string;
+  };
+}
+
 // ── Storage ──────────────────────────────────────────────────────
 export interface StorageInfo {
   total_mb: number;

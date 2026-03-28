@@ -753,19 +753,63 @@ export function TaxContent() {
       </section>
 
       {/* Year Summary Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("fiscal.yearHistory")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DataTable
-            columns={yearColumns}
-            data={years ?? []}
-            keyFn={(y) => String(y.year)}
-            emptyMessage={t("common.noData")}
-          />
-        </CardContent>
-      </Card>
+      <section className="space-y-3">
+        <SectionHeader
+          eyebrow={t("fiscal.historySection")}
+          title={t("fiscal.yearHistory")}
+        />
+
+        {/* Mobile: cards */}
+        <div className="space-y-2 sm:hidden">
+          {(years ?? []).map((y) => {
+            const total = parseFloat(y.total_income);
+            const positive = total >= 0;
+            return (
+              <div key={y.year} className="rounded-lg border border-border p-3 space-y-2">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-mono text-sm font-bold">{y.year}</span>
+                  <span className={`font-mono text-sm font-bold tabular-nums ${positive ? "text-green-500" : "text-red-500"}`}>
+                    {fmtMoney(total)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-border/40 pt-2">
+                  <div>
+                    <p className="font-mono text-[9px] tracking-[1px] uppercase text-muted-foreground">{t("fiscal.netDividendsShort")}</p>
+                    <p className="font-mono text-xs tabular-nums">{formatMoney(y.dividends_net)}</p>
+                  </div>
+                  <div>
+                    <p className="font-mono text-[9px] tracking-[1px] uppercase text-muted-foreground">{t("fiscal.netInterestsShort")}</p>
+                    <p className="font-mono text-xs tabular-nums">{formatMoney(y.interests_net)}</p>
+                  </div>
+                  <div>
+                    <p className="font-mono text-[9px] tracking-[1px] uppercase text-muted-foreground">{t("fiscal.capitalGains")}</p>
+                    <p className="font-mono text-xs tabular-nums"><MoneyCell value={y.realized_pnl} colored /></p>
+                  </div>
+                  <div>
+                    <p className="font-mono text-[9px] tracking-[1px] uppercase text-muted-foreground">{t("fiscal.divWithholding")}</p>
+                    <p className="font-mono text-xs tabular-nums">{formatMoney(y.dividends_tax)}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {(!years || years.length === 0) && (
+            <p className="py-3 text-sm text-muted-foreground">{t("common.noData")}</p>
+          )}
+        </div>
+
+        {/* Desktop: table */}
+        <Card className="hidden sm:block">
+          <CardContent className="pt-4">
+            <DataTable
+              columns={yearColumns}
+              data={years ?? []}
+              keyFn={(y) => String(y.year)}
+              emptyMessage={t("common.noData")}
+            />
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }
