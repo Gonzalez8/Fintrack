@@ -337,6 +337,10 @@
   "interests.projection.compoundInterest": "Compound interest",
   "interests.projection.start": "Start",
   "interests.projection.yearLabel": "Year",
+  "interests.projection.today": "Today",
+  "interests.projection.projectedLabel": "Projection",
+  "interests.projection.yrShort": "y",
+  "interests.projection.yrsShort": "y",
 
   "label.assetType.STOCK": "Stocks",
   "label.assetType.ETF": "ETFs",
