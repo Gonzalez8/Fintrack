@@ -308,7 +308,7 @@ export function InterestsProjectionTab() {
               </div>
               <Slider
                 value={[projectionYears]}
-                onValueChange={(v: number[]) => setProjectionYears(v[0])}
+                onValueChange={(v) => setProjectionYears(Array.isArray(v) ? v[0] : v)}
                 min={1}
                 max={20}
               />
