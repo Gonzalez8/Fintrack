@@ -3,13 +3,12 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  ReferenceDot,
   Legend,
 } from "recharts";
 import { api } from "@/lib/api-client";
@@ -18,32 +17,12 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useChartTheme, SERIES, POSITIVE } from "@/lib/chart-theme";
+import { useChartTheme, SERIES } from "@/lib/chart-theme";
 import { formatMoney } from "@/lib/utils";
 import { useTranslations } from "@/i18n/use-translations";
 import type { Interest, PaginatedResponse } from "@/types";
 
 // ── helpers ──────────────────────────────────────────────────────────
-
-const MONTH_ABBR = [
-  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
-  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
-];
-
-function fmtAxis(m: string): string {
-  const [year, month] = m.split("-");
-  return `${MONTH_ABBR[parseInt(month) - 1]} ${year.slice(2)}`;
-}
-
-function monthKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function addMonths(d: Date, n: number): Date {
-  const r = new Date(d);
-  r.setMonth(r.getMonth() + n);
-  return r;
-}
 
 /** Compute TAE from a single interest record */
 function recordTAE(gross: number, balance: number, days: number): number | null {
@@ -57,11 +36,10 @@ interface MonthlyPoint {
   interestGross: number;
 }
 
-interface ChartPoint {
-  month: string;
+interface BarPoint {
   label: string;
-  historical: number | null;
-  projected: number | null;
+  invested: number;
+  compoundInterest: number;
 }
 
 // ── component ────────────────────────────────────────────────────────
@@ -74,7 +52,6 @@ export function InterestsProjectionTab() {
   const { data: allData, isLoading } = useQuery({
     queryKey: ["interests", "all"],
     queryFn: async () => {
-      // Fetch all pages
       let page = 1;
       const all: Interest[] = [];
       let hasNext = true;
@@ -98,7 +75,7 @@ export function InterestsProjectionTab() {
     const map = new Map<string, MonthlyPoint>();
 
     for (const i of interests) {
-      const key = i.date_end.slice(0, 7); // YYYY-MM
+      const key = i.date_end.slice(0, 7);
       const existing = map.get(key);
       const gross = parseFloat(i.gross) || 0;
       const balance = i.balance ? parseFloat(i.balance) : null;
@@ -116,7 +93,7 @@ export function InterestsProjectionTab() {
     return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
   }, [interests]);
 
-  // ── Compute average TAE from last 3 months with data ──
+  // ── Compute average TAE from last 3 records with data ──
   const avgTAE = useMemo(() => {
     if (!interests.length) return 0;
     const sorted = [...interests].sort(
@@ -138,7 +115,7 @@ export function InterestsProjectionTab() {
   // ── Compute average monthly contribution from last 3 months ──
   const defaultContribution = useMemo(() => {
     if (monthlyData.length < 2) return 0;
-    const recent = monthlyData.slice(-4); // last 4 to compute 3 deltas
+    const recent = monthlyData.slice(-4);
     const deltas: number[] = [];
     for (let i = 1; i < recent.length; i++) {
       if (recent[i].balance !== null && recent[i - 1].balance !== null) {
@@ -168,85 +145,59 @@ export function InterestsProjectionTab() {
     return interests.reduce((s, i) => s + (parseFloat(i.gross) || 0), 0);
   }, [interests]);
 
-  // ── Build chart data ──
-  const { chartData, projectedBalance, projectedInterest, junctionMonth } = useMemo(() => {
-    // Historical points
-    const historical: ChartPoint[] = monthlyData
-      .filter((m) => m.balance !== null)
-      .map((m) => ({
-        month: m.month,
-        label: fmtAxis(m.month),
-        historical: m.balance!,
-        projected: null,
-      }));
+  // ── Build stacked bar chart data (yearly) ──
+  const { chartData, projectedBalance, projectedInterest } = useMemo(() => {
+    const monthlyRate = avgTAE > 0 ? Math.pow(1 + avgTAE, 1 / 12) - 1 : 0;
+    const totalMonths = projectionYears * 12;
 
-    if (!historical.length) {
-      return { chartData: [], projectedBalance: 0, projectedInterest: 0, junctionMonth: "" };
-    }
+    // Starting point: current balance is split into
+    // invested = currentBalance - totalHistoricalInterest (what the user put in)
+    // compoundInterest = totalHistoricalInterest (what interest generated)
+    const startInvested = Math.max(0, currentBalance - totalHistoricalInterest);
+    const startInterest = totalHistoricalInterest;
 
-    const lastHistorical = historical[historical.length - 1];
-    const jMonth = lastHistorical.month;
+    let balance = currentBalance;
+    let cumulativeInvested = startInvested;
+    let cumulativeInterest = startInterest;
 
-    // Projection
-    const projMonths = projectionYears * 12;
-    const monthlyRate = Math.pow(1 + avgTAE, 1 / 12) - 1;
-    let balance = lastHistorical.historical!;
-    let totalFutureInterest = 0;
+    const points: BarPoint[] = [];
 
-    const projected: ChartPoint[] = [];
-    // Junction point: appears in both series
-    projected.push({
-      month: jMonth,
-      label: fmtAxis(jMonth),
-      historical: null,
-      projected: balance,
+    // Point 0: "Inicio" (current state)
+    points.push({
+      label: t("interests.projection.start"),
+      invested: round2(cumulativeInvested),
+      compoundInterest: round2(cumulativeInterest),
     });
 
-    const lastDate = new Date(jMonth + "-01");
-    for (let i = 1; i <= projMonths; i++) {
+    // Project month by month, snapshot every 12 months
+    for (let m = 1; m <= totalMonths; m++) {
       const interest = balance * monthlyRate;
-      balance = balance + interest + contribution;
-      totalFutureInterest += interest;
-      const d = addMonths(lastDate, i);
-      const key = monthKey(d);
-      projected.push({
-        month: key,
-        label: fmtAxis(key),
-        historical: null,
-        projected: Math.round(balance * 100) / 100,
-      });
-    }
+      balance += interest + contribution;
+      cumulativeInvested += contribution;
+      cumulativeInterest += interest;
 
-    // Merge: historical + projected (junction point shared)
-    const merged = [...historical, ...projected];
-    // Sort by month
-    merged.sort((a, b) => a.month.localeCompare(b.month));
-
-    // Deduplicate (junction month appears twice — merge them)
-    const deduped: ChartPoint[] = [];
-    for (const p of merged) {
-      const last = deduped[deduped.length - 1];
-      if (last && last.month === p.month) {
-        if (p.historical !== null) last.historical = p.historical;
-        if (p.projected !== null) last.projected = p.projected;
-      } else {
-        deduped.push({ ...p });
+      if (m % 12 === 0) {
+        const year = m / 12;
+        points.push({
+          label: `${t("interests.projection.yearLabel")} ${year}`,
+          invested: round2(cumulativeInvested),
+          compoundInterest: round2(cumulativeInterest),
+        });
       }
     }
 
     return {
-      chartData: deduped,
-      projectedBalance: Math.round(balance * 100) / 100,
-      projectedInterest: Math.round(totalFutureInterest * 100) / 100,
-      junctionMonth: jMonth,
+      chartData: points,
+      projectedBalance: round2(balance),
+      projectedInterest: round2(cumulativeInterest - startInterest),
     };
-  }, [monthlyData, projectionYears, avgTAE, contribution]);
+  }, [currentBalance, totalHistoricalInterest, projectionYears, avgTAE, contribution, t]);
 
   // ── Axis formatter ──
-  const fmtK = (v: number) =>
-    Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0);
-
-  const interval = chartData.length <= 12 ? 0 : chartData.length <= 24 ? 1 : Math.floor(chartData.length / 12);
+  const fmtK = (v: number) => {
+    if (Math.abs(v) >= 1000) return `${(v / 1000).toFixed(0)}k`;
+    return v.toFixed(0);
+  };
 
   if (isLoading) {
     return (
@@ -339,33 +290,26 @@ export function InterestsProjectionTab() {
         </CardContent>
       </Card>
 
-      {/* ── Chart ── */}
+      {/* ── Stacked Bar Chart ── */}
       <Card>
         <CardContent className="pt-4 pb-2 px-2 sm:px-4">
           <p className="font-mono text-[9px] tracking-[2px] uppercase text-muted-foreground mb-3 px-2">
             {t("interests.projection.chartTitle")}
           </p>
-          <ResponsiveContainer width="100%" height={340}>
-            <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="gradHistorical" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={SERIES.interests} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={SERIES.interests} stopOpacity={0.05} />
-                </linearGradient>
-              </defs>
+          <ResponsiveContainer width="100%" height={360}>
+            <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
               <XAxis
                 dataKey="label"
                 tick={theme.axisTick}
                 axisLine={false}
                 tickLine={false}
-                interval={interval}
               />
               <YAxis
                 tick={theme.axisTick}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={fmtK}
-                width={50}
+                width={55}
               />
               <Tooltip
                 contentStyle={theme.tooltipStyle}
@@ -375,51 +319,33 @@ export function InterestsProjectionTab() {
                 formatter={(value, name) => {
                   const v = Number(value);
                   const label =
-                    name === "historical"
-                      ? t("interests.projection.historical")
-                      : t("interests.projection.projected");
+                    name === "invested"
+                      ? t("interests.projection.invested")
+                      : t("interests.projection.compoundInterest");
                   return [formatMoney(String(v.toFixed(2))), label];
                 }}
               />
               <Legend
                 wrapperStyle={theme.legendStyle}
                 formatter={(value: string) =>
-                  value === "historical"
-                    ? t("interests.projection.historical")
-                    : t("interests.projection.projected")
+                  value === "invested"
+                    ? t("interests.projection.invested")
+                    : t("interests.projection.compoundInterest")
                 }
               />
-              {/* Historical line (solid) */}
-              <Line
-                type="monotone"
-                dataKey="historical"
-                stroke={SERIES.interests}
-                strokeWidth={2}
-                dot={false}
-                connectNulls={false}
+              <Bar
+                dataKey="invested"
+                stackId="total"
+                fill={SERIES.investments}
+                radius={[0, 0, 0, 0]}
               />
-              {/* Projected line (dashed) */}
-              <Line
-                type="monotone"
-                dataKey="projected"
-                stroke={POSITIVE}
-                strokeWidth={2}
-                strokeDasharray="6 3"
-                dot={false}
-                connectNulls={false}
+              <Bar
+                dataKey="compoundInterest"
+                stackId="total"
+                fill={SERIES.interests}
+                radius={[4, 4, 0, 0]}
               />
-              {/* Junction point marker */}
-              {junctionMonth && (
-                <ReferenceDot
-                  x={fmtAxis(junctionMonth)}
-                  y={currentBalance}
-                  r={5}
-                  fill={SERIES.interests}
-                  stroke="white"
-                  strokeWidth={2}
-                />
-              )}
-            </LineChart>
+            </BarChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
@@ -427,7 +353,11 @@ export function InterestsProjectionTab() {
   );
 }
 
-// ── MetricCard ───────────────────────────────────────────────────────
+// ── helpers ──────────────────────────────────────────────────────────
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
 
 function MetricCard({
   label,
