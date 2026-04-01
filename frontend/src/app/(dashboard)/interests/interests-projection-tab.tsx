@@ -349,7 +349,7 @@ export function InterestsProjectionTab() {
             <p className="font-mono text-[9px] tracking-[2px] uppercase text-muted-foreground">
               {t("interests.projection.chartTitle")}
             </p>
-            <div className="flex items-center gap-4 ml-auto text-xs">
+            <div className="flex items-center gap-4 ml-auto text-xs text-foreground">
               <span className="flex items-center gap-1.5">
                 <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: SERIES.investments }} />
                 {t("interests.projection.invested")}
@@ -359,7 +359,7 @@ export function InterestsProjectionTab() {
                 {t("interests.projection.compoundInterest")}
               </span>
               <span className="flex items-center gap-1.5 text-muted-foreground">
-                <span className="inline-block w-3 h-3 rounded-sm border border-dashed border-current opacity-50" />
+                <span className="inline-block w-3 h-3 rounded-sm opacity-40" style={{ backgroundColor: SERIES.investments }} />
                 {t("interests.projection.projectedLabel")}
               </span>
             </div>
@@ -383,7 +383,7 @@ export function InterestsProjectionTab() {
                 contentStyle={theme.tooltipStyle}
                 labelStyle={theme.tooltipLabelStyle}
                 itemStyle={theme.tooltipItemStyle}
-                cursor={theme.tooltipCursor}
+                cursor={theme.barCursor}
                 formatter={(value, name) => {
                   const v = Number(value);
                   const label =
