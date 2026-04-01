@@ -10,7 +10,6 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  Legend,
   ReferenceLine,
 } from "recharts";
 import { api } from "@/lib/api-client";
@@ -98,8 +97,8 @@ export function InterestsProjectionTab() {
     return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
   }, [interests]);
 
-  // ── Compute average TAE from last 3 records ──
-  const avgTAE = useMemo(() => {
+  // ── Compute default TAE from last 3 records ──
+  const defaultTAE = useMemo(() => {
     if (!interests.length) return 0;
     const sorted = [...interests].sort(
       (a, b) => b.date_end.localeCompare(a.date_end)
@@ -116,7 +115,7 @@ export function InterestsProjectionTab() {
     return taes.reduce((s, v) => s + v, 0) / taes.length;
   }, [interests]);
 
-  // ── Compute average monthly contribution from last 3 months ──
+  // ── Compute default monthly contribution from last 3 months ──
   const defaultContribution = useMemo(() => {
     if (monthlyData.length < 2) return 0;
     const recent = monthlyData.slice(-4);
@@ -131,9 +130,13 @@ export function InterestsProjectionTab() {
     return Math.round(deltas.reduce((s, v) => s + v, 0) / deltas.length);
   }, [monthlyData]);
 
+  // ── Controls state ──
   const [projectionYears, setProjectionYears] = useState(5);
   const [monthlyContribution, setMonthlyContribution] = useState<number | null>(null);
+  const [userTAE, setUserTAE] = useState<number | null>(null);
+
   const contribution = monthlyContribution ?? defaultContribution;
+  const activeTAE = userTAE !== null ? userTAE / 100 : defaultTAE; // userTAE is in %, convert to decimal
 
   // ── Current balance & totals ──
   const currentBalance = useMemo(() => {
@@ -147,30 +150,36 @@ export function InterestsProjectionTab() {
     return interests.reduce((s, i) => s + (parseFloat(i.gross) || 0), 0);
   }, [interests]);
 
-  // ── Build chart: historical yearly bars + projected yearly bars ──
-  const { chartData, projectedBalance, projectedInterest, todayLabel } = useMemo(() => {
-    // --- 1) Build historical yearly bars from real data ---
-    // Group interests by year, accumulate interest
+  // ── Build chart data ──
+  const { chartData, projectedBalance, projectedInterest, lastRealLabel } = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-12
+    const remainingMonthsThisYear = 12 - currentMonth;
+
+    // --- 1) Historical yearly bars (completed past years, pure real data) ---
     const yearlyInterest = new Map<number, number>();
-    const yearlyBalance = new Map<number, number>(); // last known balance per year
+    const yearlyBalance = new Map<number, number>();
 
     for (const m of monthlyData) {
       const year = parseInt(m.month.slice(0, 4));
       yearlyInterest.set(year, (yearlyInterest.get(year) ?? 0) + m.interestGross);
       if (m.balance !== null) {
-        yearlyBalance.set(year, m.balance); // last month wins (data is sorted)
+        yearlyBalance.set(year, m.balance);
       }
     }
 
     const years = Array.from(yearlyBalance.keys()).sort();
-    const historicalPoints: BarPoint[] = [];
+    const pastYears = years.filter((y) => y < currentYear);
+
+    const points: BarPoint[] = [];
     let cumulativeInterest = 0;
 
-    for (const year of years) {
+    for (const year of pastYears) {
       cumulativeInterest += yearlyInterest.get(year) ?? 0;
       const balance = yearlyBalance.get(year)!;
       const invested = Math.max(0, balance - cumulativeInterest);
-      historicalPoints.push({
+      points.push({
         label: String(year),
         invested: round2(invested),
         compoundInterest: round2(cumulativeInterest),
@@ -178,78 +187,61 @@ export function InterestsProjectionTab() {
       });
     }
 
-    // --- 2) "Hoy" bar (current state) ---
+    // --- 2) Current year bar: real data + project remaining months ---
+    const realInterestThisYear = yearlyInterest.get(currentYear) ?? 0;
     const startInvested = Math.max(0, currentBalance - totalHistoricalInterest);
     const startInterest = totalHistoricalInterest;
-    const todayLbl = t("interests.projection.today");
 
-    // Only add "Hoy" if last historical year != current year or no historical
-    const currentYear = new Date().getFullYear();
-    const lastHistYear = years.length ? years[years.length - 1] : null;
+    const monthlyRate = activeTAE > 0 ? Math.pow(1 + activeTAE, 1 / 12) - 1 : 0;
 
-    let points: BarPoint[] = [];
-
-    if (lastHistYear !== null && lastHistYear < currentYear) {
-      // Historical bars + separate "Hoy" bar
-      points = [
-        ...historicalPoints,
-        {
-          label: todayLbl,
-          invested: round2(startInvested),
-          compoundInterest: round2(startInterest),
-          isProjected: false,
-        },
-      ];
-    } else if (historicalPoints.length) {
-      // Last historical year is current year — replace it with "Hoy" label
-      points = [...historicalPoints];
-      points[points.length - 1] = {
-        ...points[points.length - 1],
-        label: todayLbl,
-      };
-    } else {
-      points = [
-        {
-          label: todayLbl,
-          invested: round2(startInvested),
-          compoundInterest: round2(startInterest),
-          isProjected: false,
-        },
-      ];
-    }
-
-    // --- 3) Projected yearly bars ---
-    const monthlyRate = avgTAE > 0 ? Math.pow(1 + avgTAE, 1 / 12) - 1 : 0;
-    const totalMonths = projectionYears * 12;
-    const baseYear = new Date().getFullYear();
+    // Project remaining months of the current year
     let balance = currentBalance;
-    let cumInvested = startInvested;
-    let cumInterest = startInterest;
-
-    for (let m = 1; m <= totalMonths; m++) {
+    let projInterestThisYear = 0;
+    for (let m = 0; m < remainingMonthsThisYear; m++) {
       const interest = balance * monthlyRate;
       balance += interest + contribution;
-      cumInvested += contribution;
-      cumInterest += interest;
+      projInterestThisYear += interest;
+    }
 
-      if (m % 12 === 0) {
-        const yearNum = m / 12;
-        points.push({
-          label: String(baseYear + yearNum),
-          invested: round2(cumInvested),
-          compoundInterest: round2(cumInterest),
-          isProjected: true,
-        });
+    const totalInterestThisYear = realInterestThisYear + projInterestThisYear;
+    const cumInterestAtYearEnd = cumulativeInterest + totalInterestThisYear;
+    const investedAtYearEnd = Math.max(0, balance - cumInterestAtYearEnd);
+
+    const realLabel = String(currentYear);
+    points.push({
+      label: realLabel,
+      invested: round2(investedAtYearEnd),
+      compoundInterest: round2(cumInterestAtYearEnd),
+      isProjected: false, // hybrid: real + projected to close the year
+    });
+
+    // --- 3) Future full years (pure projection) ---
+    let cumInvested = investedAtYearEnd;
+    let cumInterest = cumInterestAtYearEnd;
+
+    for (let y = 1; y <= projectionYears; y++) {
+      for (let m = 0; m < 12; m++) {
+        const interest = balance * monthlyRate;
+        balance += interest + contribution;
+        cumInvested += contribution;
+        cumInterest += interest;
       }
+
+      points.push({
+        label: String(currentYear + y),
+        invested: round2(cumInvested),
+        compoundInterest: round2(cumInterest),
+        isProjected: true,
+      });
     }
 
     return {
       chartData: points,
       projectedBalance: round2(balance),
       projectedInterest: round2(cumInterest - startInterest),
-      todayLabel: todayLbl,
+      lastRealLabel: realLabel,
     };
-  }, [monthlyData, currentBalance, totalHistoricalInterest, projectionYears, avgTAE, contribution, t]);
+  }, [monthlyData, currentBalance, totalHistoricalInterest, projectionYears, activeTAE, contribution]);
 
   const fmtK = (v: number) =>
     Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0);
@@ -325,27 +317,49 @@ export function InterestsProjectionTab() {
       {/* ── Controls ── */}
       <Card>
         <CardContent className="py-4 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="space-y-2">
+          {/* Row 1: Slider */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">{t("interests.projection.years")}</Label>
+              <span className="text-sm font-mono tabular-nums text-muted-foreground">
+                {projectionYears} {projectionYears === 1 ? t("interests.projection.year") : t("interests.projection.yearsUnit")}
+              </span>
+            </div>
+            <Slider
+              value={[projectionYears]}
+              onValueChange={(v) => setProjectionYears(Array.isArray(v) ? v[0] : v)}
+              min={1}
+              max={20}
+            />
+          </div>
+          {/* Row 2: TAE + Contribution */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label className="text-sm">{t("interests.projection.years")}</Label>
-                <span className="text-sm font-mono tabular-nums text-muted-foreground">
-                  {projectionYears} {projectionYears === 1 ? t("interests.projection.year") : t("interests.projection.yearsUnit")}
+                <Label className="text-sm">TAE</Label>
+                <span className="text-xs text-muted-foreground">
+                  {t("interests.projection.avgTAEDefault")}: {(defaultTAE * 100).toFixed(2)}%
                 </span>
               </div>
-              <Slider
-                value={[projectionYears]}
-                onValueChange={(v) => setProjectionYears(Array.isArray(v) ? v[0] : v)}
-                min={1}
-                max={20}
-              />
+              <div className="relative">
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={userTAE ?? round2(defaultTAE * 100)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setUserTAE(v === "" ? null : parseFloat(v) || 0);
+                  }}
+                  className="font-mono tabular-nums pr-8"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+              </div>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label className="text-sm">{t("interests.projection.monthlyContribution")}</Label>
-                <span className="text-sm font-mono tabular-nums text-muted-foreground">
-                  {formatMoney(contribution)}
-                </span>
               </div>
               <Input
                 type="number"
@@ -357,15 +371,10 @@ export function InterestsProjectionTab() {
               />
             </div>
           </div>
-          {avgTAE > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {t("interests.projection.avgTAE")}: {(avgTAE * 100).toFixed(2)}%
-            </p>
-          )}
         </CardContent>
       </Card>
 
-      {/* ── Legend (custom) ── */}
+      {/* ── Chart ── */}
       <Card>
         <CardContent className="pt-4 pb-2 px-2 sm:px-4">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mb-3 px-2">
@@ -406,18 +415,10 @@ export function InterestsProjectionTab() {
                 content={renderTooltip}
                 cursor={theme.barCursor}
               />
-              {/* ReferenceLine at "Hoy" to mark the boundary */}
               <ReferenceLine
-                x={todayLabel}
+                x={lastRealLabel}
                 stroke={theme.textMuted}
                 strokeDasharray="4 4"
-                label={{
-                  value: t("interests.projection.today"),
-                  position: "top",
-                  fill: theme.textMuted,
-                  fontSize: 10,
-                  fontFamily: theme.axisTick.fontFamily,
-                }}
               />
               <Bar dataKey="invested" stackId="total" radius={[0, 0, 0, 0]}>
                 {chartData.map((entry, idx) => (

@@ -332,6 +332,7 @@
   "interests.projection.yearsUnit": "anni",
   "interests.projection.monthlyContribution": "Contributo mensile",
   "interests.projection.avgTAE": "Tasso annuo medio (ultimi 3 registri)",
+  "interests.projection.avgTAEDefault": "Media",
   "interests.projection.chartTitle": "Denaro investito vs Interessi composti",
   "interests.projection.invested": "Denaro investito",
   "interests.projection.compoundInterest": "Interessi composti",

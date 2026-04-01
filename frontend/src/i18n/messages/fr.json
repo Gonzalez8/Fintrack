@@ -332,6 +332,7 @@
   "interests.projection.yearsUnit": "ans",
   "interests.projection.monthlyContribution": "Apport mensuel",
   "interests.projection.avgTAE": "Taux annuel moyen (3 derniers relevés)",
+  "interests.projection.avgTAEDefault": "Moyenne",
   "interests.projection.chartTitle": "Argent investi vs Intérêts composés",
   "interests.projection.invested": "Argent investi",
   "interests.projection.compoundInterest": "Intérêts composés",

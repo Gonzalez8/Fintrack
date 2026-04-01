@@ -332,6 +332,7 @@
   "interests.projection.yearsUnit": "Jahre",
   "interests.projection.monthlyContribution": "Monatlicher Beitrag",
   "interests.projection.avgTAE": "Durchschn. Jahreszins (letzte 3 Einträge)",
+  "interests.projection.avgTAEDefault": "Durchschnitt",
   "interests.projection.chartTitle": "Investiertes Geld vs Zinseszins",
   "interests.projection.invested": "Investiertes Geld",
   "interests.projection.compoundInterest": "Zinseszins",

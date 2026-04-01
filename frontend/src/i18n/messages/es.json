@@ -332,6 +332,7 @@
   "interests.projection.yearsUnit": "años",
   "interests.projection.monthlyContribution": "Aportación mensual",
   "interests.projection.avgTAE": "TAE media (últimos 3 registros)",
+  "interests.projection.avgTAEDefault": "Media",
   "interests.projection.chartTitle": "Dinero invertido vs Intereses compuestos",
   "interests.projection.invested": "Dinero invertido",
   "interests.projection.compoundInterest": "Intereses compuestos",

@@ -332,6 +332,7 @@
   "interests.projection.yearsUnit": "years",
   "interests.projection.monthlyContribution": "Monthly contribution",
   "interests.projection.avgTAE": "Average APY (last 3 records)",
+  "interests.projection.avgTAEDefault": "Average",
   "interests.projection.chartTitle": "Money invested vs Compound interest",
   "interests.projection.invested": "Money invested",
   "interests.projection.compoundInterest": "Compound interest",
