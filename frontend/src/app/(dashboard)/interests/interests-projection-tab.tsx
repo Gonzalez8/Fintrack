@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart,
@@ -253,6 +253,28 @@ export function InterestsProjectionTab() {
   const fmtK = (v: number) =>
     Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0);
 
+  const renderTooltip = ({ active, payload }: Record<string, unknown>) => {
+    if (!active || !Array.isArray(payload) || !payload.length) return null;
+    const d = payload[0].payload as BarPoint;
+    const total = d.invested + d.compoundInterest;
+    return (
+      <div style={theme.tooltipStyle as React.CSSProperties}>
+        <p style={theme.tooltipLabelStyle as React.CSSProperties}>
+          {d.label} {d.isProjected ? `(${t("interests.projection.projectedLabel")})` : ""}
+        </p>
+        <p style={{ ...(theme.tooltipItemStyle as React.CSSProperties), color: SERIES.investments }}>
+          {t("interests.projection.invested")}: {formatMoney(d.invested)}
+        </p>
+        <p style={{ ...(theme.tooltipItemStyle as React.CSSProperties), color: SERIES.interests }}>
+          {t("interests.projection.compoundInterest")}: {formatMoney(d.compoundInterest)}
+        </p>
+        <p style={{ ...(theme.tooltipItemStyle as React.CSSProperties), fontWeight: 600, marginTop: 2 }}>
+          Total: {formatMoney(total)}
+        </p>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -380,18 +402,8 @@ export function InterestsProjectionTab() {
                 width={55}
               />
               <Tooltip
-                contentStyle={theme.tooltipStyle}
-                labelStyle={theme.tooltipLabelStyle}
-                itemStyle={theme.tooltipItemStyle}
+                content={renderTooltip}
                 cursor={theme.barCursor}
-                formatter={(value, name) => {
-                  const v = Number(value);
-                  const label =
-                    name === "invested"
-                      ? t("interests.projection.invested")
-                      : t("interests.projection.compoundInterest");
-                  return [formatMoney(String(v.toFixed(2))), label];
-                }}
               />
               {/* ReferenceLine at "Hoy" to mark the boundary */}
               <ReferenceLine
