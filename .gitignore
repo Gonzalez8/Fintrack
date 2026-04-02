@@ -53,6 +53,9 @@ htmlcov/
 .coverage.*
 coverage.xml
 
+# Redis
+*.rdb
+
 # Celery
 celerybeat-schedule
 celerybeat-schedule.*
