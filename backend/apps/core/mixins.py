@@ -1,4 +1,4 @@
-from apps.core.cache import invalidate_user_cache, FINANCIAL_NAMESPACES
+from apps.core.cache import FINANCIAL_NAMESPACES, invalidate_user_cache
 
 
 class OwnedByUserMixin:

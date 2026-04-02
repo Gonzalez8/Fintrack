@@ -5,36 +5,35 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('assets', '0004_replace_unique_together_with_constraints'),
-        ('transactions', '0004_remove_withholding_rate'),
+        ("assets", "0004_replace_unique_together_with_constraints"),
+        ("transactions", "0004_remove_withholding_rate"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='dividend',
+            name="dividend",
             unique_together=set(),
         ),
         migrations.AlterUniqueTogether(
-            name='interest',
+            name="interest",
             unique_together=set(),
         ),
         migrations.AlterUniqueTogether(
-            name='transaction',
+            name="transaction",
             unique_together=set(),
         ),
         migrations.AddConstraint(
-            model_name='dividend',
-            constraint=models.UniqueConstraint(fields=('owner', 'import_hash'), name='unique_div_owner_import_hash'),
+            model_name="dividend",
+            constraint=models.UniqueConstraint(fields=("owner", "import_hash"), name="unique_div_owner_import_hash"),
         ),
         migrations.AddConstraint(
-            model_name='interest',
-            constraint=models.UniqueConstraint(fields=('owner', 'import_hash'), name='unique_int_owner_import_hash'),
+            model_name="interest",
+            constraint=models.UniqueConstraint(fields=("owner", "import_hash"), name="unique_int_owner_import_hash"),
         ),
         migrations.AddConstraint(
-            model_name='transaction',
-            constraint=models.UniqueConstraint(fields=('owner', 'import_hash'), name='unique_tx_owner_import_hash'),
+            model_name="transaction",
+            constraint=models.UniqueConstraint(fields=("owner", "import_hash"), name="unique_tx_owner_import_hash"),
         ),
     ]

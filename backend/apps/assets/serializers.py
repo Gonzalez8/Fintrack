@@ -1,20 +1,36 @@
 from rest_framework import serializers
-from .models import Asset, Account, AccountSnapshot, Settings
+
+from .models import Account, AccountSnapshot, Asset, Settings
 
 
 class AssetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Asset
         fields = [
-            "id", "name", "ticker", "isin", "type", "currency",
-            "current_price", "price_mode",
-            "issuer_country", "domicile_country", "withholding_country",
-            "price_source", "price_status", "price_updated_at",
-            "created_at", "updated_at",
+            "id",
+            "name",
+            "ticker",
+            "isin",
+            "type",
+            "currency",
+            "current_price",
+            "price_mode",
+            "issuer_country",
+            "domicile_country",
+            "withholding_country",
+            "price_source",
+            "price_status",
+            "price_updated_at",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = [
-            "id", "current_price", "price_status", "price_updated_at",
-            "created_at", "updated_at",
+            "id",
+            "current_price",
+            "price_status",
+            "price_updated_at",
+            "created_at",
+            "updated_at",
         ]
 
 
@@ -55,8 +71,16 @@ class SettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Settings
         fields = [
-            "base_currency", "cost_basis_method", "fiscal_cost_method", "gift_cost_mode",
-            "rounding_money", "rounding_qty", "price_update_interval",
-            "default_price_source", "snapshot_frequency", "data_retention_days",
-            "purge_portfolio_snapshots", "purge_position_snapshots",
+            "base_currency",
+            "cost_basis_method",
+            "fiscal_cost_method",
+            "gift_cost_mode",
+            "rounding_money",
+            "rounding_qty",
+            "price_update_interval",
+            "default_price_source",
+            "snapshot_frequency",
+            "data_retention_days",
+            "purge_portfolio_snapshots",
+            "purge_position_snapshots",
         ]

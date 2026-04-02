@@ -1,6 +1,7 @@
 import logging
 from collections import deque
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
+
 from apps.assets.models import Account, Settings
 from apps.transactions.models import Transaction
 
@@ -8,11 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def _fetch_transactions(user):
-    return (
-        Transaction.objects.filter(owner=user)
-        .select_related("asset")
-        .order_by("date", "created_at")
-    )
+    return Transaction.objects.filter(owner=user).select_related("asset").order_by("date", "created_at")
 
 
 def compute_investment_cost_by_month(user):
@@ -32,8 +29,10 @@ def compute_investment_cost_by_month(user):
     running_cost = Decimal("0")
     cost_by_month: dict[str, Decimal] = {}
 
-    for tx in Transaction.objects.filter(owner=user).order_by("date", "created_at").values(
-        "date", "type", "asset_id", "quantity", "price", "commission", "tax"
+    for tx in (
+        Transaction.objects.filter(owner=user)
+        .order_by("date", "created_at")
+        .values("date", "type", "asset_id", "quantity", "price", "commission", "tax")
     ):
         month_key = tx["date"].strftime("%Y-%m")
         aid = tx["asset_id"]
@@ -140,24 +139,27 @@ def _process_lot_based(user, lifo=False):
             if remaining > 0:
                 logger.warning(
                     "Oversell detected for asset %s: %s shares not covered by lots",
-                    aid, remaining,
+                    aid,
+                    remaining,
                 )
 
             total_cost_basis = cost_basis.quantize(money_exp, rounding=ROUND_HALF_UP)
             sell_total = (sell_price * tx.quantity - tx.commission - tx.tax).quantize(money_exp, rounding=ROUND_HALF_UP)
             pnl = (sell_total - total_cost_basis).quantize(money_exp, rounding=ROUND_HALF_UP)
 
-            realized_sales.append({
-                "date": tx.date.isoformat(),
-                "asset_name": tx.asset.name,
-                "asset_ticker": tx.asset.ticker,
-                "quantity": str(tx.quantity),
-                "sell_price": str(sell_price.quantize(money_exp, rounding=ROUND_HALF_UP)),
-                "cost_basis": str(total_cost_basis),
-                "proceeds": str(sell_total),
-                "realized_pnl": str(pnl),
-                "oversell_quantity": str(remaining),
-            })
+            realized_sales.append(
+                {
+                    "date": tx.date.isoformat(),
+                    "asset_name": tx.asset.name,
+                    "asset_ticker": tx.asset.ticker,
+                    "quantity": str(tx.quantity),
+                    "sell_price": str(sell_price.quantize(money_exp, rounding=ROUND_HALF_UP)),
+                    "cost_basis": str(total_cost_basis),
+                    "proceeds": str(sell_total),
+                    "realized_pnl": str(pnl),
+                    "oversell_quantity": str(remaining),
+                }
+            )
 
     return lots, realized_sales, asset_map, settings
 
@@ -203,7 +205,8 @@ def _process_wac(user):
             if oversell_qty > 0:
                 logger.warning(
                     "Oversell detected for asset %s (WAC): %s shares not covered",
-                    aid, oversell_qty,
+                    aid,
+                    oversell_qty,
                 )
 
             state["total_qty"] -= tx.quantity
@@ -215,17 +218,19 @@ def _process_wac(user):
             sell_total = (sell_price * tx.quantity - tx.commission - tx.tax).quantize(money_exp, rounding=ROUND_HALF_UP)
             pnl = (sell_total - cost_basis).quantize(money_exp, rounding=ROUND_HALF_UP)
 
-            realized_sales.append({
-                "date": tx.date.isoformat(),
-                "asset_name": tx.asset.name,
-                "asset_ticker": tx.asset.ticker,
-                "quantity": str(tx.quantity),
-                "sell_price": str(sell_price.quantize(money_exp, rounding=ROUND_HALF_UP)),
-                "cost_basis": str(cost_basis),
-                "proceeds": str(sell_total),
-                "realized_pnl": str(pnl),
-                "oversell_quantity": str(oversell_qty),
-            })
+            realized_sales.append(
+                {
+                    "date": tx.date.isoformat(),
+                    "asset_name": tx.asset.name,
+                    "asset_ticker": tx.asset.ticker,
+                    "quantity": str(tx.quantity),
+                    "sell_price": str(sell_price.quantize(money_exp, rounding=ROUND_HALF_UP)),
+                    "cost_basis": str(cost_basis),
+                    "proceeds": str(sell_total),
+                    "realized_pnl": str(pnl),
+                    "oversell_quantity": str(oversell_qty),
+                }
+            )
 
             for acct_id in list(state["acct_qty"]):
                 if state["acct_qty"][acct_id] > 0:
@@ -306,26 +311,29 @@ def _build_portfolio(lots, asset_map, money_exp, qty_exp, user):
         unrealized_pnl = (market_value - cost_total_r).quantize(money_exp, rounding=ROUND_HALF_UP)
         unrealized_pnl_pct = (
             (unrealized_pnl / cost_total_r * 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            if cost_total_r > 0 else Decimal("0")
+            if cost_total_r > 0
+            else Decimal("0")
         )
         total_market_value += market_value
 
-        positions.append({
-            "asset_id": str(aid),
-            "asset_name": asset.name,
-            "asset_ticker": asset.ticker,
-            "asset_type": asset.type,
-            "currency": asset.currency,
-            "account_id": str(primary_account_id) if primary_account_id else None,
-            "quantity": str(quantity),
-            "avg_cost": str(avg_cost),
-            "cost_basis": str(cost_total_r),
-            "current_price": str(current_price),
-            "market_value": str(market_value),
-            "unrealized_pnl": str(unrealized_pnl),
-            "unrealized_pnl_pct": str(unrealized_pnl_pct),
-            "weight": "0",
-        })
+        positions.append(
+            {
+                "asset_id": str(aid),
+                "asset_name": asset.name,
+                "asset_ticker": asset.ticker,
+                "asset_type": asset.type,
+                "currency": asset.currency,
+                "account_id": str(primary_account_id) if primary_account_id else None,
+                "quantity": str(quantity),
+                "avg_cost": str(avg_cost),
+                "cost_basis": str(cost_total_r),
+                "current_price": str(current_price),
+                "market_value": str(market_value),
+                "unrealized_pnl": str(unrealized_pnl),
+                "unrealized_pnl_pct": str(unrealized_pnl_pct),
+                "weight": "0",
+            }
+        )
 
     if total_market_value > 0:
         for p in positions:
@@ -345,17 +353,20 @@ def _build_portfolio(lots, asset_map, money_exp, qty_exp, user):
         bal = acc.balance or Decimal("0")
         if bal != 0:
             total_cash += bal
-            accounts.append({
-                "account_id": str(acc.id),
-                "account_name": acc.name,
-                "account_type": acc.type,
-                "balance": str(bal.quantize(money_exp, rounding=ROUND_HALF_UP)),
-            })
+            accounts.append(
+                {
+                    "account_id": str(acc.id),
+                    "account_name": acc.name,
+                    "account_type": acc.type,
+                    "balance": str(bal.quantize(money_exp, rounding=ROUND_HALF_UP)),
+                }
+            )
 
     grand_total = total_market_value + total_cash
     total_unrealized_pnl_pct = (
         (total_pnl / total_cost * 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        if total_cost > 0 else Decimal("0")
+        if total_cost > 0
+        else Decimal("0")
     )
 
     return {

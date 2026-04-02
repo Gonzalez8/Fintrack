@@ -5,35 +5,36 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('assets', '0001_initial'),
+        ("assets", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddIndex(
-            model_name='accountsnapshot',
-            index=models.Index(fields=['owner', 'date'], name='idx_accsnapshot_owner_date'),
+            model_name="accountsnapshot",
+            index=models.Index(fields=["owner", "date"], name="idx_accsnapshot_owner_date"),
         ),
         migrations.AddIndex(
-            model_name='accountsnapshot',
-            index=models.Index(fields=['account', '-date'], name='idx_accsnapshot_acc_date'),
+            model_name="accountsnapshot",
+            index=models.Index(fields=["account", "-date"], name="idx_accsnapshot_acc_date"),
         ),
         migrations.AddIndex(
-            model_name='asset',
-            index=models.Index(fields=['owner', 'type'], name='idx_asset_owner_type'),
+            model_name="asset",
+            index=models.Index(fields=["owner", "type"], name="idx_asset_owner_type"),
         ),
         migrations.AddIndex(
-            model_name='asset',
-            index=models.Index(fields=['owner', 'price_status'], name='idx_asset_owner_pstatus'),
+            model_name="asset",
+            index=models.Index(fields=["owner", "price_status"], name="idx_asset_owner_pstatus"),
         ),
         migrations.AddIndex(
-            model_name='positionsnapshot',
-            index=models.Index(fields=['owner', 'asset_id', 'captured_at'], name='idx_possnapshot_owner_asset'),
+            model_name="positionsnapshot",
+            index=models.Index(fields=["owner", "asset_id", "captured_at"], name="idx_possnapshot_owner_asset"),
         ),
         migrations.AddConstraint(
-            model_name='positionsnapshot',
-            constraint=models.UniqueConstraint(fields=('batch_id', 'asset'), name='unique_positionsnapshot_batch_asset'),
+            model_name="positionsnapshot",
+            constraint=models.UniqueConstraint(
+                fields=("batch_id", "asset"), name="unique_positionsnapshot_batch_asset"
+            ),
         ),
     ]

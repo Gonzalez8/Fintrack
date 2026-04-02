@@ -1,3 +1,5 @@
+import contextlib
+
 from django.conf import settings as django_settings
 from django.contrib.auth import authenticate
 from rest_framework import status
@@ -5,14 +7,14 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
-from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
-
+from rest_framework_simplejwt.tokens import RefreshToken
 
 # ---------------------------------------------------------------------------
 # Cookie helpers
 # ---------------------------------------------------------------------------
+
 
 def _set_auth_cookies(response, access_token_str, refresh_token_str):
     """Set both access and refresh tokens as httpOnly cookies."""
@@ -63,11 +65,13 @@ def _user_payload(user):
 # JWT endpoints
 # ---------------------------------------------------------------------------
 
+
 class JWTLoginView(APIView):
     """POST /api/auth/token/ — authenticate and issue JWT tokens.
 
     Returns body { access, user } + httpOnly cookies (access_token, refresh_token).
     """
+
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth_login"
@@ -84,10 +88,12 @@ class JWTLoginView(APIView):
 
         refresh = RefreshToken.for_user(user)
         access = str(refresh.access_token)
-        response = Response({
-            "access": access,
-            "user": _user_payload(user),
-        })
+        response = Response(
+            {
+                "access": access,
+                "user": _user_payload(user),
+            }
+        )
         _set_auth_cookies(response, access, str(refresh))
         return response
 
@@ -97,6 +103,7 @@ class JWTRefreshView(APIView):
 
     Returns body { access } + updated cookies.
     """
+
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -138,10 +145,8 @@ class JWTLogoutView(APIView):
     def post(self, request):
         raw_token = request.COOKIES.get(django_settings.JWT_AUTH_COOKIE_REFRESH)
         if raw_token:
-            try:
+            with contextlib.suppress(TokenError, InvalidToken):
                 RefreshToken(raw_token).blacklist()
-            except (TokenError, InvalidToken):
-                pass
 
         response = Response({"detail": "Sesion cerrada."})
         _delete_auth_cookies(response)
@@ -152,8 +157,10 @@ class JWTLogoutView(APIView):
 # User info
 # ---------------------------------------------------------------------------
 
+
 class MeView(APIView):
     """GET /api/auth/me/ — return current authenticated user."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -164,6 +171,7 @@ class MeView(APIView):
 # Celery task status
 # ---------------------------------------------------------------------------
 
+
 class TaskStatusView(APIView):
     """GET /api/tasks/{task_id}/ — poll a Celery task result.
 
@@ -173,6 +181,7 @@ class TaskStatusView(APIView):
 
     def get(self, request, task_id: str):
         from celery.result import AsyncResult
+
         result = AsyncResult(task_id)
         data: dict = {"task_id": task_id, "status": result.status}
         if result.ready():
@@ -194,8 +203,10 @@ class TaskStatusView(APIView):
 # Registration
 # ---------------------------------------------------------------------------
 
+
 class RegisterView(APIView):
     """POST /api/auth/register/ — create a new user and return JWT tokens."""
+
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth_register"
@@ -227,8 +238,10 @@ class RegisterView(APIView):
 # Google OAuth2
 # ---------------------------------------------------------------------------
 
+
 class GoogleAuthView(APIView):
     """POST /api/auth/google/ — verify Google ID token and issue JWT tokens."""
+
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth_google"
@@ -248,11 +261,10 @@ class GoogleAuthView(APIView):
             )
 
         try:
-            from google.oauth2 import id_token as google_id_token
             from google.auth.transport.requests import Request as GoogleRequest
-            idinfo = google_id_token.verify_oauth2_token(
-                credential, GoogleRequest(), django_settings.GOOGLE_CLIENT_ID
-            )
+            from google.oauth2 import id_token as google_id_token
+
+            idinfo = google_id_token.verify_oauth2_token(credential, GoogleRequest(), django_settings.GOOGLE_CLIENT_ID)
         except ValueError as exc:
             return Response(
                 {"detail": f"Token de Google invalido: {exc}"},
@@ -267,6 +279,7 @@ class GoogleAuthView(APIView):
             )
 
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
 
         user = User.objects.filter(email=email).first()
@@ -281,10 +294,12 @@ class GoogleAuthView(APIView):
 
         refresh = RefreshToken.for_user(user)
         access = str(refresh.access_token)
-        response = Response({
-            "access": access,
-            "user": _user_payload(user),
-        })
+        response = Response(
+            {
+                "access": access,
+                "user": _user_payload(user),
+            }
+        )
         _set_auth_cookies(response, access, str(refresh))
         return response
 
@@ -293,16 +308,20 @@ class GoogleAuthView(APIView):
 # Profile & password
 # ---------------------------------------------------------------------------
 
+
 class ProfileView(APIView):
     """GET/PUT /api/auth/profile/ — read and update user profile."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         from apps.core.serializers import ProfileSerializer
+
         return Response(ProfileSerializer(request.user, context={"request": request}).data)
 
     def put(self, request):
         from apps.core.serializers import ProfileSerializer
+
         serializer = ProfileSerializer(
             request.user,
             data=request.data,
@@ -316,6 +335,7 @@ class ProfileView(APIView):
 
 class ChangePasswordView(APIView):
     """POST /api/auth/change-password/ — change password and rotate JWT tokens."""
+
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth_password"
@@ -338,10 +358,8 @@ class ChangePasswordView(APIView):
 
         raw_token = request.COOKIES.get(django_settings.JWT_AUTH_COOKIE_REFRESH)
         if raw_token:
-            try:
+            with contextlib.suppress(TokenError, InvalidToken):
                 RefreshToken(raw_token).blacklist()
-            except (TokenError, InvalidToken):
-                pass
 
         refresh = RefreshToken.for_user(user)
         access = str(refresh.access_token)
@@ -354,13 +372,16 @@ class ChangePasswordView(APIView):
 # Health check
 # ---------------------------------------------------------------------------
 
+
 class HealthView(APIView):
     """GET /api/health/ — liveness probe."""
+
     permission_classes = [AllowAny]
     authentication_classes = []
 
     def get(self, request):
         from django.db import connection
+
         try:
             connection.ensure_connection()
             return Response({"status": "ok"})

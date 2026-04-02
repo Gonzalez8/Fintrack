@@ -1,5 +1,5 @@
 import math
-from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal
 
 TWO_PLACES = Decimal("0.01")
 FOUR_PLACES = Decimal("0.0001")
@@ -78,7 +78,10 @@ def simulate_amortization(
 
     # Current scenario
     current = _compute_scenario(
-        outstanding_balance, monthly_rate, remaining_months, monthly_payment,
+        outstanding_balance,
+        monthly_rate,
+        remaining_months,
+        monthly_payment,
     )
 
     # New balance after extra payment

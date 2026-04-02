@@ -4,19 +4,23 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('reports', '0001_initial'),
+        ("reports", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='savingsgoal',
-            name='current_amount',
+            model_name="savingsgoal",
+            name="current_amount",
         ),
         migrations.AddField(
-            model_name='savingsgoal',
-            name='base_type',
-            field=models.CharField(choices=[('PATRIMONY', 'Total patrimony'), ('CASH', 'Cash only')], default='PATRIMONY', help_text='Whether to measure progress against total patrimony or cash only.', max_length=10),
+            model_name="savingsgoal",
+            name="base_type",
+            field=models.CharField(
+                choices=[("PATRIMONY", "Total patrimony"), ("CASH", "Cash only")],
+                default="PATRIMONY",
+                help_text="Whether to measure progress against total patrimony or cash only.",
+                max_length=10,
+            ),
         ),
     ]

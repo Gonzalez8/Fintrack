@@ -11,7 +11,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
-import { useChartTheme, SERIES, POSITIVE, NEGATIVE } from "@/lib/chart-theme";
+import { useChartTheme, SERIES } from "@/lib/chart-theme";
 import { formatMoney } from "@/lib/utils";
 import { useTranslations } from "@/i18n/use-translations";
 import type { AnnualSavingsPoint } from "@/types";

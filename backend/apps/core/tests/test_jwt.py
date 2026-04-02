@@ -29,6 +29,7 @@ REFRESH_COOKIE = "refresh_token"
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def api_client():
     return APIClient()
@@ -66,6 +67,7 @@ def auth_client(api_client, auth_response):
 # ===========================================================================
 # Login (JWTLoginView)
 # ===========================================================================
+
 
 class TestLogin:
     def test_login_success(self, api_client, user):
@@ -115,6 +117,7 @@ class TestLogin:
 # Refresh (JWTRefreshView)
 # ===========================================================================
 
+
 class TestRefresh:
     def test_refresh_success(self, api_client, auth_response):
         # Set the refresh cookie from the login response
@@ -153,6 +156,7 @@ class TestRefresh:
 # Logout (JWTLogoutView)
 # ===========================================================================
 
+
 class TestLogout:
     def test_logout_success(self, auth_client):
         resp = auth_client.post(LOGOUT_URL)
@@ -190,6 +194,7 @@ class TestLogout:
 # Me (MeView)
 # ===========================================================================
 
+
 class TestMe:
     def test_me_authenticated(self, auth_client, user):
         resp = auth_client.get(ME_URL)
@@ -210,6 +215,7 @@ class TestMe:
 # ===========================================================================
 # Register (RegisterView)
 # ===========================================================================
+
 
 class TestRegister:
     def test_register_success(self, api_client, db, settings):
@@ -298,6 +304,7 @@ class TestRegister:
 # Profile (ProfileView)
 # ===========================================================================
 
+
 class TestProfile:
     def test_profile_get(self, auth_client, user):
         resp = auth_client.get(PROFILE_URL)
@@ -333,6 +340,7 @@ class TestProfile:
 # ===========================================================================
 # Change Password (ChangePasswordView)
 # ===========================================================================
+
 
 class TestChangePassword:
     def test_change_password_success(self, auth_client, user):
@@ -413,6 +421,7 @@ class TestChangePassword:
 # End-to-end flow
 # ===========================================================================
 
+
 class TestEndToEndFlow:
     """Full lifecycle: register -> login -> me -> change password -> logout."""
 
@@ -420,11 +429,14 @@ class TestEndToEndFlow:
         settings.ALLOW_REGISTRATION = True
 
         # 1. Register
-        resp = api_client.post(REGISTER_URL, {
-            "username": "lifecycle",
-            "password": "password123x",
-            "password_confirm": "password123x",
-        })
+        resp = api_client.post(
+            REGISTER_URL,
+            {
+                "username": "lifecycle",
+                "password": "password123x",
+                "password_confirm": "password123x",
+            },
+        )
         assert resp.status_code == 201
         access = resp.data["access"]
         refresh_value = resp.cookies[REFRESH_COOKIE].value
@@ -444,21 +456,27 @@ class TestEndToEndFlow:
 
         # 4. Change password
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {new_access}")
-        resp = api_client.post(CHANGE_PASSWORD_URL, {
-            "current_password": "password123x",
-            "new_password": "updatedpass456",
-            "new_password_confirm": "updatedpass456",
-        })
+        resp = api_client.post(
+            CHANGE_PASSWORD_URL,
+            {
+                "current_password": "password123x",
+                "new_password": "updatedpass456",
+                "new_password_confirm": "updatedpass456",
+            },
+        )
         assert resp.status_code == 200
-        final_access = resp.data["access"]
-        final_refresh = resp.cookies[REFRESH_COOKIE].value
+        assert resp.data["access"]
+        assert resp.cookies[REFRESH_COOKIE].value
 
         # 5. Login with new password
         api_client.credentials()  # clear auth
-        resp = api_client.post(LOGIN_URL, {
-            "username": "lifecycle",
-            "password": "updatedpass456",
-        })
+        resp = api_client.post(
+            LOGIN_URL,
+            {
+                "username": "lifecycle",
+                "password": "updatedpass456",
+            },
+        )
         assert resp.status_code == 200
 
         # 6. Logout

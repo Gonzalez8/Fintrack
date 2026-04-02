@@ -1,8 +1,10 @@
 from rest_framework import viewsets
+
 from apps.core.mixins import OwnedByUserMixin
-from .models import Transaction, Dividend, Interest
-from .serializers import TransactionSerializer, DividendSerializer, InterestSerializer
-from .filters import TransactionFilter, DividendFilter, InterestFilter
+
+from .filters import DividendFilter, InterestFilter, TransactionFilter
+from .models import Dividend, Interest, Transaction
+from .serializers import DividendSerializer, InterestSerializer, TransactionSerializer
 
 
 class TransactionViewSet(OwnedByUserMixin, viewsets.ModelViewSet):

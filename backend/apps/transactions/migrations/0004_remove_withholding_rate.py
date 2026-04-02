@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('transactions', '0003_alter_transaction_quantity_and_more'),
+        ("transactions", "0003_alter_transaction_quantity_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='dividend',
-            name='withholding_rate',
+            model_name="dividend",
+            name="withholding_rate",
         ),
     ]

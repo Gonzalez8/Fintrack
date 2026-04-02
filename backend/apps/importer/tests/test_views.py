@@ -10,9 +10,9 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 
-from apps.assets.models import Account, Asset, Settings
+from apps.assets.models import Account, Asset
 from apps.reports.models import SavingsGoal
-from apps.transactions.models import Transaction, Dividend
+from apps.transactions.models import Dividend, Transaction
 
 User = get_user_model()
 
@@ -33,24 +33,44 @@ def client(user):
 def populated_data(user):
     """Create a set of data for export testing."""
     asset = Asset.objects.create(
-        owner=user, name="Export Stock", ticker="EXP",
-        type=Asset.AssetType.STOCK, currency="EUR", current_price=Decimal("25.00"),
+        owner=user,
+        name="Export Stock",
+        ticker="EXP",
+        type=Asset.AssetType.STOCK,
+        currency="EUR",
+        current_price=Decimal("25.00"),
     )
     account = Account.objects.create(
-        owner=user, name="Export Account", type=Account.AccountType.OPERATIVA, currency="EUR",
+        owner=user,
+        name="Export Account",
+        type=Account.AccountType.OPERATIVA,
+        currency="EUR",
     )
     tx = Transaction.objects.create(
-        owner=user, asset=asset, account=account, type="BUY",
-        date="2025-01-15", quantity=Decimal("10"), price=Decimal("20"),
-        commission=Decimal("1"), tax=Decimal("0"),
+        owner=user,
+        asset=asset,
+        account=account,
+        type="BUY",
+        date="2025-01-15",
+        quantity=Decimal("10"),
+        price=Decimal("20"),
+        commission=Decimal("1"),
+        tax=Decimal("0"),
     )
     div = Dividend.objects.create(
-        owner=user, asset=asset, date="2025-03-15",
-        gross=Decimal("50"), tax=Decimal("7.50"), net=Decimal("42.50"),
+        owner=user,
+        asset=asset,
+        date="2025-03-15",
+        gross=Decimal("50"),
+        tax=Decimal("7.50"),
+        net=Decimal("42.50"),
     )
     goal = SavingsGoal.objects.create(
-        owner=user, name="House", target_amount=Decimal("200000"),
-        base_type="PATRIMONY", icon="house",
+        owner=user,
+        name="House",
+        target_amount=Decimal("200000"),
+        base_type="PATRIMONY",
+        icon="house",
     )
     return {"asset": asset, "account": account, "tx": tx, "div": div, "goal": goal}
 
@@ -118,22 +138,27 @@ class TestImportValidation:
     def test_backward_compat_withholding_rate(self, client, user):
         """Old backups with withholding_rate should import fine."""
         asset = Asset.objects.create(
-            owner=user, name="Div Stock", ticker="DIV",
-            type=Asset.AssetType.STOCK, currency="EUR",
+            owner=user,
+            name="Div Stock",
+            ticker="DIV",
+            type=Asset.AssetType.STOCK,
+            currency="EUR",
         )
         backup = {
             "version": "1.0",
             "assets": [{"id": str(asset.id), "name": "Div Stock", "ticker": "DIV", "type": "STOCK", "currency": "EUR"}],
-            "dividends": [{
-                "id": "00000000-0000-0000-0000-000000000099",
-                "date": "2025-01-15",
-                "asset": str(asset.id),
-                "shares": "10",
-                "gross": "100.00",
-                "tax": "15.00",
-                "net": "85.00",
-                "withholding_rate": "15.00",
-            }],
+            "dividends": [
+                {
+                    "id": "00000000-0000-0000-0000-000000000099",
+                    "date": "2025-01-15",
+                    "asset": str(asset.id),
+                    "shares": "10",
+                    "gross": "100.00",
+                    "tax": "15.00",
+                    "net": "85.00",
+                    "withholding_rate": "15.00",
+                }
+            ],
         }
         file = SimpleUploadedFile(
             "old_backup.json",

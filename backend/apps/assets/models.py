@@ -2,7 +2,8 @@ from django.conf import settings as django_settings
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
-from apps.core.models import TimeStampedModel, UserOwnedModel
+
+from apps.core.models import UserOwnedModel
 
 
 class Asset(UserOwnedModel):
@@ -114,9 +115,7 @@ class AccountSnapshot(UserOwnedModel):
 @receiver(post_delete, sender=AccountSnapshot)
 def sync_account_balance_on_delete(sender, instance, **kwargs):
     latest = AccountSnapshot.objects.filter(account_id=instance.account_id).order_by("-date").first()
-    Account.objects.filter(pk=instance.account_id).update(
-        balance=latest.balance if latest else 0
-    )
+    Account.objects.filter(pk=instance.account_id).update(balance=latest.balance if latest else 0)
 
 
 class PortfolioSnapshot(models.Model):
@@ -189,15 +188,9 @@ class Settings(models.Model):
         related_name="fintrack_settings",
     )
     base_currency = models.CharField(max_length=3, default="EUR")
-    cost_basis_method = models.CharField(
-        max_length=10, choices=CostBasisMethod.choices, default=CostBasisMethod.FIFO
-    )
-    fiscal_cost_method = models.CharField(
-        max_length=10, choices=CostBasisMethod.choices, default=CostBasisMethod.FIFO
-    )
-    gift_cost_mode = models.CharField(
-        max_length=10, choices=GiftCostMode.choices, default=GiftCostMode.ZERO
-    )
+    cost_basis_method = models.CharField(max_length=10, choices=CostBasisMethod.choices, default=CostBasisMethod.FIFO)
+    fiscal_cost_method = models.CharField(max_length=10, choices=CostBasisMethod.choices, default=CostBasisMethod.FIFO)
+    gift_cost_mode = models.CharField(max_length=10, choices=GiftCostMode.choices, default=GiftCostMode.ZERO)
     rounding_money = models.PositiveSmallIntegerField(default=2)
     rounding_qty = models.PositiveSmallIntegerField(default=6)
     price_update_interval = models.PositiveIntegerField(
@@ -214,7 +207,9 @@ class Settings(models.Model):
         help_text="Snapshot frequency in minutes. 0 = disabled. Default 1440 (daily).",
     )
     data_retention_days = models.PositiveIntegerField(
-        null=True, blank=True, default=None,
+        null=True,
+        blank=True,
+        default=None,
         help_text="Delete data older than this many days. Null = never delete.",
     )
     purge_portfolio_snapshots = models.BooleanField(default=True)
@@ -225,7 +220,8 @@ class Settings(models.Model):
 
     @classmethod
     def load(cls, user):
-        from apps.core.cache import get_user_cache, set_user_cache, NS_SETTINGS
+        from apps.core.cache import NS_SETTINGS, get_user_cache, set_user_cache
+
         cached = get_user_cache(user.pk, NS_SETTINGS)
         if cached is not None:
             return cached
@@ -235,7 +231,8 @@ class Settings(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        from apps.core.cache import invalidate_user_cache, NS_SETTINGS
+        from apps.core.cache import NS_SETTINGS, invalidate_user_cache
+
         invalidate_user_cache(self.user_id, NS_SETTINGS)
 
     def __str__(self):

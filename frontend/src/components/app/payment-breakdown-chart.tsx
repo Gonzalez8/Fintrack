@@ -27,7 +27,7 @@ interface Props {
   events: AmortizationEvent[];
 }
 
-export function PaymentBreakdownChart({ schedule, originalSchedule, currentMonth, events }: Props) {
+export function PaymentBreakdownChart({ schedule, originalSchedule, events }: Props) {
   const ct = useChartTheme();
   const t = useTranslations();
 

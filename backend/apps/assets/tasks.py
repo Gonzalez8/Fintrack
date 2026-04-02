@@ -10,6 +10,7 @@ def update_prices_task(self, user_id: int) -> dict:
     """Fetch latest prices from Yahoo Finance for all AUTO-mode assets of `user_id`."""
     from django.contrib.auth import get_user_model
     from django.core.exceptions import ObjectDoesNotExist
+
     from apps.assets.services import update_prices
 
     try:
@@ -22,28 +23,25 @@ def update_prices_task(self, user_id: int) -> dict:
         result = update_prices(user)
         result["user_id"] = user.pk
         # Invalidate cached portfolio/reports since prices changed
-        from apps.core.cache import invalidate_user_cache, FINANCIAL_NAMESPACES
+        from apps.core.cache import FINANCIAL_NAMESPACES, invalidate_user_cache
+
         invalidate_user_cache(user.pk, *FINANCIAL_NAMESPACES)
         return result
     except Exception as exc:
         logger.warning("update_prices_task failed for user %s: %s", user_id, exc)
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @shared_task
 def snapshot_all_users_task() -> None:
     """Dispatch per-user snapshot tasks for every user whose snapshot interval is due."""
-    from apps.assets.models import PortfolioSnapshot, Settings
     from django.utils import timezone
+
+    from apps.assets.models import PortfolioSnapshot, Settings
 
     for user_settings in Settings.objects.select_related("user").filter(snapshot_frequency__gt=0):
         freq = user_settings.snapshot_frequency
-        last = (
-            PortfolioSnapshot.objects
-            .filter(owner=user_settings.user)
-            .order_by("-captured_at")
-            .first()
-        )
+        last = PortfolioSnapshot.objects.filter(owner=user_settings.user).order_by("-captured_at").first()
         if last is not None:
             elapsed_minutes = (timezone.now() - last.captured_at).total_seconds() / 60
             if elapsed_minutes < freq:
@@ -56,6 +54,7 @@ def snapshot_all_users_task() -> None:
 def snapshot_single_user_task(user_id: int) -> None:
     """Update prices from Yahoo Finance, then create a PortfolioSnapshot for a single user."""
     from django.contrib.auth import get_user_model
+
     from apps.assets.services import create_portfolio_snapshot_now, update_prices
 
     try:
@@ -68,7 +67,8 @@ def snapshot_single_user_task(user_id: int) -> None:
         result = update_prices(user)
         if result["updated"]:
             logger.info("Prices updated for user %s: %d assets", user, result["updated"])
-            from apps.core.cache import invalidate_user_cache, FINANCIAL_NAMESPACES
+            from apps.core.cache import FINANCIAL_NAMESPACES, invalidate_user_cache
+
             invalidate_user_cache(user.pk, *FINANCIAL_NAMESPACES)
         if result["errors"]:
             logger.warning("Price errors for user %s: %s", user, result["errors"])
@@ -83,8 +83,10 @@ def snapshot_single_user_task(user_id: int) -> None:
 def purge_old_snapshots_task() -> None:
     """Delete old snapshots based on per-user retention settings."""
     from datetime import timedelta
+
     from django.db import transaction
     from django.utils import timezone
+
     from apps.assets.models import PortfolioSnapshot, PositionSnapshot, Settings
 
     for settings in Settings.objects.select_related("user").exclude(data_retention_days__isnull=True):
@@ -93,19 +95,11 @@ def purge_old_snapshots_task() -> None:
 
         with transaction.atomic():
             if settings.purge_portfolio_snapshots:
-                deleted, _ = (
-                    PortfolioSnapshot.objects
-                    .filter(owner=user, captured_at__lt=cutoff)
-                    .delete()
-                )
+                deleted, _ = PortfolioSnapshot.objects.filter(owner=user, captured_at__lt=cutoff).delete()
                 if deleted:
                     logger.info("Purged %d PortfolioSnapshot(s) for user %s", deleted, user)
 
             if settings.purge_position_snapshots:
-                deleted, _ = (
-                    PositionSnapshot.objects
-                    .filter(owner=user, captured_at__lt=cutoff)
-                    .delete()
-                )
+                deleted, _ = PositionSnapshot.objects.filter(owner=user, captured_at__lt=cutoff).delete()
                 if deleted:
                     logger.info("Purged %d PositionSnapshot(s) for user %s", deleted, user)

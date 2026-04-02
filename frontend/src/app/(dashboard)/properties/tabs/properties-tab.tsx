@@ -15,7 +15,7 @@ import { MortgageSummaryHeader } from "@/components/app/mortgage-summary-header"
 import { MortgageTimelineChart } from "@/components/app/mortgage-timeline-chart";
 import { PaymentBreakdownChart } from "@/components/app/payment-breakdown-chart";
 import { AmortizationTable } from "@/components/app/amortization-table";
-import { annuityPayment, generateSchedule, applyMultipleAmortizations } from "@/lib/mortgage-math";
+import { generateSchedule, applyMultipleAmortizations } from "@/lib/mortgage-math";
 import type { Property, AmortizationEvent, SimulationStrategy } from "@/types";
 
 /**

@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
-from .models import Transaction, Dividend, Interest
+from .models import Dividend, Interest, Transaction
 
 
 class _OwnershipValidationMixin:
@@ -23,9 +23,21 @@ class TransactionSerializer(_OwnershipValidationMixin, serializers.ModelSerializ
     class Meta:
         model = Transaction
         fields = [
-            "id", "date", "type", "asset", "asset_name", "asset_ticker",
-            "account", "account_name", "quantity", "price", "commission",
-            "tax", "notes", "created_at", "updated_at",
+            "id",
+            "date",
+            "type",
+            "asset",
+            "asset_name",
+            "asset_ticker",
+            "account",
+            "account_name",
+            "quantity",
+            "price",
+            "commission",
+            "tax",
+            "notes",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
@@ -45,9 +57,19 @@ class DividendSerializer(_OwnershipValidationMixin, serializers.ModelSerializer)
     class Meta:
         model = Dividend
         fields = [
-            "id", "date", "asset", "asset_name", "asset_ticker", "asset_issuer_country",
-            "shares", "gross", "tax", "net", "withholding_rate",
-            "created_at", "updated_at",
+            "id",
+            "date",
+            "asset",
+            "asset_name",
+            "asset_ticker",
+            "asset_issuer_country",
+            "shares",
+            "gross",
+            "tax",
+            "net",
+            "withholding_rate",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = ["id", "withholding_rate", "created_at", "updated_at"]
 
@@ -67,10 +89,17 @@ class InterestSerializer(_OwnershipValidationMixin, serializers.ModelSerializer)
     class Meta:
         model = Interest
         fields = [
-            "id", "date_start", "date_end", "days",
-            "account", "account_name",
-            "gross", "net", "balance",
-            "created_at", "updated_at",
+            "id",
+            "date_start",
+            "date_end",
+            "days",
+            "account",
+            "account_name",
+            "gross",
+            "net",
+            "balance",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = ["id", "days", "created_at", "updated_at"]
 
@@ -81,7 +110,5 @@ class InterestSerializer(_OwnershipValidationMixin, serializers.ModelSerializer)
         date_start = data.get("date_start") or (self.instance and self.instance.date_start)
         date_end = data.get("date_end") or (self.instance and self.instance.date_end)
         if date_start and date_end and date_end < date_start:
-            raise serializers.ValidationError(
-                {"date_end": "date_end must be on or after date_start."}
-            )
+            raise serializers.ValidationError({"date_end": "date_end must be on or after date_start."})
         return data

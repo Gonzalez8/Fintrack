@@ -15,13 +15,25 @@ class PropertySerializer(serializers.ModelSerializer):
     class Meta:
         model = Property
         fields = [
-            "id", "name", "current_value", "purchase_price", "purchase_date",
-            "currency", "notes",
-            "original_loan_amount", "outstanding_balance", "annual_interest_rate",
-            "total_term_months", "months_paid", "monthly_payment",
+            "id",
+            "name",
+            "current_value",
+            "purchase_price",
+            "purchase_date",
+            "currency",
+            "notes",
+            "original_loan_amount",
+            "outstanding_balance",
+            "annual_interest_rate",
+            "total_term_months",
+            "months_paid",
+            "monthly_payment",
             # computed
-            "net_equity", "amortized_capital", "has_mortgage",
-            "created_at", "updated_at",
+            "net_equity",
+            "amortized_capital",
+            "has_mortgage",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 

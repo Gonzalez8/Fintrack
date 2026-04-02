@@ -1,7 +1,8 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.cache import get_user_cache, set_user_cache, NS_PORTFOLIO
+from apps.core.cache import NS_PORTFOLIO, get_user_cache, set_user_cache
+
 from .services import calculate_portfolio_full
 
 
