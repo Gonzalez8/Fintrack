@@ -5,39 +5,38 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('assets', '0003_add_timestamps_to_snapshots'),
+        ("assets", "0003_add_timestamps_to_snapshots"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='account',
+            name="account",
             unique_together=set(),
         ),
         migrations.AlterUniqueTogether(
-            name='accountsnapshot',
+            name="accountsnapshot",
             unique_together=set(),
         ),
         migrations.AlterUniqueTogether(
-            name='asset',
+            name="asset",
             unique_together=set(),
         ),
         migrations.AddConstraint(
-            model_name='account',
-            constraint=models.UniqueConstraint(fields=('owner', 'name'), name='unique_account_owner_name'),
+            model_name="account",
+            constraint=models.UniqueConstraint(fields=("owner", "name"), name="unique_account_owner_name"),
         ),
         migrations.AddConstraint(
-            model_name='accountsnapshot',
-            constraint=models.UniqueConstraint(fields=('account', 'date'), name='unique_snapshot_account_date'),
+            model_name="accountsnapshot",
+            constraint=models.UniqueConstraint(fields=("account", "date"), name="unique_snapshot_account_date"),
         ),
         migrations.AddConstraint(
-            model_name='asset',
-            constraint=models.UniqueConstraint(fields=('owner', 'ticker'), name='unique_asset_owner_ticker'),
+            model_name="asset",
+            constraint=models.UniqueConstraint(fields=("owner", "ticker"), name="unique_asset_owner_ticker"),
         ),
         migrations.AddConstraint(
-            model_name='asset',
-            constraint=models.UniqueConstraint(fields=('owner', 'isin'), name='unique_asset_owner_isin'),
+            model_name="asset",
+            constraint=models.UniqueConstraint(fields=("owner", "isin"), name="unique_asset_owner_isin"),
         ),
     ]

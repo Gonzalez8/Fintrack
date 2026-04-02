@@ -22,9 +22,7 @@ class RegisterSerializer(serializers.Serializer):
 
     def validate(self, data):
         if data["password"] != data["password_confirm"]:
-            raise serializers.ValidationError(
-                {"password_confirm": "Las contrasenas no coinciden."}
-            )
+            raise serializers.ValidationError({"password_confirm": "Las contrasenas no coinciden."})
         return data
 
     def create(self, validated_data):
@@ -63,7 +61,5 @@ class ChangePasswordSerializer(serializers.Serializer):
 
     def validate(self, data):
         if data["new_password"] != data["new_password_confirm"]:
-            raise serializers.ValidationError(
-                {"new_password_confirm": "Las contrasenas no coinciden."}
-            )
+            raise serializers.ValidationError({"new_password_confirm": "Las contrasenas no coinciden."})
         return data

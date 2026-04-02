@@ -22,6 +22,7 @@ User = get_user_model()
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def user(db):
     return User.objects.create_user(username="testuser", password="testpass123")
@@ -94,6 +95,7 @@ def asset_b(user):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_tx(user, asset, account, tx_type, date, quantity, price, commission=0, tax=0):
     return Transaction.objects.create(
         owner=user,
@@ -119,6 +121,7 @@ def _pos(portfolio, ticker):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestEmptyPortfolio:
@@ -531,7 +534,7 @@ class TestOversellPartial:
         sale = result["realized_sales"][0]
         assert Decimal(sale["oversell_quantity"]) == Decimal("20")
         assert Decimal(sale["cost_basis"]) == Decimal("500.00")  # 50 * 10
-        assert Decimal(sale["proceeds"]) == Decimal("1050.00")   # 70 * 15
+        assert Decimal(sale["proceeds"]) == Decimal("1050.00")  # 70 * 15
 
 
 @pytest.mark.django_db

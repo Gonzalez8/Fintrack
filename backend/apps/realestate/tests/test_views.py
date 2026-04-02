@@ -119,9 +119,7 @@ class TestPropertyCRUD:
             "current_value": "550000.00",
             "currency": "EUR",
         }
-        resp = client.put(
-            f"/api/properties/{property_no_mortgage.id}/", data, format="json"
-        )
+        resp = client.put(f"/api/properties/{property_no_mortgage.id}/", data, format="json")
         assert resp.status_code == status.HTTP_200_OK
         assert resp.json()["name"] == "Updated Beach House"
         assert resp.json()["current_value"] == "550000.00"
@@ -131,9 +129,7 @@ class TestPropertyCRUD:
         assert resp.status_code == status.HTTP_204_NO_CONTENT
         assert not Property.objects.filter(id=property_no_mortgage.id).exists()
 
-    def test_multi_tenancy_isolation(
-        self, client, other_client, property_with_mortgage, other_user
-    ):
+    def test_multi_tenancy_isolation(self, client, other_client, property_with_mortgage, other_user):
         # Other user cannot see alice's property
         resp = other_client.get(f"/api/properties/{property_with_mortgage.id}/")
         assert resp.status_code == status.HTTP_404_NOT_FOUND
@@ -188,9 +184,7 @@ class TestAmortizationCRUD:
         assert body["amount"] == "10000.00"
         assert body["strategy"] == "REDUCE_PAYMENT"
 
-    def test_list_amortizations_filtered_by_property(
-        self, client, user, property_with_mortgage
-    ):
+    def test_list_amortizations_filtered_by_property(self, client, user, property_with_mortgage):
         # Create a second property
         other_prop = Property.objects.create(
             owner=user,
@@ -215,9 +209,7 @@ class TestAmortizationCRUD:
         )
 
         # Filter by property_with_mortgage
-        resp = client.get(
-            f"/api/amortizations/?property={property_with_mortgage.id}"
-        )
+        resp = client.get(f"/api/amortizations/?property={property_with_mortgage.id}")
         assert resp.status_code == status.HTTP_200_OK
         results = resp.json() if isinstance(resp.json(), list) else resp.json().get("results", resp.json())
         assert len(results) == 1
@@ -271,9 +263,7 @@ class TestAmortizationCRUD:
         resp = client.post("/api/amortizations/", data, format="json")
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_multi_tenancy_isolation(
-        self, client, other_client, user, property_with_mortgage
-    ):
+    def test_multi_tenancy_isolation(self, client, other_client, user, property_with_mortgage):
         amort = Amortization.objects.create(
             owner=user,
             property=property_with_mortgage,
@@ -308,9 +298,7 @@ class TestMortgageSimulation:
         assert "new" in body
         assert "difference" in body
         # New payment should be less than current
-        assert Decimal(body["new"]["monthly_payment"]) < Decimal(
-            body["current"]["monthly_payment"]
-        )
+        assert Decimal(body["new"]["monthly_payment"]) < Decimal(body["current"]["monthly_payment"])
         # Remaining installments stay the same for reduce payment
         assert body["new"]["remaining_installments"] == body["current"]["remaining_installments"]
 
@@ -330,10 +318,7 @@ class TestMortgageSimulation:
         # Monthly payment stays the same
         assert body["new"]["monthly_payment"] == body["current"]["monthly_payment"]
         # Remaining installments should be fewer
-        assert (
-            body["new"]["remaining_installments"]
-            < body["current"]["remaining_installments"]
-        )
+        assert body["new"]["remaining_installments"] < body["current"]["remaining_installments"]
 
     def test_simulate_full_payoff(self, client):
         data = {

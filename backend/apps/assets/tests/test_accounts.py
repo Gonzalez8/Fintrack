@@ -179,12 +179,8 @@ class TestAccountSnapshotCRUD:
 @pytest.mark.django_db
 class TestBulkSnapshot:
     def test_bulk_create(self, client, user):
-        acct1 = Account.objects.create(
-            owner=user, name="Acct1", type="OPERATIVA", currency="EUR"
-        )
-        acct2 = Account.objects.create(
-            owner=user, name="Acct2", type="AHORRO", currency="EUR"
-        )
+        acct1 = Account.objects.create(owner=user, name="Acct1", type="OPERATIVA", currency="EUR")
+        acct2 = Account.objects.create(owner=user, name="Acct2", type="AHORRO", currency="EUR")
         resp = client.post(
             "/api/accounts/bulk-snapshot/",
             {

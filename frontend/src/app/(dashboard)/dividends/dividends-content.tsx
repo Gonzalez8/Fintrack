@@ -10,12 +10,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger,
 } from "@/components/ui/select";
 import { DataTable, type Column } from "@/components/app/data-table";
 import { MoneyCell } from "@/components/app/money-cell";
 import { SwipeCard } from "@/components/app/swipe-card";
-import { DetailDrawer, type DetailRow } from "@/components/app/detail-drawer";
+import { DetailDrawer } from "@/components/app/detail-drawer";
 import { Plus, Search, Pencil, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { formatMoney } from "@/lib/utils";
@@ -336,7 +336,7 @@ function DividendDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { withholding_rate: _, ...payload } = form;
+    const { withholding_rate: _withholdingRate, ...payload } = form;
     try {
       if (dividend) {
         await api.put(`/dividends/${dividend.id}/`, payload);

@@ -94,11 +94,13 @@ class SnapshotStatusView(APIView):
             cycles = math.floor(elapsed / freq)
             next_snapshot = (last.captured_at + timedelta(minutes=freq * (cycles + 1))).isoformat()
 
-        return Response({
-            "frequency_minutes": freq,
-            "last_snapshot": last.captured_at.isoformat() if last else None,
-            "next_snapshot": next_snapshot,
-        })
+        return Response(
+            {
+                "frequency_minutes": freq,
+                "last_snapshot": last.captured_at.isoformat() if last else None,
+                "next_snapshot": next_snapshot,
+            }
+        )
 
 
 class AnnualSavingsView(APIView):
@@ -130,21 +132,28 @@ class Echo:
 
 class ExportTransactionsCSV(APIView):
     def get(self, request):
-        qs = (
-            Transaction.objects.filter(owner=request.user)
-            .select_related("asset", "account")
-            .order_by("date")
-        )
+        qs = Transaction.objects.filter(owner=request.user).select_related("asset", "account").order_by("date")
         writer_buffer = Echo()
 
         def rows():
             writer = csv.writer(writer_buffer)
-            yield writer.writerow(["Date", "Type", "Asset", "Ticker", "Account", "Quantity", "Price", "Commission", "Tax"])
+            yield writer.writerow(
+                ["Date", "Type", "Asset", "Ticker", "Account", "Quantity", "Price", "Commission", "Tax"]
+            )
             for tx in qs.iterator():
-                yield writer.writerow([
-                    tx.date, tx.type, tx.asset.name, tx.asset.ticker or "",
-                    tx.account.name, tx.quantity, tx.price or "", tx.commission, tx.tax,
-                ])
+                yield writer.writerow(
+                    [
+                        tx.date,
+                        tx.type,
+                        tx.asset.name,
+                        tx.asset.ticker or "",
+                        tx.account.name,
+                        tx.quantity,
+                        tx.price or "",
+                        tx.commission,
+                        tx.tax,
+                    ]
+                )
 
         response = StreamingHttpResponse(rows(), content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="transactions.csv"'
@@ -153,11 +162,7 @@ class ExportTransactionsCSV(APIView):
 
 class ExportDividendsCSV(APIView):
     def get(self, request):
-        qs = (
-            Dividend.objects.filter(owner=request.user)
-            .select_related("asset")
-            .order_by("date")
-        )
+        qs = Dividend.objects.filter(owner=request.user).select_related("asset").order_by("date")
         writer_buffer = Echo()
 
         def rows():
@@ -165,10 +170,17 @@ class ExportDividendsCSV(APIView):
             yield writer.writerow(["Date", "Asset", "Shares", "Gross", "Tax", "Net", "Withholding Rate"])
             for d in qs.iterator():
                 rate = (d.tax / d.gross * 100).quantize(Decimal("0.01")) if d.gross and d.gross > 0 else ""
-                yield writer.writerow([
-                    d.date, d.asset.name, d.shares or "", d.gross, d.tax, d.net,
-                    rate,
-                ])
+                yield writer.writerow(
+                    [
+                        d.date,
+                        d.asset.name,
+                        d.shares or "",
+                        d.gross,
+                        d.tax,
+                        d.net,
+                        rate,
+                    ]
+                )
 
         response = StreamingHttpResponse(rows(), content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="dividends.csv"'
@@ -177,21 +189,24 @@ class ExportDividendsCSV(APIView):
 
 class ExportInterestsCSV(APIView):
     def get(self, request):
-        qs = (
-            Interest.objects.filter(owner=request.user)
-            .select_related("account")
-            .order_by("date_end")
-        )
+        qs = Interest.objects.filter(owner=request.user).select_related("account").order_by("date_end")
         writer_buffer = Echo()
 
         def rows():
             writer = csv.writer(writer_buffer)
             yield writer.writerow(["Date Start", "Date End", "Days", "Account", "Gross", "Net", "Balance"])
             for i in qs.iterator():
-                yield writer.writerow([
-                    i.date_start, i.date_end, i.days, i.account.name,
-                    i.gross, i.net, i.balance or "",
-                ])
+                yield writer.writerow(
+                    [
+                        i.date_start,
+                        i.date_end,
+                        i.days,
+                        i.account.name,
+                        i.gross,
+                        i.net,
+                        i.balance or "",
+                    ]
+                )
 
         response = StreamingHttpResponse(rows(), content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="interests.csv"'

@@ -15,10 +15,14 @@ urlpatterns = [
     ),
     path(
         "properties/<uuid:pk>/",
-        views.PropertyViewSet.as_view({
-            "get": "retrieve", "put": "update",
-            "patch": "partial_update", "delete": "destroy",
-        }),
+        views.PropertyViewSet.as_view(
+            {
+                "get": "retrieve",
+                "put": "update",
+                "patch": "partial_update",
+                "delete": "destroy",
+            }
+        ),
         name="property-detail",
     ),
     path(
@@ -28,10 +32,14 @@ urlpatterns = [
     ),
     path(
         "amortizations/<uuid:pk>/",
-        views.AmortizationViewSet.as_view({
-            "get": "retrieve", "put": "update",
-            "patch": "partial_update", "delete": "destroy",
-        }),
+        views.AmortizationViewSet.as_view(
+            {
+                "get": "retrieve",
+                "put": "update",
+                "patch": "partial_update",
+                "delete": "destroy",
+            }
+        ),
         name="amortization-detail",
     ),
 ]

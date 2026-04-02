@@ -293,7 +293,7 @@ export function applyMultipleAmortizations(
   while (remaining > 0.005) {
     // Normal amortization step
     const interest = remaining * monthlyRate;
-    let principal = Math.min(currentPayment - interest, remaining);
+    const principal = Math.min(currentPayment - interest, remaining);
     const payment = Math.min(currentPayment, remaining + interest);
     remaining = Math.max(0, remaining - principal);
     cumInterest += interest;

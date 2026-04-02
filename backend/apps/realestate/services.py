@@ -78,7 +78,10 @@ def simulate_amortization(
 
     # Current scenario
     current = _compute_scenario(
-        outstanding_balance, monthly_rate, remaining_months, monthly_payment,
+        outstanding_balance,
+        monthly_rate,
+        remaining_months,
+        monthly_payment,
     )
 
     # New balance after extra payment

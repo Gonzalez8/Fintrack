@@ -268,19 +268,31 @@ class TestTransactionFilters:
     def _create_transactions(self, user, asset, asset2, account, account2):
         """Helper to create a varied set of transactions for filter tests."""
         Transaction.objects.create(
-            owner=user, date=datetime.date(2025, 3, 10), type="BUY",
-            asset=asset, account=account,
-            quantity=Decimal("5"), price=Decimal("10"),
+            owner=user,
+            date=datetime.date(2025, 3, 10),
+            type="BUY",
+            asset=asset,
+            account=account,
+            quantity=Decimal("5"),
+            price=Decimal("10"),
         )
         Transaction.objects.create(
-            owner=user, date=datetime.date(2025, 6, 20), type="SELL",
-            asset=asset, account=account,
-            quantity=Decimal("2"), price=Decimal("15"),
+            owner=user,
+            date=datetime.date(2025, 6, 20),
+            type="SELL",
+            asset=asset,
+            account=account,
+            quantity=Decimal("2"),
+            price=Decimal("15"),
         )
         Transaction.objects.create(
-            owner=user, date=datetime.date(2025, 9, 5), type="BUY",
-            asset=asset2, account=account2,
-            quantity=Decimal("8"), price=Decimal("50"),
+            owner=user,
+            date=datetime.date(2025, 9, 5),
+            type="BUY",
+            asset=asset2,
+            account=account2,
+            quantity=Decimal("8"),
+            price=Decimal("50"),
         )
 
     def test_filter_by_date_range(self, client, user, asset, asset2, account, account2):
@@ -442,12 +454,20 @@ class TestDividendCRUD:
 class TestDividendFilters:
     def test_filter_by_year(self, client, user, asset):
         Dividend.objects.create(
-            owner=user, date=datetime.date(2024, 6, 1),
-            asset=asset, gross=Decimal("50"), tax=Decimal("5"), net=Decimal("45"),
+            owner=user,
+            date=datetime.date(2024, 6, 1),
+            asset=asset,
+            gross=Decimal("50"),
+            tax=Decimal("5"),
+            net=Decimal("45"),
         )
         Dividend.objects.create(
-            owner=user, date=datetime.date(2025, 6, 1),
-            asset=asset, gross=Decimal("60"), tax=Decimal("6"), net=Decimal("54"),
+            owner=user,
+            date=datetime.date(2025, 6, 1),
+            asset=asset,
+            gross=Decimal("60"),
+            tax=Decimal("6"),
+            net=Decimal("54"),
         )
         res = client.get("/api/dividends/", {"year": 2025})
         results = res.data.get("results", res.data)
@@ -456,12 +476,20 @@ class TestDividendFilters:
 
     def test_filter_by_asset_id(self, client, user, asset, asset2):
         Dividend.objects.create(
-            owner=user, date=datetime.date(2025, 3, 1),
-            asset=asset, gross=Decimal("50"), tax=Decimal("5"), net=Decimal("45"),
+            owner=user,
+            date=datetime.date(2025, 3, 1),
+            asset=asset,
+            gross=Decimal("50"),
+            tax=Decimal("5"),
+            net=Decimal("45"),
         )
         Dividend.objects.create(
-            owner=user, date=datetime.date(2025, 3, 15),
-            asset=asset2, gross=Decimal("30"), tax=Decimal("3"), net=Decimal("27"),
+            owner=user,
+            date=datetime.date(2025, 3, 15),
+            asset=asset2,
+            gross=Decimal("30"),
+            tax=Decimal("3"),
+            net=Decimal("27"),
         )
         res = client.get("/api/dividends/", {"asset_id": str(asset2.id)})
         results = res.data.get("results", res.data)
@@ -561,14 +589,20 @@ class TestInterestCRUD:
 class TestInterestFilters:
     def test_filter_by_year(self, client, user, account):
         Interest.objects.create(
-            owner=user, date_start=datetime.date(2024, 10, 1),
+            owner=user,
+            date_start=datetime.date(2024, 10, 1),
             date_end=datetime.date(2024, 12, 31),
-            account=account, gross=Decimal("40"), net=Decimal("32"),
+            account=account,
+            gross=Decimal("40"),
+            net=Decimal("32"),
         )
         Interest.objects.create(
-            owner=user, date_start=datetime.date(2025, 1, 1),
+            owner=user,
+            date_start=datetime.date(2025, 1, 1),
             date_end=datetime.date(2025, 3, 31),
-            account=account, gross=Decimal("50"), net=Decimal("40"),
+            account=account,
+            gross=Decimal("50"),
+            net=Decimal("40"),
         )
         res = client.get("/api/interests/", {"year": 2024})
         results = res.data.get("results", res.data)
@@ -577,14 +611,20 @@ class TestInterestFilters:
 
     def test_filter_by_account_id(self, client, user, account, account2):
         Interest.objects.create(
-            owner=user, date_start=datetime.date(2025, 1, 1),
+            owner=user,
+            date_start=datetime.date(2025, 1, 1),
             date_end=datetime.date(2025, 3, 31),
-            account=account, gross=Decimal("50"), net=Decimal("40"),
+            account=account,
+            gross=Decimal("50"),
+            net=Decimal("40"),
         )
         Interest.objects.create(
-            owner=user, date_start=datetime.date(2025, 1, 1),
+            owner=user,
+            date_start=datetime.date(2025, 1, 1),
             date_end=datetime.date(2025, 3, 31),
-            account=account2, gross=Decimal("30"), net=Decimal("24"),
+            account=account2,
+            gross=Decimal("30"),
+            net=Decimal("24"),
         )
         res = client.get("/api/interests/", {"account_id": str(account2.id)})
         results = res.data.get("results", res.data)

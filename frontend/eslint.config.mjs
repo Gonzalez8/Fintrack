@@ -13,6 +13,14 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      // Downgrade React Compiler strict rules to warnings (gradual adoption)
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/immutability": "warn",
+      "react-hooks/globals": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;

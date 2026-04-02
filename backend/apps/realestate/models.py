@@ -7,7 +7,10 @@ class Property(UserOwnedModel):
     name = models.CharField(max_length=200)
     current_value = models.DecimalField(max_digits=14, decimal_places=2)
     purchase_price = models.DecimalField(
-        max_digits=14, decimal_places=2, null=True, blank=True,
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True,
     )
     purchase_date = models.DateField(null=True, blank=True)
     currency = models.CharField(max_length=3, default="EUR")
@@ -15,19 +18,31 @@ class Property(UserOwnedModel):
 
     # Mortgage fields (all nullable — property may be fully owned)
     original_loan_amount = models.DecimalField(
-        max_digits=14, decimal_places=2, null=True, blank=True,
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True,
     )
     outstanding_balance = models.DecimalField(
-        max_digits=14, decimal_places=2, null=True, blank=True,
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True,
     )
     annual_interest_rate = models.DecimalField(
-        max_digits=6, decimal_places=4, null=True, blank=True,
+        max_digits=6,
+        decimal_places=4,
+        null=True,
+        blank=True,
         help_text="Annual interest rate as percentage, e.g. 2.5000 for 2.5%",
     )
     total_term_months = models.PositiveIntegerField(null=True, blank=True)
     months_paid = models.PositiveIntegerField(null=True, blank=True)
     monthly_payment = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True,
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
     )
 
     class Meta:

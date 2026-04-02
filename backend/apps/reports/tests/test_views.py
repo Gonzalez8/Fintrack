@@ -41,9 +41,7 @@ def other_client(other_user):
 
 @pytest.fixture
 def account(user):
-    return Account.objects.create(
-        owner=user, name="Main Account", type="OPERATIVA", currency="EUR"
-    )
+    return Account.objects.create(owner=user, name="Main Account", type="OPERATIVA", currency="EUR")
 
 
 @pytest.fixture

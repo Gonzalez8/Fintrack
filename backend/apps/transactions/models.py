@@ -14,14 +14,11 @@ class Transaction(UserOwnedModel):
 
     date = models.DateField()
     type = models.CharField(max_length=4, choices=TransactionType.choices)
-    asset = models.ForeignKey(
-        "assets.Asset", on_delete=models.PROTECT, related_name="transactions"
-    )
-    account = models.ForeignKey(
-        "assets.Account", on_delete=models.PROTECT, related_name="transactions"
-    )
+    asset = models.ForeignKey("assets.Asset", on_delete=models.PROTECT, related_name="transactions")
+    account = models.ForeignKey("assets.Account", on_delete=models.PROTECT, related_name="transactions")
     quantity = models.DecimalField(
-        max_digits=20, decimal_places=6,
+        max_digits=20,
+        decimal_places=6,
         validators=[MinValueValidator(Decimal("0.000001"))],
     )
     price = models.DecimalField(max_digits=20, decimal_places=6, null=True, blank=True)
@@ -45,9 +42,7 @@ class Transaction(UserOwnedModel):
 
 class Dividend(UserOwnedModel):
     date = models.DateField()
-    asset = models.ForeignKey(
-        "assets.Asset", on_delete=models.PROTECT, related_name="dividends"
-    )
+    asset = models.ForeignKey("assets.Asset", on_delete=models.PROTECT, related_name="dividends")
     shares = models.DecimalField(max_digits=20, decimal_places=6, null=True, blank=True)
     gross = models.DecimalField(max_digits=20, decimal_places=2)
     tax = models.DecimalField(max_digits=20, decimal_places=2, default=0)
@@ -67,9 +62,7 @@ class Dividend(UserOwnedModel):
 class Interest(UserOwnedModel):
     date_start = models.DateField()
     date_end = models.DateField()
-    account = models.ForeignKey(
-        "assets.Account", on_delete=models.PROTECT, related_name="interests"
-    )
+    account = models.ForeignKey("assets.Account", on_delete=models.PROTECT, related_name="interests")
     gross = models.DecimalField(max_digits=20, decimal_places=2)
     net = models.DecimalField(max_digits=20, decimal_places=2)
     balance = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)

@@ -78,7 +78,10 @@ def asset_b(user):
 
 def _snap(user, account, date, balance):
     s = AccountSnapshot.objects.create(
-        owner=user, account=account, date=date, balance=Decimal(str(balance)),
+        owner=user,
+        account=account,
+        date=date,
+        balance=Decimal(str(balance)),
     )
     s._sync_account_balance()
     return s
@@ -111,8 +114,12 @@ class TestYearSummary:
 
     def test_dividends_only(self, user, settings_fifo, asset):
         Dividend.objects.create(
-            owner=user, asset=asset, date=datetime.date(2024, 6, 15),
-            gross=Decimal("100"), tax=Decimal("15"), net=Decimal("85"),
+            owner=user,
+            asset=asset,
+            date=datetime.date(2024, 6, 15),
+            gross=Decimal("100"),
+            tax=Decimal("15"),
+            net=Decimal("85"),
         )
         result = year_summary(user)
         assert len(result) == 1
@@ -122,14 +129,20 @@ class TestYearSummary:
 
     def test_mixed_data(self, user, settings_fifo, asset, account):
         Dividend.objects.create(
-            owner=user, asset=asset, date=datetime.date(2024, 3, 1),
-            gross=Decimal("50"), tax=Decimal("5"), net=Decimal("45"),
+            owner=user,
+            asset=asset,
+            date=datetime.date(2024, 3, 1),
+            gross=Decimal("50"),
+            tax=Decimal("5"),
+            net=Decimal("45"),
         )
         Interest.objects.create(
-            owner=user, account=account,
+            owner=user,
+            account=account,
             date_start=datetime.date(2024, 1, 1),
             date_end=datetime.date(2024, 3, 31),
-            gross=Decimal("30"), net=Decimal("25"),
+            gross=Decimal("30"),
+            net=Decimal("25"),
         )
         result = year_summary(user)
         assert len(result) == 1
@@ -140,12 +153,20 @@ class TestYearSummary:
 
     def test_multi_year(self, user, settings_fifo, asset):
         Dividend.objects.create(
-            owner=user, asset=asset, date=datetime.date(2023, 6, 1),
-            gross=Decimal("10"), tax=Decimal("1"), net=Decimal("9"),
+            owner=user,
+            asset=asset,
+            date=datetime.date(2023, 6, 1),
+            gross=Decimal("10"),
+            tax=Decimal("1"),
+            net=Decimal("9"),
         )
         Dividend.objects.create(
-            owner=user, asset=asset, date=datetime.date(2024, 6, 1),
-            gross=Decimal("20"), tax=Decimal("2"), net=Decimal("18"),
+            owner=user,
+            asset=asset,
+            date=datetime.date(2024, 6, 1),
+            gross=Decimal("20"),
+            tax=Decimal("2"),
+            net=Decimal("18"),
         )
         result = year_summary(user)
         assert len(result) == 2
@@ -303,7 +324,9 @@ class TestSavingsProjection:
             _snap(user, account, datetime.date(2024, i, 28), 1000 + i * 500)
 
         goal = SavingsGoal.objects.create(
-            owner=user, name="Test Goal", target_amount=Decimal("50000"),
+            owner=user,
+            name="Test Goal",
+            target_amount=Decimal("50000"),
         )
         result = savings_projection(user, goal.id)
 
@@ -323,7 +346,9 @@ class TestSavingsProjection:
             _snap(user, account, datetime.date(2024, i, 28), 1000 + i * 1000)
 
         goal = SavingsGoal.objects.create(
-            owner=user, name="Short Goal", target_amount=Decimal("10000"),
+            owner=user,
+            name="Short Goal",
+            target_amount=Decimal("10000"),
             deadline=datetime.date(2030, 12, 31),
         )
         result = savings_projection(user, goal.id)
@@ -334,7 +359,9 @@ class TestSavingsProjection:
         _snap(user, account, datetime.date(2024, 2, 28), 2000)
 
         goal = SavingsGoal.objects.create(
-            owner=user, name="No Deadline", target_amount=Decimal("50000"),
+            owner=user,
+            name="No Deadline",
+            target_amount=Decimal("50000"),
         )
         result = savings_projection(user, goal.id)
         assert result["on_track"] is None
@@ -342,6 +369,7 @@ class TestSavingsProjection:
 
     def test_goal_not_found(self, user, settings_fifo):
         import uuid
+
         with pytest.raises(SavingsGoal.DoesNotExist):
             savings_projection(user, uuid.uuid4())
 
@@ -350,7 +378,9 @@ class TestSavingsProjection:
         _snap(user, account, datetime.date(2024, 2, 28), 6000)
 
         goal = SavingsGoal.objects.create(
-            owner=user, name="Cash Goal", target_amount=Decimal("20000"),
+            owner=user,
+            name="Cash Goal",
+            target_amount=Decimal("20000"),
             base_type="CASH",
         )
         result = savings_projection(user, goal.id)

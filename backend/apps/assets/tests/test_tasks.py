@@ -70,7 +70,11 @@ class TestPurgeOldSnapshotsTask:
         s.save()
 
         asset = Asset.objects.create(
-            owner=user, name="A", ticker="A", type="STOCK", currency="EUR",
+            owner=user,
+            name="A",
+            ticker="A",
+            type="STOCK",
+            currency="EUR",
         )
 
         old_batch = uuid.uuid4()
@@ -78,22 +82,33 @@ class TestPurgeOldSnapshotsTask:
 
         # Old snapshot (60 days ago)
         PortfolioSnapshot.objects.create(
-            owner=user, captured_at=timezone.now() - datetime.timedelta(days=60),
-            batch_id=old_batch, total_market_value=Decimal("100"),
-            total_cost=Decimal("80"), total_unrealized_pnl=Decimal("20"),
+            owner=user,
+            captured_at=timezone.now() - datetime.timedelta(days=60),
+            batch_id=old_batch,
+            total_market_value=Decimal("100"),
+            total_cost=Decimal("80"),
+            total_unrealized_pnl=Decimal("20"),
         )
         PositionSnapshot.objects.create(
-            owner=user, batch_id=old_batch, captured_at=timezone.now() - datetime.timedelta(days=60),
-            asset=asset, quantity=Decimal("10"), cost_basis=Decimal("80"),
-            market_value=Decimal("100"), unrealized_pnl=Decimal("20"),
+            owner=user,
+            batch_id=old_batch,
+            captured_at=timezone.now() - datetime.timedelta(days=60),
+            asset=asset,
+            quantity=Decimal("10"),
+            cost_basis=Decimal("80"),
+            market_value=Decimal("100"),
+            unrealized_pnl=Decimal("20"),
             unrealized_pnl_pct=Decimal("25"),
         )
 
         # New snapshot (5 days ago)
         PortfolioSnapshot.objects.create(
-            owner=user, captured_at=timezone.now() - datetime.timedelta(days=5),
-            batch_id=new_batch, total_market_value=Decimal("200"),
-            total_cost=Decimal("160"), total_unrealized_pnl=Decimal("40"),
+            owner=user,
+            captured_at=timezone.now() - datetime.timedelta(days=5),
+            batch_id=new_batch,
+            total_market_value=Decimal("200"),
+            total_cost=Decimal("160"),
+            total_unrealized_pnl=Decimal("40"),
         )
 
         purge_old_snapshots_task()
@@ -111,9 +126,12 @@ class TestPurgeOldSnapshotsTask:
         s.save()
 
         PortfolioSnapshot.objects.create(
-            owner=user, captured_at=timezone.now() - datetime.timedelta(days=60),
-            batch_id=uuid.uuid4(), total_market_value=Decimal("100"),
-            total_cost=Decimal("80"), total_unrealized_pnl=Decimal("20"),
+            owner=user,
+            captured_at=timezone.now() - datetime.timedelta(days=60),
+            batch_id=uuid.uuid4(),
+            total_market_value=Decimal("100"),
+            total_cost=Decimal("80"),
+            total_unrealized_pnl=Decimal("20"),
         )
 
         purge_old_snapshots_task()

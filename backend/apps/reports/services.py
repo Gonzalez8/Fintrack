@@ -15,8 +15,11 @@ logger = logging.getLogger(__name__)
 def _default_year(y):
     return {
         "year": y,
-        "dividends_gross": "0", "dividends_tax": "0", "dividends_net": "0",
-        "interests_gross": "0", "interests_net": "0",
+        "dividends_gross": "0",
+        "dividends_tax": "0",
+        "dividends_net": "0",
+        "interests_gross": "0",
+        "interests_net": "0",
         "realized_pnl": "0",
         "total_income": "0",
     }
@@ -65,9 +68,7 @@ def year_summary(user):
         years[y]["realized_pnl"] = str(pnl)
 
     for y in years.values():
-        y["total_income"] = str(
-            Decimal(y["dividends_net"]) + Decimal(y["interests_net"]) + Decimal(y["realized_pnl"])
-        )
+        y["total_income"] = str(Decimal(y["dividends_net"]) + Decimal(y["interests_net"]) + Decimal(y["realized_pnl"]))
 
     return sorted(years.values(), key=lambda x: x["year"])
 
@@ -110,8 +111,10 @@ def patrimonio_evolution(user):
         monthly_cash[month_key] = sum(account_balances.values(), Decimal("0"))
 
     monthly_portfolio = {}
-    for snap in PortfolioSnapshot.objects.filter(owner=user).order_by("captured_at").values(
-        "captured_at", "batch_id", "total_market_value", "total_cost", "total_unrealized_pnl"
+    for snap in (
+        PortfolioSnapshot.objects.filter(owner=user)
+        .order_by("captured_at")
+        .values("captured_at", "batch_id", "total_market_value", "total_cost", "total_unrealized_pnl")
     ):
         month_key = snap["captured_at"].strftime("%Y-%m")
         monthly_portfolio[month_key] = snap
@@ -122,8 +125,10 @@ def patrimonio_evolution(user):
     running_cost = Decimal("0")
     tx_cost_by_month = {}
 
-    for tx in Transaction.objects.filter(owner=user).order_by("date", "created_at").values(
-        "date", "type", "quantity", "price", "commission"
+    for tx in (
+        Transaction.objects.filter(owner=user)
+        .order_by("date", "created_at")
+        .values("date", "type", "quantity", "price", "commission")
     ):
         month_key = tx["date"].strftime("%Y-%m")
         qty = tx["quantity"] or Decimal("0")
@@ -168,11 +173,7 @@ def patrimonio_evolution(user):
 
     current_month = timezone.now().strftime("%Y-%m")
 
-    all_months_set = (
-        set(monthly_cash.keys())
-        | set(monthly_portfolio.keys())
-        | set(tx_cost_by_month.keys())
-    )
+    all_months_set = set(monthly_cash.keys()) | set(monthly_portfolio.keys()) | set(tx_cost_by_month.keys())
     if monthly_portfolio or live_total > 0:
         all_months_set.add(current_month)
     all_months = sorted(all_months_set)
@@ -205,14 +206,16 @@ def patrimonio_evolution(user):
             rv = Decimal("0")
             rf = Decimal("0")
 
-        result.append({
-            "month": month,
-            "cash": str(last_cash),
-            "investments": str(total_investments),
-            "investment_pnl": str(investment_pnl),
-            "renta_variable": str(rv),
-            "renta_fija": str(rf),
-        })
+        result.append(
+            {
+                "month": month,
+                "cash": str(last_cash),
+                "investments": str(total_investments),
+                "investment_pnl": str(investment_pnl),
+                "renta_variable": str(rv),
+                "renta_fija": str(rf),
+            }
+        )
 
     return result
 
@@ -221,11 +224,7 @@ def _compute_savings_stats(months_data):
     if not months_data:
         return None
 
-    delta_entries = [
-        (Decimal(m["real_savings"]), m)
-        for m in months_data
-        if m.get("real_savings") is not None
-    ]
+    delta_entries = [(Decimal(m["real_savings"]), m) for m in months_data if m.get("real_savings") is not None]
 
     if delta_entries:
         deltas = [d for d, _ in delta_entries]
@@ -271,13 +270,16 @@ def monthly_savings(user, start_date=None, end_date=None):
         month_key = snap["date"].strftime("%Y-%m")
         if month_key not in monthly_comments:
             monthly_comments[month_key] = []
-        monthly_comments[month_key].append({
-            "account_name": snap["account__name"],
-            "date": snap["date"].isoformat(),
-            "note": snap["note"],
-        })
+        monthly_comments[month_key].append(
+            {
+                "account_name": snap["account__name"],
+                "date": snap["date"].isoformat(),
+                "note": snap["note"],
+            }
+        )
 
     from apps.portfolio.services import compute_investment_cost_by_month
+
     inv_cost_by_month = compute_investment_cost_by_month(user)
 
     sorted_tx_months = sorted(inv_cost_by_month.keys())
@@ -306,15 +308,17 @@ def monthly_savings(user, start_date=None, end_date=None):
         inv_cost_delta = (inv_cost_end - prev_inv_cost) if prev_inv_cost is not None else None
         real_savings = (cash_delta + inv_cost_delta) if cash_delta is not None and inv_cost_delta is not None else None
 
-        months_data.append({
-            "month": month,
-            "cash_end": str(cash_end),
-            "cash_delta": str(cash_delta) if cash_delta is not None else None,
-            "investment_cost_end": str(inv_cost_end),
-            "investment_cost_delta": str(inv_cost_delta) if inv_cost_delta is not None else None,
-            "real_savings": str(real_savings) if real_savings is not None else None,
-            "comments": monthly_comments.get(month, []),
-        })
+        months_data.append(
+            {
+                "month": month,
+                "cash_end": str(cash_end),
+                "cash_delta": str(cash_delta) if cash_delta is not None else None,
+                "investment_cost_end": str(inv_cost_end),
+                "investment_cost_delta": str(inv_cost_delta) if inv_cost_delta is not None else None,
+                "real_savings": str(real_savings) if real_savings is not None else None,
+                "comments": monthly_comments.get(month, []),
+            }
+        )
 
         prev_cash = cash_end
         prev_inv_cost = inv_cost_end
@@ -387,18 +391,20 @@ def annual_savings(user):
             growth_pct = None
         prev_patrimony = entry["patrimony"]
 
-        result.append({
-            "year": entry["year"],
-            "total_real_savings": str(entry["total_real_savings"].quantize(Decimal("0.01"))),
-            "total_cash_delta": str(entry["total_cash_delta"].quantize(Decimal("0.01"))),
-            "total_investment_cost_delta": str(entry["total_investment_cost_delta"].quantize(Decimal("0.01"))),
-            "cash_end": str(entry["cash_end"]),
-            "investment_cost_end": str(entry["investment_cost_end"]),
-            "patrimony": str(entry["patrimony"].quantize(Decimal("0.01"))),
-            "patrimony_growth": str(growth.quantize(Decimal("0.01"))) if growth is not None else None,
-            "patrimony_growth_pct": str(growth_pct) if growth_pct is not None else None,
-            "months_count": entry["months_count"],
-        })
+        result.append(
+            {
+                "year": entry["year"],
+                "total_real_savings": str(entry["total_real_savings"].quantize(Decimal("0.01"))),
+                "total_cash_delta": str(entry["total_cash_delta"].quantize(Decimal("0.01"))),
+                "total_investment_cost_delta": str(entry["total_investment_cost_delta"].quantize(Decimal("0.01"))),
+                "cash_end": str(entry["cash_end"]),
+                "investment_cost_end": str(entry["investment_cost_end"]),
+                "patrimony": str(entry["patrimony"].quantize(Decimal("0.01"))),
+                "patrimony_growth": str(growth.quantize(Decimal("0.01"))) if growth is not None else None,
+                "patrimony_growth_pct": str(growth_pct) if growth_pct is not None else None,
+                "months_count": entry["months_count"],
+            }
+        )
 
     return result
 
@@ -420,11 +426,7 @@ def savings_projection(user, goal_id):
     savings_result = monthly_savings(user)
     months_data = savings_result["months"]
 
-    deltas = sorted(
-        Decimal(m["real_savings"])
-        for m in months_data
-        if m["real_savings"] is not None
-    )
+    deltas = sorted(Decimal(m["real_savings"]) for m in months_data if m["real_savings"] is not None)
 
     # Trimmed mean (exclude top/bottom 10%)
     if len(deltas) >= 10:
@@ -433,11 +435,7 @@ def savings_projection(user, goal_id):
     else:
         trimmed = deltas
 
-    avg_monthly = (
-        sum(trimmed) / Decimal(str(len(trimmed)))
-        if trimmed
-        else Decimal("0")
-    ).quantize(Decimal("0.01"))
+    avg_monthly = (sum(trimmed) / Decimal(str(len(trimmed))) if trimmed else Decimal("0")).quantize(Decimal("0.01"))
 
     # Get current patrimony based on base_type
     patrimonio_data = patrimonio_evolution(user)
@@ -484,19 +482,15 @@ def savings_projection(user, goal_id):
         if avg_scenario["target_date"]:
             on_track = avg_scenario["target_date"] <= goal.deadline.strftime("%Y-%m")
             if not on_track:
-                months_to_deadline = (
-                    (goal.deadline.year - now.year) * 12
-                    + goal.deadline.month - now.month
-                )
+                months_to_deadline = (goal.deadline.year - now.year) * 12 + goal.deadline.month - now.month
                 if months_to_deadline > 0:
                     needed_rate = remaining / Decimal(str(months_to_deadline))
-                    deadline_shortfall = str(
-                        (needed_rate - avg_monthly).quantize(Decimal("0.01"))
-                    )
+                    deadline_shortfall = str((needed_rate - avg_monthly).quantize(Decimal("0.01")))
                 else:
                     deadline_shortfall = str(remaining.quantize(Decimal("0.01")))
 
     from .serializers import SavingsGoalSerializer
+
     goal_data = SavingsGoalSerializer(goal).data
 
     return {

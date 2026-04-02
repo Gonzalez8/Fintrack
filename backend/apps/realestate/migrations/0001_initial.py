@@ -8,7 +8,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -17,28 +16,44 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Property',
+            name="Property",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('name', models.CharField(max_length=200)),
-                ('current_value', models.DecimalField(decimal_places=2, max_digits=14)),
-                ('purchase_price', models.DecimalField(blank=True, decimal_places=2, max_digits=14, null=True)),
-                ('purchase_date', models.DateField(blank=True, null=True)),
-                ('currency', models.CharField(default='EUR', max_length=3)),
-                ('notes', models.TextField(blank=True, default='')),
-                ('original_loan_amount', models.DecimalField(blank=True, decimal_places=2, max_digits=14, null=True)),
-                ('outstanding_balance', models.DecimalField(blank=True, decimal_places=2, max_digits=14, null=True)),
-                ('annual_interest_rate', models.DecimalField(blank=True, decimal_places=4, help_text='Annual interest rate as percentage, e.g. 2.5000 for 2.5%', max_digits=6, null=True)),
-                ('total_term_months', models.PositiveIntegerField(blank=True, null=True)),
-                ('months_paid', models.PositiveIntegerField(blank=True, null=True)),
-                ('monthly_payment', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ('owner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(app_label)s_%(class)s_set', to=settings.AUTH_USER_MODEL)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("name", models.CharField(max_length=200)),
+                ("current_value", models.DecimalField(decimal_places=2, max_digits=14)),
+                ("purchase_price", models.DecimalField(blank=True, decimal_places=2, max_digits=14, null=True)),
+                ("purchase_date", models.DateField(blank=True, null=True)),
+                ("currency", models.CharField(default="EUR", max_length=3)),
+                ("notes", models.TextField(blank=True, default="")),
+                ("original_loan_amount", models.DecimalField(blank=True, decimal_places=2, max_digits=14, null=True)),
+                ("outstanding_balance", models.DecimalField(blank=True, decimal_places=2, max_digits=14, null=True)),
+                (
+                    "annual_interest_rate",
+                    models.DecimalField(
+                        blank=True,
+                        decimal_places=4,
+                        help_text="Annual interest rate as percentage, e.g. 2.5000 for 2.5%",
+                        max_digits=6,
+                        null=True,
+                    ),
+                ),
+                ("total_term_months", models.PositiveIntegerField(blank=True, null=True)),
+                ("months_paid", models.PositiveIntegerField(blank=True, null=True)),
+                ("monthly_payment", models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
+                (
+                    "owner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="%(app_label)s_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': 'properties',
-                'ordering': ['-created_at'],
+                "verbose_name_plural": "properties",
+                "ordering": ["-created_at"],
             },
         ),
     ]

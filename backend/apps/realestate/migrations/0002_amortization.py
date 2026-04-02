@@ -8,28 +8,52 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('realestate', '0001_initial'),
+        ("realestate", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Amortization',
+            name="Amortization",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('month', models.PositiveIntegerField(help_text='Month number in the schedule (1-based) where the extra payment is applied.')),
-                ('amount', models.DecimalField(decimal_places=2, max_digits=14)),
-                ('strategy', models.CharField(choices=[('REDUCE_PAYMENT', 'Reduce monthly payment'), ('REDUCE_TERM', 'Reduce term')], max_length=20)),
-                ('owner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(app_label)s_%(class)s_set', to=settings.AUTH_USER_MODEL)),
-                ('property', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='amortizations', to='realestate.property')),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "month",
+                    models.PositiveIntegerField(
+                        help_text="Month number in the schedule (1-based) where the extra payment is applied."
+                    ),
+                ),
+                ("amount", models.DecimalField(decimal_places=2, max_digits=14)),
+                (
+                    "strategy",
+                    models.CharField(
+                        choices=[("REDUCE_PAYMENT", "Reduce monthly payment"), ("REDUCE_TERM", "Reduce term")],
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "owner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="%(app_label)s_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "property",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="amortizations",
+                        to="realestate.property",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['month'],
-                'unique_together': {('property', 'month')},
+                "ordering": ["month"],
+                "unique_together": {("property", "month")},
             },
         ),
     ]

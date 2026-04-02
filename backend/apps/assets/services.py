@@ -155,11 +155,13 @@ def update_prices(user):
                 asset.price_updated_at = now
                 updated_assets.append(asset)
                 results["updated"] += 1
-                results["prices"].append({
-                    "ticker": ticker,
-                    "name": asset.name,
-                    "price": str(price),
-                })
+                results["prices"].append(
+                    {
+                        "ticker": ticker,
+                        "name": asset.name,
+                        "price": str(price),
+                    }
+                )
             except (InvalidOperation, ValueError) as e:
                 asset.price_status = Asset.PriceStatus.ERROR
                 asset.price_updated_at = now

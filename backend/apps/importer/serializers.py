@@ -9,9 +9,18 @@ class BackupAssetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Asset
         fields = [
-            "id", "name", "ticker", "isin", "type", "currency",
-            "current_price", "price_mode", "issuer_country", "domicile_country",
-            "withholding_country", "price_source",
+            "id",
+            "name",
+            "ticker",
+            "isin",
+            "type",
+            "currency",
+            "current_price",
+            "price_mode",
+            "issuer_country",
+            "domicile_country",
+            "withholding_country",
+            "price_source",
         ]
         extra_kwargs = {"id": {"read_only": False}}
 
@@ -27,8 +36,17 @@ class BackupTransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = [
-            "id", "date", "type", "asset", "account",
-            "quantity", "price", "commission", "tax", "notes", "import_hash",
+            "id",
+            "date",
+            "type",
+            "asset",
+            "account",
+            "quantity",
+            "price",
+            "commission",
+            "tax",
+            "notes",
+            "import_hash",
         ]
         extra_kwargs = {"id": {"read_only": False}}
 
@@ -37,7 +55,13 @@ class BackupDividendSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dividend
         fields = [
-            "id", "date", "asset", "shares", "gross", "tax", "net",
+            "id",
+            "date",
+            "asset",
+            "shares",
+            "gross",
+            "tax",
+            "net",
             "import_hash",
         ]
         extra_kwargs = {"id": {"read_only": False}}
@@ -47,8 +71,14 @@ class BackupInterestSerializer(serializers.ModelSerializer):
     class Meta:
         model = Interest
         fields = [
-            "id", "date_start", "date_end", "account", "gross", "net",
-            "balance", "import_hash",
+            "id",
+            "date_start",
+            "date_end",
+            "account",
+            "gross",
+            "net",
+            "balance",
+            "import_hash",
         ]
         extra_kwargs = {"id": {"read_only": False}}
 
@@ -71,9 +101,15 @@ class BackupPositionSnapshotSerializer(serializers.ModelSerializer):
     class Meta:
         model = PositionSnapshot
         fields = [
-            "id", "batch_id", "captured_at", "asset",
-            "quantity", "cost_basis", "market_value",
-            "unrealized_pnl", "unrealized_pnl_pct",
+            "id",
+            "batch_id",
+            "captured_at",
+            "asset",
+            "quantity",
+            "cost_basis",
+            "market_value",
+            "unrealized_pnl",
+            "unrealized_pnl_pct",
         ]
         extra_kwargs = {"id": {"read_only": False}}
 
@@ -89,8 +125,16 @@ class BackupSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Settings
         fields = [
-            "base_currency", "cost_basis_method", "fiscal_cost_method", "gift_cost_mode",
-            "rounding_money", "rounding_qty", "price_update_interval",
-            "default_price_source", "snapshot_frequency",
-            "data_retention_days", "purge_portfolio_snapshots", "purge_position_snapshots",
+            "base_currency",
+            "cost_basis_method",
+            "fiscal_cost_method",
+            "gift_cost_mode",
+            "rounding_money",
+            "rounding_qty",
+            "price_update_interval",
+            "default_price_source",
+            "snapshot_frequency",
+            "data_retention_days",
+            "purge_portfolio_snapshots",
+            "purge_position_snapshots",
         ]

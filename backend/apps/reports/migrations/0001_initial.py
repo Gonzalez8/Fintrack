@@ -9,7 +9,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -18,20 +17,35 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='SavingsGoal',
+            name="SavingsGoal",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('name', models.CharField(max_length=120)),
-                ('target_amount', models.DecimalField(decimal_places=2, max_digits=14)),
-                ('current_amount', models.DecimalField(decimal_places=2, default=Decimal('0'), help_text='Manual override; when 0 the system uses live patrimony total.', max_digits=14)),
-                ('deadline', models.DateField(blank=True, null=True)),
-                ('icon', models.CharField(blank=True, default='target', max_length=30)),
-                ('owner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='%(app_label)s_%(class)s_set', to=settings.AUTH_USER_MODEL)),
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("name", models.CharField(max_length=120)),
+                ("target_amount", models.DecimalField(decimal_places=2, max_digits=14)),
+                (
+                    "current_amount",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=Decimal("0"),
+                        help_text="Manual override; when 0 the system uses live patrimony total.",
+                        max_digits=14,
+                    ),
+                ),
+                ("deadline", models.DateField(blank=True, null=True)),
+                ("icon", models.CharField(blank=True, default="target", max_length=30)),
+                (
+                    "owner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="%(app_label)s_%(class)s_set",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-created_at'],
+                "ordering": ["-created_at"],
             },
         ),
     ]

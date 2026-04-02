@@ -8,21 +8,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('assets', '0002_accountsnapshot_idx_accsnapshot_owner_date_and_more'),
-        ('transactions', '0002_interest_date_range'),
+        ("assets", "0002_accountsnapshot_idx_accsnapshot_owner_date_and_more"),
+        ("transactions", "0002_interest_date_range"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='transaction',
-            name='quantity',
-            field=models.DecimalField(decimal_places=6, max_digits=20, validators=[django.core.validators.MinValueValidator(Decimal('0.000001'))]),
+            model_name="transaction",
+            name="quantity",
+            field=models.DecimalField(
+                decimal_places=6,
+                max_digits=20,
+                validators=[django.core.validators.MinValueValidator(Decimal("0.000001"))],
+            ),
         ),
         migrations.AddIndex(
-            model_name='transaction',
-            index=models.Index(fields=['owner', 'date', 'created_at'], name='idx_tx_owner_date'),
+            model_name="transaction",
+            index=models.Index(fields=["owner", "date", "created_at"], name="idx_tx_owner_date"),
         ),
     ]

@@ -31,6 +31,7 @@ class AssetViewSet(OwnedByUserMixin, viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         from django.db.models import ProtectedError
+
         try:
             return super().destroy(request, *args, **kwargs)
         except ProtectedError:
@@ -41,9 +42,7 @@ class AssetViewSet(OwnedByUserMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="position-history")
     def position_history(self, request, pk=None):
-        snapshots = PositionSnapshot.objects.filter(
-            owner=request.user, asset_id=pk
-        ).order_by("captured_at")
+        snapshots = PositionSnapshot.objects.filter(owner=request.user, asset_id=pk).order_by("captured_at")
         data = [
             {
                 "captured_at": s.captured_at.isoformat(),
@@ -122,9 +121,15 @@ class AssetViewSet(OwnedByUserMixin, viewsets.ModelViewSet):
         asset.price_source = Asset.PriceSource.MANUAL
         asset.price_status = Asset.PriceStatus.OK
         asset.price_updated_at = now
-        asset.save(update_fields=[
-            "current_price", "price_source", "price_status", "price_updated_at", "updated_at",
-        ])
+        asset.save(
+            update_fields=[
+                "current_price",
+                "price_source",
+                "price_status",
+                "price_updated_at",
+                "updated_at",
+            ]
+        )
         invalidate_user_cache(request.user.pk, *FINANCIAL_NAMESPACES)
         return Response(AssetSerializer(asset).data)
 
@@ -132,6 +137,7 @@ class AssetViewSet(OwnedByUserMixin, viewsets.ModelViewSet):
 class UpdatePricesView(APIView):
     def post(self, request):
         from apps.assets.tasks import update_prices_task
+
         task = update_prices_task.delay(request.user.pk)
         return Response({"task_id": task.id, "status": "queued"}, status=status.HTTP_202_ACCEPTED)
 
@@ -142,6 +148,7 @@ class AccountViewSet(OwnedByUserMixin, viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         from django.db.models import ProtectedError
+
         try:
             return super().destroy(request, *args, **kwargs)
         except ProtectedError:
@@ -180,8 +187,7 @@ class BulkSnapshotView(APIView):
 
         item_account_ids = [item["account"] for item in serializer.validated_data["snapshots"]]
         valid_ids = set(
-            Account.objects.filter(owner=request.user, id__in=item_account_ids)
-            .values_list("id", flat=True)
+            Account.objects.filter(owner=request.user, id__in=item_account_ids).values_list("id", flat=True)
         )
         invalid = [str(aid) for aid in item_account_ids if aid not in valid_ids]
         if invalid:
@@ -211,6 +217,7 @@ class SettingsView(RetrieveUpdateAPIView):
 
     def perform_update(self, serializer):
         from apps.core.cache import NS_SETTINGS
+
         super().perform_update(serializer)
         invalidate_user_cache(self.request.user.pk, NS_SETTINGS, *FINANCIAL_NAMESPACES)
 
@@ -223,6 +230,7 @@ class StorageInfoView(APIView):
 
     def get(self, request):
         from django.db import connection
+
         with connection.cursor() as cursor:
             cursor.execute("""
                 SELECT relname, pg_total_relation_size(quote_ident(relname))

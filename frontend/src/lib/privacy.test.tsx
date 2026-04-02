@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { render, act, cleanup } from "@testing-library/react";
 import { PrivacyProvider, usePrivacy, isPrivacyMode } from "./privacy";
-import { useRef } from "react";
 
 // Track values via a ref that persists across re-renders
 let capturedValues: { privacyMode: boolean; toggleFn: (() => void) | null } = {
@@ -41,7 +40,7 @@ describe("PrivacyProvider", () => {
   });
 
   it("toggles privacy mode to true", () => {
-    const { container } = render(
+    render(
       <PrivacyProvider>
         <TestConsumer />
       </PrivacyProvider>,

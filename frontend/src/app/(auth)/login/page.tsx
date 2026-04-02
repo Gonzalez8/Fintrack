@@ -15,7 +15,7 @@ import {
   Zap,
 } from "lucide-react";
 import { authApi, ApiClientError } from "@/lib/api-client";
-import { cn } from "@/lib/utils";
+
 import { useTranslations } from "@/i18n/use-translations";
 
 const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "true";

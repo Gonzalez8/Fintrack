@@ -1,4 +1,3 @@
-
 from decimal import Decimal
 
 from apps.realestate.services import (
@@ -123,14 +122,9 @@ class TestSimulateAmortization:
         )
         assert result["strategy"] == "REDUCE_PAYMENT"
         # New payment should be lower
-        assert Decimal(result["new"]["monthly_payment"]) < Decimal(
-            result["current"]["monthly_payment"]
-        )
+        assert Decimal(result["new"]["monthly_payment"]) < Decimal(result["current"]["monthly_payment"])
         # Installments unchanged
-        assert (
-            result["new"]["remaining_installments"]
-            == result["current"]["remaining_installments"]
-        )
+        assert result["new"]["remaining_installments"] == result["current"]["remaining_installments"]
         # Difference in payment should be negative
         assert Decimal(result["difference"]["monthly_payment"]) < Decimal("0")
 
@@ -147,10 +141,7 @@ class TestSimulateAmortization:
         # Payment stays the same
         assert result["new"]["monthly_payment"] == result["current"]["monthly_payment"]
         # Fewer installments
-        assert (
-            result["new"]["remaining_installments"]
-            < result["current"]["remaining_installments"]
-        )
+        assert result["new"]["remaining_installments"] < result["current"]["remaining_installments"]
         # Difference in installments should be negative
         assert result["difference"]["remaining_installments"] < 0
 
@@ -183,26 +174,16 @@ class TestSimulateAmortization:
         diff = result["difference"]
 
         # Verify difference = new - current for payment
-        expected_diff_payment = Decimal(new["monthly_payment"]) - Decimal(
-            current["monthly_payment"]
-        )
-        assert Decimal(diff["monthly_payment"]) == expected_diff_payment.quantize(
-            Decimal("0.01")
-        )
+        expected_diff_payment = Decimal(new["monthly_payment"]) - Decimal(current["monthly_payment"])
+        assert Decimal(diff["monthly_payment"]) == expected_diff_payment.quantize(Decimal("0.01"))
 
         # Verify difference for installments
-        expected_diff_inst = (
-            new["remaining_installments"] - current["remaining_installments"]
-        )
+        expected_diff_inst = new["remaining_installments"] - current["remaining_installments"]
         assert diff["remaining_installments"] == expected_diff_inst
 
         # Verify difference for total_remaining
-        expected_diff_total = Decimal(new["total_remaining"]) - Decimal(
-            current["total_remaining"]
-        )
-        assert Decimal(diff["total_remaining"]) == expected_diff_total.quantize(
-            Decimal("0.01")
-        )
+        expected_diff_total = Decimal(new["total_remaining"]) - Decimal(current["total_remaining"])
+        assert Decimal(diff["total_remaining"]) == expected_diff_total.quantize(Decimal("0.01"))
 
     def test_zero_interest_rate(self):
         result = simulate_amortization(
