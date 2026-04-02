@@ -10,16 +10,19 @@ from rest_framework.views import APIView
 
 from apps.assets.models import Account, AccountSnapshot, Asset, PortfolioSnapshot, Settings
 from apps.assets.serializers import SettingsSerializer
+from apps.realestate.models import Amortization, Property
 from apps.reports.models import SavingsGoal
 from apps.transactions.models import Dividend, Interest, Transaction
 
 from .serializers import (
     BackupAccountSerializer,
     BackupAccountSnapshotSerializer,
+    BackupAmortizationSerializer,
     BackupAssetSerializer,
     BackupDividendSerializer,
     BackupInterestSerializer,
     BackupPortfolioSnapshotSerializer,
+    BackupPropertySerializer,
     BackupSavingsGoalSerializer,
     BackupSettingsSerializer,
     BackupTransactionSerializer,
@@ -45,6 +48,10 @@ class BackupExportView(APIView):
             "dividends": BackupDividendSerializer(Dividend.objects.filter(owner=user), many=True).data,
             "interests": BackupInterestSerializer(Interest.objects.filter(owner=user), many=True).data,
             "savings_goals": BackupSavingsGoalSerializer(SavingsGoal.objects.filter(owner=user), many=True).data,
+            "properties": BackupPropertySerializer(Property.objects.filter(owner=user), many=True).data,
+            "amortizations": BackupAmortizationSerializer(
+                Amortization.objects.filter(owner=user).select_related("property"), many=True
+            ).data,
         }
         content = json.dumps(payload, indent=2, default=str)
         filename = datetime.now(UTC).strftime("fintrack-backup-%Y%m%d-%H%M%S.json")
@@ -87,6 +94,8 @@ class BackupImportView(APIView):
             "dividends": 0,
             "interests": 0,
             "savings_goals": 0,
+            "properties": 0,
+            "amortizations": 0,
             "settings": False,
         }
 
@@ -178,6 +187,22 @@ class BackupImportView(APIView):
                         defaults=to_defaults(item),
                     )
                     counts["savings_goals"] += 1
+
+                for item in payload.get("properties", []):
+                    Property.objects.update_or_create(
+                        id=item["id"],
+                        owner=user,
+                        defaults=to_defaults(item),
+                    )
+                    counts["properties"] += 1
+
+                for item in payload.get("amortizations", []):
+                    Amortization.objects.update_or_create(
+                        id=item["id"],
+                        owner=user,
+                        defaults=to_defaults(item, fk_fields=("property",)),
+                    )
+                    counts["amortizations"] += 1
 
         except Exception:
             return Response(
