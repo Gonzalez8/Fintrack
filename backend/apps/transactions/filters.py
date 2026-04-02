@@ -1,6 +1,7 @@
 import django_filters
 from django.db.models import Q
-from .models import Transaction, Dividend, Interest
+
+from .models import Dividend, Interest, Transaction
 
 
 class TransactionFilter(django_filters.FilterSet):

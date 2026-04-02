@@ -11,7 +11,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from apps.assets.models import Account, Asset
-from apps.transactions.models import Transaction, Dividend, Interest
+from apps.transactions.models import Dividend, Interest, Transaction
 
 User = get_user_model()
 
@@ -184,7 +184,7 @@ class TestTransactionCRUD:
     def test_list_transactions(self, client, transaction):
         res = client.get("/api/transactions/")
         assert res.status_code == 200
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 1
         assert results[0]["id"] == str(transaction.id)
 
@@ -219,7 +219,7 @@ class TestTransactionCRUD:
     def test_multi_tenancy_isolation(self, client, client2, user2, transaction, other_asset, other_account):
         # user2 cannot see user1's transactions
         res = client2.get("/api/transactions/")
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 0
 
         # user2 cannot retrieve user1's transaction
@@ -286,40 +286,40 @@ class TestTransactionFilters:
     def test_filter_by_date_range(self, client, user, asset, asset2, account, account2):
         self._create_transactions(user, asset, asset2, account, account2)
         res = client.get("/api/transactions/", {"from_date": "2025-04-01", "to_date": "2025-08-01"})
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 1
         assert results[0]["type"] == "SELL"
 
     def test_filter_by_asset_id(self, client, user, asset, asset2, account, account2):
         self._create_transactions(user, asset, asset2, account, account2)
         res = client.get("/api/transactions/", {"asset_id": str(asset2.id)})
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 1
         assert Decimal(results[0]["quantity"]) == Decimal("8")
 
     def test_filter_by_account_id(self, client, user, asset, asset2, account, account2):
         self._create_transactions(user, asset, asset2, account, account2)
         res = client.get("/api/transactions/", {"account_id": str(account.id)})
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 2
 
     def test_filter_by_type(self, client, user, asset, asset2, account, account2):
         self._create_transactions(user, asset, asset2, account, account2)
         res = client.get("/api/transactions/", {"type": "BUY"})
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 2
 
     def test_filter_search(self, client, user, asset, asset2, account, account2):
         self._create_transactions(user, asset, asset2, account, account2)
         # Search by asset name
         res = client.get("/api/transactions/", {"search": "Another"})
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 1
         assert results[0]["asset_name"] == "Another Fund"
 
         # Search by ticker
         res = client.get("/api/transactions/", {"search": "TST"})
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 2
 
 
@@ -382,7 +382,7 @@ class TestDividendCRUD:
     def test_list_dividends(self, client, dividend):
         res = client.get("/api/dividends/")
         assert res.status_code == 200
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 1
 
     def test_update_dividend(self, client, dividend):
@@ -426,7 +426,7 @@ class TestDividendCRUD:
     def test_multi_tenancy_isolation(self, client, client2, dividend):
         # user2 cannot see user1's dividends
         res = client2.get("/api/dividends/")
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 0
 
         res = client2.get(f"/api/dividends/{dividend.id}/")
@@ -450,7 +450,7 @@ class TestDividendFilters:
             asset=asset, gross=Decimal("60"), tax=Decimal("6"), net=Decimal("54"),
         )
         res = client.get("/api/dividends/", {"year": 2025})
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 1
         assert Decimal(results[0]["gross"]) == Decimal("60.00")
 
@@ -464,7 +464,7 @@ class TestDividendFilters:
             asset=asset2, gross=Decimal("30"), tax=Decimal("3"), net=Decimal("27"),
         )
         res = client.get("/api/dividends/", {"asset_id": str(asset2.id)})
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 1
         assert results[0]["asset_name"] == "Another Fund"
 
@@ -514,7 +514,7 @@ class TestInterestCRUD:
     def test_list_interests(self, client, interest):
         res = client.get("/api/interests/")
         assert res.status_code == 200
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 1
 
     def test_update_interest(self, client, interest):
@@ -545,7 +545,7 @@ class TestInterestCRUD:
     def test_multi_tenancy_isolation(self, client, client2, interest):
         # user2 cannot see user1's interests
         res = client2.get("/api/interests/")
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 0
 
         res = client2.get(f"/api/interests/{interest.id}/")
@@ -571,7 +571,7 @@ class TestInterestFilters:
             account=account, gross=Decimal("50"), net=Decimal("40"),
         )
         res = client.get("/api/interests/", {"year": 2024})
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 1
         assert Decimal(results[0]["gross"]) == Decimal("40.00")
 
@@ -587,7 +587,7 @@ class TestInterestFilters:
             account=account2, gross=Decimal("30"), net=Decimal("24"),
         )
         res = client.get("/api/interests/", {"account_id": str(account2.id)})
-        results = res.data["results"] if "results" in res.data else res.data
+        results = res.data.get("results", res.data)
         assert len(results) == 1
         assert results[0]["account_name"] == "Savings Account"
 

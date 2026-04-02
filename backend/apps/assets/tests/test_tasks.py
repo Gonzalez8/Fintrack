@@ -5,14 +5,14 @@ Tests for Celery tasks: snapshot dispatch, purge old snapshots.
 import datetime
 import uuid
 from decimal import Decimal
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from apps.assets.models import PortfolioSnapshot, PositionSnapshot, Asset, Settings
-from apps.assets.tasks import snapshot_all_users_task, purge_old_snapshots_task
+from apps.assets.models import Asset, PortfolioSnapshot, PositionSnapshot, Settings
+from apps.assets.tasks import purge_old_snapshots_task, snapshot_all_users_task
 
 User = get_user_model()
 

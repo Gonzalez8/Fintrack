@@ -9,8 +9,8 @@ import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
-from apps.assets.models import Account, AccountSnapshot, Asset
-from apps.transactions.models import Transaction, Dividend, Interest
+from apps.assets.models import Account, Asset
+from apps.transactions.models import Dividend, Interest, Transaction
 
 User = get_user_model()
 
@@ -196,7 +196,7 @@ class TestSavingsGoal:
         )
         resp = client.get("/api/savings-goals/")
         assert resp.status_code == 200
-        results = resp.data["results"] if "results" in resp.data else resp.data
+        results = resp.data.get("results", resp.data)
         assert len(results) >= 1
         assert results[0]["name"] == "Vacation"
 
@@ -238,7 +238,7 @@ class TestSavingsGoal:
             target_amount=Decimal("2000.00"),
         )
         resp = client.get("/api/savings-goals/")
-        results = resp.data["results"] if "results" in resp.data else resp.data
+        results = resp.data.get("results", resp.data)
         ids = [g["id"] for g in results]
         assert str(other_goal.id) not in ids
 

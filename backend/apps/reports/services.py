@@ -1,11 +1,13 @@
 import logging
 from collections import defaultdict
 from decimal import Decimal
+
 from django.db.models import Sum
 from django.db.models.functions import ExtractYear
 from django.utils import timezone
-from apps.transactions.models import Dividend, Interest
+
 from apps.portfolio.services import calculate_realized_pnl_fiscal
+from apps.transactions.models import Dividend, Interest
 
 logger = logging.getLogger(__name__)
 
@@ -93,8 +95,8 @@ def rv_evolution(user):
 
 def patrimonio_evolution(user):
     from apps.assets.models import AccountSnapshot, Asset, PortfolioSnapshot, PositionSnapshot
-    from apps.transactions.models import Transaction
     from apps.portfolio.services import calculate_portfolio
+    from apps.transactions.models import Transaction
 
     EQUITY_TYPES = {"STOCK", "ETF", "CRYPTO"}
     asset_type_map = dict(Asset.objects.filter(owner=user).values_list("id", "type"))
@@ -246,8 +248,7 @@ def _compute_savings_stats(months_data):
 
 
 def monthly_savings(user, start_date=None, end_date=None):
-    from apps.assets.models import AccountSnapshot, Settings
-    from apps.transactions.models import Transaction
+    from apps.assets.models import AccountSnapshot
 
     account_balances = {}
     monthly_cash = {}
@@ -363,7 +364,7 @@ def annual_savings(user):
         entry["_last_month"] = m["month"]
 
     # Attach patrimony from patrimonio_evolution (year-end value)
-    for year, entry in years.items():
+    for _year, entry in years.items():
         p = patrimonio_by_month.get(entry["_last_month"])
         if p:
             entry["patrimony"] = Decimal(p["cash"]) + Decimal(p["investments"])
@@ -408,7 +409,9 @@ def annual_savings(user):
 def savings_projection(user, goal_id):
     """Calculate projection scenarios for reaching a savings goal."""
     import math
+
     from dateutil.relativedelta import relativedelta
+
     from .models import SavingsGoal
 
     goal = SavingsGoal.objects.get(pk=goal_id, owner=user)

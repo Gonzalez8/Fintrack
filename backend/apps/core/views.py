@@ -1,3 +1,5 @@
+import contextlib
+
 from django.conf import settings as django_settings
 from django.contrib.auth import authenticate
 from rest_framework import status
@@ -5,10 +7,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
-from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
-
+from rest_framework_simplejwt.tokens import RefreshToken
 
 # ---------------------------------------------------------------------------
 # Cookie helpers
@@ -138,10 +139,8 @@ class JWTLogoutView(APIView):
     def post(self, request):
         raw_token = request.COOKIES.get(django_settings.JWT_AUTH_COOKIE_REFRESH)
         if raw_token:
-            try:
+            with contextlib.suppress(TokenError, InvalidToken):
                 RefreshToken(raw_token).blacklist()
-            except (TokenError, InvalidToken):
-                pass
 
         response = Response({"detail": "Sesion cerrada."})
         _delete_auth_cookies(response)
@@ -248,8 +247,8 @@ class GoogleAuthView(APIView):
             )
 
         try:
-            from google.oauth2 import id_token as google_id_token
             from google.auth.transport.requests import Request as GoogleRequest
+            from google.oauth2 import id_token as google_id_token
             idinfo = google_id_token.verify_oauth2_token(
                 credential, GoogleRequest(), django_settings.GOOGLE_CLIENT_ID
             )
@@ -338,10 +337,8 @@ class ChangePasswordView(APIView):
 
         raw_token = request.COOKIES.get(django_settings.JWT_AUTH_COOKIE_REFRESH)
         if raw_token:
-            try:
+            with contextlib.suppress(TokenError, InvalidToken):
                 RefreshToken(raw_token).blacklist()
-            except (TokenError, InvalidToken):
-                pass
 
         refresh = RefreshToken.for_user(user)
         access = str(refresh.access_token)

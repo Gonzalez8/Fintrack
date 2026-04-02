@@ -2,7 +2,8 @@ from django.conf import settings as django_settings
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
-from apps.core.models import TimeStampedModel, UserOwnedModel
+
+from apps.core.models import UserOwnedModel
 
 
 class Asset(UserOwnedModel):
@@ -225,7 +226,7 @@ class Settings(models.Model):
 
     @classmethod
     def load(cls, user):
-        from apps.core.cache import get_user_cache, set_user_cache, NS_SETTINGS
+        from apps.core.cache import NS_SETTINGS, get_user_cache, set_user_cache
         cached = get_user_cache(user.pk, NS_SETTINGS)
         if cached is not None:
             return cached
@@ -235,7 +236,7 @@ class Settings(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        from apps.core.cache import invalidate_user_cache, NS_SETTINGS
+        from apps.core.cache import NS_SETTINGS, invalidate_user_cache
         invalidate_user_cache(self.user_id, NS_SETTINGS)
 
     def __str__(self):

@@ -78,7 +78,7 @@ class TestAccountCRUD:
     def test_list_accounts(self, client, account):
         resp = client.get("/api/accounts/")
         assert resp.status_code == 200
-        results = resp.data["results"] if "results" in resp.data else resp.data
+        results = resp.data.get("results", resp.data)
         assert len(results) >= 1
         names = [a["name"] for a in results]
         assert "Main Checking" in names
@@ -101,7 +101,7 @@ class TestAccountCRUD:
         # User should not see other_user's account
         resp = client.get("/api/accounts/")
         assert resp.status_code == 200
-        results = resp.data["results"] if "results" in resp.data else resp.data
+        results = resp.data.get("results", resp.data)
         ids = [a["id"] for a in results]
         assert str(other_account.id) not in ids
 
@@ -131,7 +131,7 @@ class TestAccountSnapshotCRUD:
         )
         resp = client.get("/api/account-snapshots/")
         assert resp.status_code == 200
-        results = resp.data["results"] if "results" in resp.data else resp.data
+        results = resp.data.get("results", resp.data)
         assert len(results) >= 1
 
     def test_snapshot_syncs_account_balance(self, client, account):
@@ -168,7 +168,7 @@ class TestAccountSnapshotCRUD:
             balance=Decimal("9999.00"),
         )
         resp = client.get("/api/account-snapshots/")
-        results = resp.data["results"] if "results" in resp.data else resp.data
+        results = resp.data.get("results", resp.data)
         ids = [s["id"] for s in results]
         assert str(snapshot.id) not in ids
 

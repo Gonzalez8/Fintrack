@@ -1,6 +1,4 @@
-import math
 
-import pytest
 from decimal import Decimal
 
 from apps.realestate.services import (

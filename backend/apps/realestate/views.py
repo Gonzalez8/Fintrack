@@ -3,8 +3,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.mixins import OwnedByUserMixin
+
 from .models import Amortization, Property
-from .serializers import AmortizationSerializer, PropertySerializer, MortgageSimulationInputSerializer
+from .serializers import AmortizationSerializer, MortgageSimulationInputSerializer, PropertySerializer
 from .services import simulate_amortization
 
 

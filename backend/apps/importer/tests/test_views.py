@@ -10,9 +10,9 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 
-from apps.assets.models import Account, Asset, Settings
+from apps.assets.models import Account, Asset
 from apps.reports.models import SavingsGoal
-from apps.transactions.models import Transaction, Dividend
+from apps.transactions.models import Dividend, Transaction
 
 User = get_user_model()
 

@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
-from .models import Transaction, Dividend, Interest
+from .models import Dividend, Interest, Transaction
 
 
 class _OwnershipValidationMixin:

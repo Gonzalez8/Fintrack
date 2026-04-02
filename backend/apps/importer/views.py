@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from django.db import transaction as db_transaction
 from django.http import HttpResponse
@@ -8,22 +8,22 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.assets.models import Asset, Account, AccountSnapshot, PortfolioSnapshot, PositionSnapshot, Settings
+from apps.assets.models import Account, AccountSnapshot, Asset, PortfolioSnapshot, PositionSnapshot, Settings
 from apps.assets.serializers import SettingsSerializer
 from apps.reports.models import SavingsGoal
-from apps.transactions.models import Transaction, Dividend, Interest
+from apps.transactions.models import Dividend, Interest, Transaction
 
 from .serializers import (
-    BackupAssetSerializer,
     BackupAccountSerializer,
     BackupAccountSnapshotSerializer,
-    BackupPortfolioSnapshotSerializer,
-    BackupPositionSnapshotSerializer,
-    BackupTransactionSerializer,
+    BackupAssetSerializer,
     BackupDividendSerializer,
     BackupInterestSerializer,
+    BackupPortfolioSnapshotSerializer,
+    BackupPositionSnapshotSerializer,
     BackupSavingsGoalSerializer,
     BackupSettingsSerializer,
+    BackupTransactionSerializer,
 )
 
 
@@ -32,7 +32,7 @@ class BackupExportView(APIView):
         user = request.user
         payload = {
             "version": "1.0",
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "settings": BackupSettingsSerializer(Settings.load(user)).data,
             "assets": BackupAssetSerializer(Asset.objects.filter(owner=user), many=True).data,
             "accounts": BackupAccountSerializer(Account.objects.filter(owner=user), many=True).data,
@@ -59,7 +59,7 @@ class BackupExportView(APIView):
             ).data,
         }
         content = json.dumps(payload, indent=2, default=str)
-        filename = datetime.now(timezone.utc).strftime("fintrack-backup-%Y%m%d-%H%M%S.json")
+        filename = datetime.now(UTC).strftime("fintrack-backup-%Y%m%d-%H%M%S.json")
         response = HttpResponse(content, content_type="application/json")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
@@ -183,7 +183,7 @@ class BackupImportView(APIView):
                     )
                     counts["savings_goals"] += 1
 
-        except Exception as e:
+        except Exception:
             return Response(
                 {"detail": "Import failed. Check file format and try again."},
                 status=status.HTTP_400_BAD_REQUEST,

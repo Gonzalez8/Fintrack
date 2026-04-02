@@ -1,8 +1,8 @@
 from rest_framework import serializers
 
-from apps.assets.models import Asset, Account, AccountSnapshot, PortfolioSnapshot, PositionSnapshot, Settings
+from apps.assets.models import Account, AccountSnapshot, Asset, PortfolioSnapshot, PositionSnapshot, Settings
 from apps.reports.models import SavingsGoal
-from apps.transactions.models import Transaction, Dividend, Interest
+from apps.transactions.models import Dividend, Interest, Transaction
 
 
 class BackupAssetSerializer(serializers.ModelSerializer):

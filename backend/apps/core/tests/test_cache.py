@@ -1,5 +1,6 @@
 import pytest
-from apps.core.cache import get_user_cache, set_user_cache, invalidate_user_cache, _key
+
+from apps.core.cache import _key, get_user_cache, invalidate_user_cache, set_user_cache
 
 
 @pytest.mark.django_db

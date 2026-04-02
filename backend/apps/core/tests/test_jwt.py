@@ -450,8 +450,8 @@ class TestEndToEndFlow:
             "new_password_confirm": "updatedpass456",
         })
         assert resp.status_code == 200
-        final_access = resp.data["access"]
-        final_refresh = resp.cookies[REFRESH_COOKIE].value
+        assert resp.data["access"]
+        assert resp.cookies[REFRESH_COOKIE].value
 
         # 5. Login with new password
         api_client.credentials()  # clear auth

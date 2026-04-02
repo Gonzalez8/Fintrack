@@ -9,17 +9,26 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.cache import (
-    get_user_cache, set_user_cache,
-    NS_REPORTS_YEAR, NS_REPORTS_PATRIMONIO, NS_REPORTS_RV, NS_REPORTS_SAVINGS,
     NS_REPORTS_ANNUAL_SAVINGS,
+    NS_REPORTS_PATRIMONIO,
+    NS_REPORTS_RV,
+    NS_REPORTS_SAVINGS,
+    NS_REPORTS_YEAR,
+    get_user_cache,
+    set_user_cache,
 )
 from apps.core.mixins import OwnedByUserMixin
-from apps.transactions.models import Transaction, Dividend, Interest
+from apps.transactions.models import Dividend, Interest, Transaction
+
 from .models import SavingsGoal
 from .serializers import SavingsGoalSerializer
 from .services import (
-    year_summary, patrimonio_evolution, rv_evolution,
-    monthly_savings, annual_savings, savings_projection,
+    annual_savings,
+    monthly_savings,
+    patrimonio_evolution,
+    rv_evolution,
+    savings_projection,
+    year_summary,
 )
 
 _REPORT_TTL = 120  # 2 minutes
@@ -72,6 +81,7 @@ class MonthlySavingsView(APIView):
 class SnapshotStatusView(APIView):
     def get(self, request):
         import math
+
         from apps.assets.models import PortfolioSnapshot, Settings
 
         settings = Settings.load(request.user)

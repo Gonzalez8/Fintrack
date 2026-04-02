@@ -1,6 +1,7 @@
 import logging
 from collections import deque
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
+
 from apps.assets.models import Account, Settings
 from apps.transactions.models import Transaction
 
