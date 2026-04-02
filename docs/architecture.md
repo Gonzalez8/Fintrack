@@ -113,7 +113,7 @@ graph TB
         end
 
         subgraph "apps/assets/"
-            asset_models[Asset, Account<br/>AccountSnapshot<br/>PortfolioSnapshot<br/>PositionSnapshot<br/>Settings]
+            asset_models[Asset, Account<br/>AccountSnapshot<br/>PortfolioSnapshot<br/>Settings]
             asset_views[AssetViewSet<br/>AccountViewSet<br/>SettingsView]
             price_service[Price Service<br/>Yahoo Finance integration]
             snapshot_tasks[Snapshot Tasks<br/>Auto-snapshot, purge]
@@ -235,18 +235,14 @@ erDiagram
     User ||--o{ Interest : "owns"
     User ||--o{ AccountSnapshot : "owns"
     User ||--o{ PortfolioSnapshot : "owns"
-    User ||--o{ PositionSnapshot : "owns"
     User ||--o{ SavingsGoal : "owns"
 
     Asset ||--o{ Transaction : "referenced by"
     Asset ||--o{ Dividend : "referenced by"
-    Asset ||--o{ PositionSnapshot : "referenced by"
 
     Account ||--o{ Transaction : "referenced by"
     Account ||--o{ Interest : "referenced by"
     Account ||--o{ AccountSnapshot : "has"
-
-    PortfolioSnapshot ||--o{ PositionSnapshot : "batch_id"
 
     User {
         int id PK
@@ -331,15 +327,6 @@ erDiagram
         decimal total_market_value
         decimal total_cost
         decimal total_unrealized_pnl
-    }
-
-    PositionSnapshot {
-        uuid id PK
-        uuid batch_id "unique with asset"
-        uuid asset_id FK
-        decimal quantity
-        decimal cost_basis
-        decimal market_value
     }
 
     SavingsGoal {
@@ -555,7 +542,7 @@ sequenceDiagram
     Worker->>DB: Get all users with snapshot_frequency > 0
     loop Each user (if interval elapsed)
         Worker->>Worker: calculate_portfolio(user)
-        Worker->>DB: Create PortfolioSnapshot + PositionSnapshots
+        Worker->>DB: Create PortfolioSnapshot
     end
 
     Note over Beat: Daily
@@ -688,7 +675,7 @@ Architecture Decision Records documenting key design choices:
 |-------|-----------|
 | **Backend** | Django 5.1, DRF 3.15, PostgreSQL 16, Celery 5.3, Redis 7 |
 | **Auth** | djangorestframework-simplejwt, google-auth |
-| **Frontend** | Next.js 16, React 19, TypeScript 5, Tailwind CSS v4, shadcn/ui (Radix) |
+| **Frontend** | Next.js 16, React 19, TypeScript 5, Tailwind CSS v4, shadcn/ui (Base UI) |
 | **State** | TanStack Query 5 (server state) |
 | **Charts** | Recharts 3, Lightweight Charts 5 |
 | **i18n** | Manual key-based (es, en, de, fr, it) |

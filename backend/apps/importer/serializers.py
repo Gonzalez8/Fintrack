@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from apps.assets.models import Account, AccountSnapshot, Asset, PortfolioSnapshot, Settings
+from apps.realestate.models import Amortization, Property
 from apps.reports.models import SavingsGoal
 from apps.transactions.models import Dividend, Interest, Transaction
 
@@ -101,6 +102,34 @@ class BackupSavingsGoalSerializer(serializers.ModelSerializer):
     class Meta:
         model = SavingsGoal
         fields = ["id", "name", "target_amount", "base_type", "deadline", "icon"]
+        extra_kwargs = {"id": {"read_only": False}}
+
+
+class BackupPropertySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Property
+        fields = [
+            "id",
+            "name",
+            "current_value",
+            "purchase_price",
+            "purchase_date",
+            "currency",
+            "notes",
+            "original_loan_amount",
+            "outstanding_balance",
+            "annual_interest_rate",
+            "total_term_months",
+            "months_paid",
+            "monthly_payment",
+        ]
+        extra_kwargs = {"id": {"read_only": False}}
+
+
+class BackupAmortizationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Amortization
+        fields = ["id", "property", "month", "amount", "strategy"]
         extra_kwargs = {"id": {"read_only": False}}
 
 

@@ -43,17 +43,17 @@ frontend/         Next.js 16 App Router
       privacy.tsx       Privacy mode context + global flag
       chart-theme.ts    Recharts dark/light theme tokens
     components/
-      ui/           shadcn/ui (Radix + Tailwind v4)
+      ui/           shadcn/ui (Base UI + Tailwind v4)
       app/          Domain components
     types/          TypeScript interfaces
     demo/           Static data + MSW handlers
-    i18n/           next-intl (es, en, de, fr, it)
+    i18n/           Custom i18n (es, en, de, fr, it)
 ```
 
 ## Tech Stack
 
 - **Backend:** Django 5.1, DRF 3.15, PostgreSQL 16, Celery 5.3, Redis
-- **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS v4, Radix UI, React Query, Recharts
+- **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS v4, Base UI, React Query, Recharts
 - **Infra:** Docker Compose (db, redis, backend, frontend, celery_worker, celery_beat)
 
 ## Features

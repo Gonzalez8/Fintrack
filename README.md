@@ -260,10 +260,10 @@ Browser
 |---|---|
 | **Backend** | Django 5.1 · Django REST Framework 3.15 · PostgreSQL 16 · Celery 5.3 · Redis 7 |
 | **Auth** | djangorestframework-simplejwt · google-auth |
-| **Frontend** | Next.js 16 · React 19 · TypeScript 5 · Tailwind CSS v4 · shadcn/ui (Radix) |
+| **Frontend** | Next.js 16 · React 19 · TypeScript 5 · Tailwind CSS v4 · shadcn/ui (Base UI) |
 | **State** | TanStack Query 5 (server state) |
 | **Charts** | Recharts 3 · Lightweight Charts 5 |
-| **i18n** | next-intl (es, en, de, fr, it) |
+| **i18n** | Custom i18n (es, en, de, fr, it) |
 | **Infra** | Docker Compose · GitHub Actions CI · GHCR |
 | **API Docs** | drf-spectacular (OpenAPI 3 / Swagger UI) |
 
@@ -295,7 +295,7 @@ fintrack/
 │       │   ├── (dashboard)/       Protected pages (SSR + Streaming)
 │       │   └── api/               BFF Route Handlers (proxy to Django)
 │       ├── components/
-│       │   ├── ui/                shadcn/ui (Radix + Tailwind v4)
+│       │   ├── ui/                shadcn/ui (Base UI + Tailwind v4)
 │       │   └── app/               Domain-specific components
 │       ├── lib/                   api-client, utils, mortgage-math, privacy
 │       ├── types/                 TypeScript interfaces
