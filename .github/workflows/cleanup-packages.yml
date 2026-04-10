@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  cleanup-untagged:
-    name: Delete untagged versions
+  cleanup:
+    name: Cleanup ${{ matrix.package }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -16,28 +16,48 @@ jobs:
     permissions:
       packages: write
     steps:
-      - uses: actions/delete-package-versions@v5
+      - name: Delete untagged and old sha versions
+        uses: actions/github-script@v7
         with:
-          package-name: ${{ matrix.package }}
-          package-type: container
-          delete-only-untagged-versions: true
-          min-versions-to-keep: 1
+          script: |
+            const owner = "gonzalez8";
+            const pkg = "${{ matrix.package }}";
+            let deleted = 0;
+            let page = 1;
 
-  cleanup-sha:
-    name: Delete old sha-tagged versions
-    needs: cleanup-untagged
-    if: always()
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: [fintrack-backend, fintrack-frontend]
-    permissions:
-      packages: write
-    steps:
-      - uses: actions/delete-package-versions@v5
-        with:
-          package-name: ${{ matrix.package }}
-          package-type: container
-          min-versions-to-keep: 3
-          ignore-versions: "^(latest|\\d+\\.\\d+(\\.\\d+)?)$"
+            while (true) {
+              const versions = await github.rest.packages.getAllPackageVersionsForPackageOwnedByUser({
+                package_type: "container",
+                package_name: pkg,
+                username: owner,
+                per_page: 100,
+                page: page,
+              });
+
+              if (versions.data.length === 0) break;
+
+              for (const v of versions.data) {
+                const tags = v.metadata?.container?.tags || [];
+
+                // Keep versions with semver or latest tags
+                const keep = tags.some(t => /^(latest|\d+\.\d+(\.\d+)?)$/.test(t));
+                if (keep) continue;
+
+                try {
+                  await github.rest.packages.deletePackageVersionForUser({
+                    package_type: "container",
+                    package_name: pkg,
+                    username: owner,
+                    package_version_id: v.id,
+                  });
+                  deleted++;
+                } catch (e) {
+                  core.warning(`Failed to delete ${v.id}: ${e.message}`);
+                }
+              }
+
+              if (versions.data.length < 100) break;
+              page++;
+            }
+
+            core.info(`Deleted ${deleted} versions from ${pkg}`);
