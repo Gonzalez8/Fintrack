@@ -20,34 +20,29 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const owner = "gonzalez8";
             const pkg = "${{ matrix.package }}";
             let deleted = 0;
             let page = 1;
 
             while (true) {
-              const versions = await github.rest.packages.getAllPackageVersionsForPackageOwnedByUser({
+              const { data: versions } = await github.rest.packages.getAllPackageVersionsForPackageOwnedByAuthenticatedUser({
                 package_type: "container",
                 package_name: pkg,
-                username: owner,
                 per_page: 100,
                 page: page,
               });
 
-              if (versions.data.length === 0) break;
+              if (versions.length === 0) break;
 
-              for (const v of versions.data) {
+              for (const v of versions) {
                 const tags = v.metadata?.container?.tags || [];
-
-                // Keep versions with semver or latest tags
                 const keep = tags.some(t => /^(latest|\d+\.\d+(\.\d+)?)$/.test(t));
                 if (keep) continue;
 
                 try {
-                  await github.rest.packages.deletePackageVersionForUser({
+                  await github.rest.packages.deletePackageVersionForAuthenticatedUser({
                     package_type: "container",
                     package_name: pkg,
-                    username: owner,
                     package_version_id: v.id,
                   });
                   deleted++;
@@ -56,7 +51,7 @@ jobs:
                 }
               }
 
-              if (versions.data.length < 100) break;
+              if (versions.length < 100) break;
               page++;
             }
 
