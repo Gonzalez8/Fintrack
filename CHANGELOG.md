@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2026-04-10
+
+### Fixed
+
+- Disable Docker buildx attestations (provenance/sbom) to prevent untagged package versions
+- Add versioning and release guidelines to CLAUDE.md for agent autonomy
+
+## [2.3.0] - 2026-04-10
+
+### Added
+
+- Comprehensive SEO improvements with multilingual support
+- Remove PositionSnapshot in favor of asset price chart in portfolio
+- Interest projection tab with historical chart and future balance simulation
+
+### Changed
+
+- Docker publish workflow: only triggers on `v*` tags (no longer on every push to main)
+- Docker images now tagged with semantic versions (`X.Y.Z`, `X.Y`, `latest`)
+- Removed cleanup-packages workflow (no longer needed)
+
+### Fixed
+
+- All ruff linting issues across backend (import sorting, SIM401, B904, B007, B018)
+- TypeScript and SSG build errors
+- Production safety: `DEBUG=False` default, `ALLOWED_HOSTS` from env
+- Backup/restore docs alignment
+
+### Dependencies
+
+- Bump react and react-dom to 19.2.4
+- Bump @tanstack/react-query, recharts, msw, shadcn, @types/node, tailwindcss
+- Bump Django, djangorestframework-simplejwt, django-filter, django-stubs
+- Bump pytest, pytest-cov, gunicorn, yfinance, jsdom
+- Bump actions/checkout to v6, actions/setup-node to v6, docker/metadata-action to v6
+
 ## [2.2.0] - 2026-03-28
 
 ### Added

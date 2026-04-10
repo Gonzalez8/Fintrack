@@ -130,6 +130,57 @@ frontend/         Next.js 16 App Router
 - **Auto-calculation on form:** User inputs loan amount + term (years) + rate type (fixed/variable) + rate. Monthly payment, months paid, outstanding balance computed automatically from purchase date
 - **Debt calculation:** `computeCurrentBalance()` for properties without loaded events, schedule-based calculation for selected property with amortizations applied
 
+## Versioning, Releases & Git Workflow
+
+This project uses **Semantic Versioning** and **Conventional Commits**. The agent MUST follow these rules:
+
+### Commit Messages
+Use conventional commit format: `type(scope): description`
+- `feat:` — new feature (user-facing functionality)
+- `fix:` — bug fix
+- `chore:` — maintenance, deps, CI, tooling
+- `refactor:` — code restructuring without behavior change
+- `docs:` — documentation only
+- `test:` — adding or updating tests
+- `perf:` — performance improvement
+
+### When to Create a Release Tag
+After pushing commits to `main`, the agent MUST proactively evaluate whether a new version tag is needed. **Ask the user for confirmation before creating the tag**, but always suggest it when appropriate.
+
+**Create a PATCH release** (e.g., `v2.3.1` → `v2.3.2`) when:
+- One or more `fix:` commits since last tag
+- Dependency updates (`chore(deps):`)
+- CI/tooling changes that affect production
+
+**Create a MINOR release** (e.g., `v2.3.x` → `v2.4.0`) when:
+- One or more `feat:` commits since last tag
+- New pages, components, or API endpoints
+
+**Create a MAJOR release** (e.g., `v2.x` → `v3.0.0`) when:
+- Breaking API changes
+- Major architecture changes
+- Only with explicit user approval
+
+### How to Release
+```bash
+# 1. Update CHANGELOG.md with new version section (follow Keep a Changelog format)
+# 2. Update version in frontend/package.json
+# 3. Commit: "chore(release): vX.Y.Z"
+# 4. Create and push tag:
+git tag vX.Y.Z
+git push origin main
+git push origin vX.Y.Z
+```
+
+The tag push triggers `.github/workflows/docker-publish.yml` which builds and pushes Docker images to GHCR with tags: `latest`, `X.Y.Z`, `X.Y`.
+
+### Rules
+- **NEVER** push a tag without updating CHANGELOG.md and package.json version first
+- **NEVER** create a tag on a dirty working tree — commit everything first
+- **ALWAYS** ask the user before creating a tag/release (e.g., "There are 3 fix commits since v2.3.1 — shall I create v2.3.2?")
+- Tags trigger Docker image builds — only tag stable, tested code
+- Current version: check with `git describe --tags --abbrev=0`
+
 ## Common Commands
 
 ```bash
