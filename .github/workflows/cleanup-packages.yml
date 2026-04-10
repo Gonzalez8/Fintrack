@@ -16,43 +16,20 @@ jobs:
     permissions:
       packages: write
     steps:
-      - name: Delete untagged and old sha versions
-        uses: actions/github-script@v7
+      - name: Delete untagged versions
+        uses: actions/delete-package-versions@v5
+        continue-on-error: true
         with:
-          script: |
-            const pkg = "${{ matrix.package }}";
-            let deleted = 0;
-            let page = 1;
+          package-name: ${{ matrix.package }}
+          package-type: container
+          delete-only-untagged-versions: true
+          min-versions-to-keep: 0
 
-            while (true) {
-              const { data: versions } = await github.rest.packages.getAllPackageVersionsForPackageOwnedByAuthenticatedUser({
-                package_type: "container",
-                package_name: pkg,
-                per_page: 100,
-                page: page,
-              });
-
-              if (versions.length === 0) break;
-
-              for (const v of versions) {
-                const tags = v.metadata?.container?.tags || [];
-                const keep = tags.some(t => /^(latest|\d+\.\d+(\.\d+)?)$/.test(t));
-                if (keep) continue;
-
-                try {
-                  await github.rest.packages.deletePackageVersionForAuthenticatedUser({
-                    package_type: "container",
-                    package_name: pkg,
-                    package_version_id: v.id,
-                  });
-                  deleted++;
-                } catch (e) {
-                  core.warning(`Failed to delete ${v.id}: ${e.message}`);
-                }
-              }
-
-              if (versions.length < 100) break;
-              page++;
-            }
-
-            core.info(`Deleted ${deleted} versions from ${pkg}`);
+      - name: Delete old sha-tagged versions
+        uses: actions/delete-package-versions@v5
+        continue-on-error: true
+        with:
+          package-name: ${{ matrix.package }}
+          package-type: container
+          min-versions-to-keep: 3
+          ignore-versions: "^(latest|\\d+\\.\\d+(\\.\\d+)?)$"
