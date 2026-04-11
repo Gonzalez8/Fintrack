@@ -422,6 +422,7 @@
   "savings.behindScheduleGeneric": "In base al tuo risparmio medio, non ce la farai in tempo.",
   "savings.monthlyRate": "Risparmio mensile",
   "savings.avgMonthlyRate": "Media mensile",
+  "savings.perMonth": "/mese",
   "savings.remaining": "Rimanente",
   "savings.progress": "Progresso",
 

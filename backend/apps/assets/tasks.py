@@ -50,8 +50,8 @@ def snapshot_all_users_task() -> None:
         snapshot_single_user_task.delay(user_settings.user_id)
 
 
-@shared_task
-def snapshot_single_user_task(user_id: int) -> None:
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def snapshot_single_user_task(self, user_id: int) -> None:
     """Update prices from Yahoo Finance, then create a PortfolioSnapshot for a single user."""
     from django.contrib.auth import get_user_model
 
@@ -75,8 +75,12 @@ def snapshot_single_user_task(user_id: int) -> None:
     except Exception as exc:
         logger.warning("Price update failed for user %s: %s (proceeding with snapshot)", user, exc)
 
-    create_portfolio_snapshot_now(user)
-    logger.info("Portfolio snapshot created for user %s", user)
+    try:
+        create_portfolio_snapshot_now(user)
+        logger.info("Portfolio snapshot created for user %s", user)
+    except Exception as exc:
+        logger.warning("Snapshot creation failed for user %s: %s", user, exc)
+        raise self.retry(exc=exc) from exc
 
 
 @shared_task

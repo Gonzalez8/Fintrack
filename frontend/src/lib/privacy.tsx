@@ -22,14 +22,13 @@ const PrivacyContext = createContext<PrivacyContextValue>({
 export function PrivacyProvider({ children }: { children: ReactNode }) {
   const [privacyMode, setPrivacyMode] = useState(() => {
     if (typeof document === "undefined") return false;
-    return document.cookie.includes("fintrack_privacy=1");
+    const active = document.cookie.includes("fintrack_privacy=1");
+    _privacyMode = active;
+    return active;
   });
 
   // Counter to force full re-render of children when toggling
   const [renderKey, setRenderKey] = useState(0);
-
-  // Keep global flag in sync
-  _privacyMode = privacyMode;
 
   const togglePrivacy = useCallback(() => {
     setPrivacyMode((prev) => {

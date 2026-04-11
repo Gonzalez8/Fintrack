@@ -422,6 +422,7 @@
   "savings.behindScheduleGeneric": "Selon votre épargne moyenne, vous n'y arriverez pas à temps.",
   "savings.monthlyRate": "Épargne mensuelle",
   "savings.avgMonthlyRate": "Moyenne mensuelle",
+  "savings.perMonth": "/mois",
   "savings.remaining": "Restant",
   "savings.progress": "Progrès",
 

@@ -2,6 +2,41 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { DJANGO_INTERNAL_URL, COOKIE_ACCESS, COOKIE_REFRESH, isDemoToken } from "@/lib/constants";
 
+// ── Token refresh mutex to prevent concurrent refresh attempts ──
+let refreshPromise: Promise<{ newAccess: string; setCookies: string[] } | null> | null = null;
+
+async function doRefresh(refresh: string): Promise<{ newAccess: string; setCookies: string[] } | null> {
+  const refreshRes = await fetch(
+    `${DJANGO_INTERNAL_URL}/api/auth/token/refresh/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `${COOKIE_REFRESH}=${refresh}`,
+      },
+    },
+  );
+
+  if (!refreshRes.ok) return null;
+
+  const setCookies = refreshRes.headers.getSetCookie();
+  let newAccess: string | undefined;
+  for (const sc of setCookies) {
+    if (sc.startsWith(`${COOKIE_ACCESS}=`)) {
+      newAccess = sc.slice(`${COOKIE_ACCESS}=`.length).split(";")[0];
+    }
+  }
+
+  return newAccess ? { newAccess, setCookies } : null;
+}
+
+function refreshOnce(refresh: string): Promise<{ newAccess: string; setCookies: string[] } | null> {
+  if (!refreshPromise) {
+    refreshPromise = doRefresh(refresh).finally(() => { refreshPromise = null; });
+  }
+  return refreshPromise;
+}
+
 /**
  * BFF proxy: forwards any request from the browser to Django API.
  * Browser calls /api/proxy/assets/ → Django http://backend:8000/api/assets/
@@ -64,49 +99,30 @@ async function handler(
     );
   }
 
-  // If 401 and we have a refresh token, try to get a new access token and retry
+  // If 401 and we have a refresh token, try to get a new access token and retry.
+  // Uses a mutex so concurrent 401s share a single refresh attempt.
   if (djangoRes.status === 401 && refresh) {
-    const refreshRes = await fetch(
-      `${DJANGO_INTERNAL_URL}/api/auth/token/refresh/`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: `${COOKIE_REFRESH}=${refresh}`,
-        },
-      },
-    );
+    const refreshResult = await refreshOnce(refresh);
 
-    if (refreshRes.ok) {
-      // Extract the new access token from Set-Cookie headers
-      const setCookies = refreshRes.headers.getSetCookie();
-      let newAccess: string | undefined;
-      for (const sc of setCookies) {
-        if (sc.startsWith(`${COOKIE_ACCESS}=`)) {
-          newAccess = sc.slice(`${COOKIE_ACCESS}=`.length).split(";")[0];
-        }
+    if (refreshResult) {
+      access = refreshResult.newAccess;
+
+      // Retry the original request with the new access token
+      djangoRes = await fetch(target, {
+        method: req.method,
+        headers: buildHeaders(refreshResult.newAccess),
+        body,
+      });
+
+      // Build response and forward the refreshed cookies to the browser
+      const resHeaders = buildResponseHeaders(djangoRes);
+      for (const sc of refreshResult.setCookies) {
+        resHeaders.append("Set-Cookie", sc);
       }
-
-      if (newAccess) {
-        access = newAccess;
-
-        // Retry the original request with the new access token
-        djangoRes = await fetch(target, {
-          method: req.method,
-          headers: buildHeaders(newAccess),
-          body,
-        });
-
-        // Build response and forward the refreshed cookies to the browser
-        const resHeaders = buildResponseHeaders(djangoRes);
-        for (const sc of setCookies) {
-          resHeaders.append("Set-Cookie", sc);
-        }
-        return new NextResponse(djangoRes.body, {
-          status: djangoRes.status,
-          headers: resHeaders,
-        });
-      }
+      return new NextResponse(djangoRes.body, {
+        status: djangoRes.status,
+        headers: resHeaders,
+      });
     }
   }
 

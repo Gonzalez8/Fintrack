@@ -1,5 +1,4 @@
 import logging
-from collections import defaultdict
 from decimal import Decimal
 
 from django.db.models import Sum
@@ -139,9 +138,6 @@ def patrimonio_evolution(user):
             running_cost -= qty * price - commission
         tx_cost_by_month[month_key] = running_cost
 
-    batch_rv = defaultdict(Decimal)
-    batch_rf = defaultdict(Decimal)
-
     live_total = Decimal("0")
     live_pnl = Decimal("0")
     live_rv = Decimal("0")
@@ -186,9 +182,9 @@ def patrimonio_evolution(user):
             portfolio = monthly_portfolio[month]
             total_investments = Decimal(str(portfolio["total_market_value"]))
             investment_pnl = Decimal(str(portfolio["total_unrealized_pnl"] or 0))
-            bid = portfolio["batch_id"]
-            rv = batch_rv.get(bid, Decimal("0"))
-            rf = batch_rf.get(bid, Decimal("0"))
+            # Per-type breakdown not available for historical snapshots
+            rv = Decimal("0")
+            rf = Decimal("0")
         else:
             total_investments = max(last_tx_cost, Decimal("0"))
             investment_pnl = Decimal("0")

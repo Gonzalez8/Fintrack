@@ -161,6 +161,7 @@ class AccountSnapshotViewSet(OwnedByUserMixin, viewsets.ModelViewSet):
         )
         snapshot._sync_account_balance()
         serializer.instance = snapshot
+        self._invalidate()
 
 
 class BulkSnapshotView(APIView):

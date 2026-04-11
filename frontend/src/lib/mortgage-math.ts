@@ -338,6 +338,9 @@ export function applyMultipleAmortizations(
         const monthsLeft = targetEndMonth - currentMonth;
         if (monthsLeft > 0) {
           currentPayment = annuityPayment(remaining, monthlyRate, monthsLeft);
+        } else {
+          // Schedule already shortened past this point — pay remaining in one
+          currentPayment = remaining + remaining * monthlyRate;
         }
       } else {
         // REDUCE_TERM: keep currentPayment, targetEndMonth shrinks naturally
@@ -385,17 +388,13 @@ export function applyMultipleAmortizations(
 
 /** Derive the annual interest rate from the first payment in the schedule. */
 function deriveAnnualRate(schedule: AmortizationRow[]): number {
-  // Find the first row with a payment
-  for (const row of schedule) {
+  for (let i = 1; i < schedule.length; i++) {
+    const row = schedule[i];
     if (row.payment > 0 && row.remainingBalance > 0) {
-      // Previous row has the balance before payment
-      const prevIdx = schedule.indexOf(row) - 1;
-      if (prevIdx >= 0) {
-        const prevBalance = schedule[prevIdx].remainingBalance;
-        if (prevBalance > 0) {
-          const monthlyRate = row.interest / prevBalance;
-          return monthlyRate * 12 * 100;
-        }
+      const prevBalance = schedule[i - 1].remainingBalance;
+      if (prevBalance > 0) {
+        const monthlyRate = row.interest / prevBalance;
+        return monthlyRate * 12 * 100;
       }
     }
   }

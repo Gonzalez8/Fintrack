@@ -6,15 +6,11 @@ import { useTranslations } from "@/i18n/use-translations";
 import type { SavingsProjection } from "@/types";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
-const MONTH_NAMES = [
-  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
-  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
-];
-
 function fmtDate(d: string | null): string {
   if (!d) return "—";
   const [year, month] = d.split("-");
-  return `${MONTH_NAMES[parseInt(month) - 1]} ${year}`;
+  const date = new Date(parseInt(year), parseInt(month) - 1);
+  return new Intl.DateTimeFormat(undefined, { month: "short", year: "numeric" }).format(date);
 }
 
 interface Props {
@@ -72,7 +68,7 @@ export function ProjectionCard({ projection }: Props) {
           </div>
           <div className="flex justify-between text-xs font-mono">
             <span className="text-muted-foreground">{t("savings.avgMonthlyRate")}</span>
-            <span className="font-semibold">{formatMoney(projection.avg_monthly_savings)}/mes</span>
+            <span className="font-semibold">{formatMoney(projection.avg_monthly_savings)}{t("savings.perMonth")}</span>
           </div>
         </CardContent>
       </Card>

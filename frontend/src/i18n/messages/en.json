@@ -422,6 +422,7 @@
   "savings.behindScheduleGeneric": "Based on your average savings, you won't make it in time.",
   "savings.monthlyRate": "Monthly rate",
   "savings.avgMonthlyRate": "Monthly avg",
+  "savings.perMonth": "/mo",
   "savings.remaining": "Remaining",
   "savings.progress": "Progress",
 

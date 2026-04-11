@@ -422,6 +422,7 @@
   "savings.behindScheduleGeneric": "Basierend auf deiner durchschnittlichen Ersparnis schaffst du es nicht rechtzeitig.",
   "savings.monthlyRate": "Monatliche Sparrate",
   "savings.avgMonthlyRate": "Monatl. Durchschnitt",
+  "savings.perMonth": "/Monat",
   "savings.remaining": "Verbleibend",
   "savings.progress": "Fortschritt",
 
