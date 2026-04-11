@@ -205,10 +205,10 @@ export function PropertiesTab() {
   });
 
   const editEventMutation = useMutation({
-    mutationFn: (data: { id: string; amount: number; strategy: SimulationStrategy }) =>
+    mutationFn: (data: { id: string; month: number; amount: number; strategy: SimulationStrategy }) =>
       api.put(`/amortizations/${data.id}/`, {
         property: selectedProperty!.id,
-        month: events.find((e) => e.id === data.id)?.month,
+        month: data.month,
         amount: data.amount.toFixed(2),
         strategy: data.strategy,
       }),
@@ -253,8 +253,8 @@ export function PropertiesTab() {
     addEventMutation.mutate({ month, amount, strategy });
   };
 
-  const editEvent = (id: string, amount: number, strategy: SimulationStrategy) => {
-    editEventMutation.mutate({ id, amount, strategy });
+  const editEvent = (id: string, month: number, amount: number, strategy: SimulationStrategy) => {
+    editEventMutation.mutate({ id, month, amount, strategy });
   };
 
   const deleteEvent = (id: string) => {

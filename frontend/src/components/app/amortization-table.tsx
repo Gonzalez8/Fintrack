@@ -15,7 +15,7 @@ interface Props {
   currentMonth: number;
   events: AmortizationEvent[];
   onAddEvent?: (month: number, amount: number, strategy: SimulationStrategy) => void;
-  onEditEvent?: (id: string, amount: number, strategy: SimulationStrategy) => void;
+  onEditEvent?: (id: string, month: number, amount: number, strategy: SimulationStrategy) => void;
   onDeleteEvent?: (id: string) => void;
 }
 
@@ -121,7 +121,7 @@ export function AmortizationTable({
   const saveForm = () => {
     const amount = parseFloat(formAmount);
     if (!amount || amount <= 0 || editingMonth === null) return;
-    if (editingEventId) onEditEvent?.(editingEventId, amount, formStrategy);
+    if (editingEventId) onEditEvent?.(editingEventId, editingMonth, amount, formStrategy);
     else onAddEvent?.(editingMonth, amount, formStrategy);
     closeForm();
   };

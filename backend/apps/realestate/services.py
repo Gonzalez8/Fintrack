@@ -113,8 +113,11 @@ def simulate_amortization(
     diff_installments = new["remaining_installments"] - int(current["remaining_installments"])
     diff_total = _quantize(Decimal(new["total_remaining"]) - Decimal(current["total_remaining"]))
     diff_interest = _quantize(Decimal(new["total_interest"]) - Decimal(current["total_interest"]))
-    diff_years = new["remaining_years"] - current["remaining_years"]
-    diff_months = new["remaining_months"] - current["remaining_months"]
+    diff_total_months = new["remaining_installments"] - int(current["remaining_installments"])
+    diff_years, diff_months = _months_to_years_months(abs(diff_total_months))
+    if diff_total_months < 0:
+        diff_years = -diff_years
+        diff_months = -diff_months
 
     difference = {
         "monthly_payment": str(diff_payment),

@@ -121,6 +121,9 @@ class SavingsGoalViewSet(OwnedByUserMixin, viewsets.ModelViewSet):
 
 class SavingsProjectionView(APIView):
     def get(self, request, goal_id):
+        from django.shortcuts import get_object_or_404
+
+        get_object_or_404(SavingsGoal, pk=goal_id, owner=request.user)
         data = savings_projection(request.user, goal_id)
         return Response(data)
 

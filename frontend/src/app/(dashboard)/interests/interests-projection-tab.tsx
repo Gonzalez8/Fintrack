@@ -59,7 +59,8 @@ export function InterestsProjectionTab() {
       let page = 1;
       const all: Interest[] = [];
       let hasNext = true;
-      while (hasNext) {
+      const MAX_PAGES = 50;
+      while (hasNext && page <= MAX_PAGES) {
         const res = await api.get<PaginatedResponse<Interest>>(
           `/interests/?page=${page}&ordering=date_end`
         );
@@ -69,6 +70,7 @@ export function InterestsProjectionTab() {
       }
       return all;
     },
+    staleTime: 5 * 60_000,
   });
 
   const interests = allData ?? [];

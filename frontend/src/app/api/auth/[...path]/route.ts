@@ -14,13 +14,11 @@ const DEMO_REFRESH = [
   "demo-ref-sig",
 ].join(".");
 
-function demoCookieHeaders() {
-  return {
-    "Set-Cookie": [
-      `${COOKIE_ACCESS}=${DEMO_ACCESS}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
-      `${COOKIE_REFRESH}=${DEMO_REFRESH}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`,
-    ].join(", "),
-  };
+function demoCookieHeaders(): HeadersInit {
+  return [
+    ["Set-Cookie", `${COOKIE_ACCESS}=${DEMO_ACCESS}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`],
+    ["Set-Cookie", `${COOKIE_REFRESH}=${DEMO_REFRESH}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`],
+  ];
 }
 
 /**

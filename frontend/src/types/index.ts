@@ -379,16 +379,6 @@ export interface AnnualSavingsPoint {
   months_count: number;
 }
 
-// ── Patrimonio Evolution ────────────────────────────────────────
-export interface PatrimonioPoint {
-  month: string;
-  cash: string;
-  investments: string;
-  investment_pnl: string;
-  renta_variable: string;
-  renta_fija: string;
-}
-
 // ── Savings Goals ───────────────────────────────────────────────
 export interface SavingsGoal {
   id: string;

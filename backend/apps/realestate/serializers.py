@@ -2,6 +2,8 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
+from apps.transactions.serializers import _OwnershipValidationMixin
+
 from .models import Amortization, Property
 
 ZERO = Decimal("0.00")
@@ -51,11 +53,14 @@ class PropertySerializer(serializers.ModelSerializer):
         return obj.original_loan_amount is not None
 
 
-class AmortizationSerializer(serializers.ModelSerializer):
+class AmortizationSerializer(_OwnershipValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = Amortization
         fields = ["id", "property", "month", "amount", "strategy", "created_at", "updated_at"]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate_property(self, value):
+        return self._validate_owned_fk(value, "property")
 
 
 class MortgageSimulationInputSerializer(serializers.Serializer):

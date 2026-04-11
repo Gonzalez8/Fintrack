@@ -139,9 +139,16 @@ export async function pollTask(
   maxAttempts = 30,
 ): Promise<{ status: string; result?: unknown; error?: string }> {
   for (let i = 0; i < maxAttempts; i++) {
-    const data = await api.get<{ task_id: string; status: string; result?: unknown; error?: string }>(
-      `/tasks/${taskId}/`,
-    );
+    let data: { task_id: string; status: string; result?: unknown; error?: string };
+    try {
+      data = await api.get<{ task_id: string; status: string; result?: unknown; error?: string }>(
+        `/tasks/${taskId}/`,
+      );
+    } catch {
+      // Network error during poll — wait and retry
+      await new Promise((r) => setTimeout(r, intervalMs));
+      continue;
+    }
     if (data.status === "SUCCESS" || data.status === "FAILURE") return data;
     await new Promise((r) => setTimeout(r, intervalMs));
   }
