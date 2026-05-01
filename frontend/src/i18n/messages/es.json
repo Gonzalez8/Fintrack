@@ -519,6 +519,17 @@
   "fiscal.renta.copy.button": "Copiar importe",
   "fiscal.renta.copy.copied": "{label}: {value} copiado",
 
+  "fiscal.renta.sales.entity": "Entidad emisora",
+  "fiscal.renta.sales.declarableTitle": "Operaciones declarables",
+  "fiscal.renta.sales.declarableNote": "Cada fila corresponde a una operación declarable en Renta Web. Debes introducir una línea por cada valor vendido.",
+  "fiscal.renta.sales.copyRow": "Copiar fila",
+  "fiscal.renta.sales.rowCopied": "Fila copiada: {entity}",
+  "fiscal.renta.sales.totalsTitle": "Totales agregados (informativos)",
+  "fiscal.renta.sales.totalsHint": "Estos totales NO se copian a Renta Web. Sirven solo para verificar tus cálculos.",
+  "fiscal.renta.summary.salesHeader": "VENTA DE ACCIONES (totales de control · declarar línea por línea)",
+  "fiscal.renta.summary.salesControlTitle": "Venta de acciones — totales de control",
+  "fiscal.renta.summary.salesControlNote": "Estos importes NO son una línea declarable. Cada venta se declara individualmente en el bloque de ventas.",
+
   "settings.title": "Configuración",
   "settings.generalSettings": "Ajustes Generales",
   "settings.baseCurrency": "Moneda base",

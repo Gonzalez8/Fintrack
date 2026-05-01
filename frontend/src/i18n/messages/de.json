@@ -519,6 +519,17 @@
   "fiscal.renta.copy.button": "Betrag kopieren",
   "fiscal.renta.copy.copied": "{label}: {value} kopiert",
 
+  "fiscal.renta.sales.entity": "Emittent",
+  "fiscal.renta.sales.declarableTitle": "Zu erklärende Vorgänge",
+  "fiscal.renta.sales.declarableNote": "Jede Zeile entspricht einem in der spanischen Steuererklärung anzugebenden Vorgang. Du musst eine Zeile pro verkauftem Wertpapier eintragen.",
+  "fiscal.renta.sales.copyRow": "Zeile kopieren",
+  "fiscal.renta.sales.rowCopied": "Zeile kopiert: {entity}",
+  "fiscal.renta.sales.totalsTitle": "Aggregierte Summen (informativ)",
+  "fiscal.renta.sales.totalsHint": "Diese Summen werden NICHT in die Steuererklärung übernommen. Sie dienen nur zur Kontrolle deiner Beträge.",
+  "fiscal.renta.summary.salesHeader": "AKTIENVERKÄUFE (Kontrollsummen · Zeile für Zeile angeben)",
+  "fiscal.renta.summary.salesControlTitle": "Aktienverkäufe — Kontrollsummen",
+  "fiscal.renta.summary.salesControlNote": "Diese Beträge sind KEINE deklarierbare Zeile. Jeder Verkauf wird einzeln im Verkaufsblock angegeben.",
+
   "settings.title": "Einstellungen",
   "settings.generalSettings": "Allgemeine Einstellungen",
   "settings.baseCurrency": "Basiswaehrung",

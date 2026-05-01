@@ -14,7 +14,12 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { useTaxDeclaration } from "@/hooks/use-tax-declaration";
-import { copyRentaValue, copyRentaBlock, formatForRenta } from "@/lib/clipboard";
+import {
+  copyRentaValue,
+  copyRentaBlock,
+  copyRentaSaleRow,
+  formatForRenta,
+} from "@/lib/clipboard";
 import { useTranslations } from "@/i18n/use-translations";
 import { formatMoney } from "@/lib/utils";
 import type { TaxDeclaration } from "@/types";
@@ -484,6 +489,8 @@ function CapitalGainsBlock({
   t: T;
   block: TaxDeclaration["capital_gains"];
 }) {
+  const copiedTpl = t("fiscal.renta.sales.rowCopied");
+
   return (
     <Card>
       <CardHeader>
@@ -495,90 +502,194 @@ function CapitalGainsBlock({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-2 md:grid-cols-3">
-          <CopyableField
-            t={t}
-            label={t("fiscal.renta.sales.transmissionTotal")}
-            value={block.transmission_total}
-          />
-          <CopyableField
-            t={t}
-            label={t("fiscal.renta.sales.acquisitionTotal")}
-            value={block.acquisition_total}
-          />
-          <CopyableField
-            t={t}
-            label={t("fiscal.renta.sales.netResult")}
-            value={block.net_result}
-          />
-        </div>
-        <div className="grid gap-2 md:grid-cols-2">
-          <InfoField
-            label={t("fiscal.renta.sales.totalGains")}
-            value={block.total_gains}
-          />
-          <InfoField
-            label={t("fiscal.renta.sales.totalLosses")}
-            value={block.total_losses}
-          />
+        {/* Declarable banner — sets the user's expectation: row-by-row, not totals */}
+        <div className="rounded-md border-l-4 border-primary bg-primary/5 px-3 py-2.5">
+          <p className="text-sm font-medium">
+            {t("fiscal.renta.sales.declarableTitle")}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {t("fiscal.renta.sales.declarableNote")}
+          </p>
         </div>
 
         {block.rows.length > 0 ? (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("fiscal.entity")}</TableHead>
-                  <TableHead className="text-right">
-                    {t("fiscal.quantity")}
-                  </TableHead>
-                  <TableHead className="text-right">
-                    {t("fiscal.renta.sales.transmission")}
-                  </TableHead>
-                  <TableHead className="text-right">
-                    {t("fiscal.renta.sales.acquisition")}
-                  </TableHead>
-                  <TableHead className="text-right">
-                    {t("fiscal.renta.sales.pnl")}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {block.rows.map((row, i) => (
-                  <TableRow key={`${row.date}-${row.asset_name}-${i}`}>
-                    <TableCell>
-                      <span className="font-medium">{row.asset_name}</span>
+          <>
+            {/* Mobile: per-row cards */}
+            <div className="space-y-2 sm:hidden">
+              {block.rows.map((row, i) => (
+                <div
+                  key={`${row.date}-${row.asset_name}-${i}`}
+                  className="rounded-lg border border-border p-3 space-y-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {row.asset_name}
+                      </p>
                       {row.asset_ticker && (
-                        <span className="ml-2 text-xs text-muted-foreground">
+                        <p className="font-mono text-[11px] text-muted-foreground">
                           {row.asset_ticker}
-                        </span>
+                        </p>
                       )}
-                    </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums">
-                      {parseFloat(row.quantity).toFixed(4)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatMoney(row.transmission)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatMoney(row.acquisition)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span
-                        className={
-                          parseFloat(row.pnl) >= 0
-                            ? "text-green-500"
-                            : "text-red-500"
-                        }
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        copyRentaSaleRow(
+                          row.asset_name,
+                          row.transmission,
+                          row.acquisition,
+                          copiedTpl,
+                        )
+                      }
+                    >
+                      <Copy className="size-3.5" />
+                      <span className="ml-1.5 text-xs">
+                        {t("fiscal.renta.sales.copyRow")}
+                      </span>
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 border-t border-border/40 pt-2">
+                    <div>
+                      <p className="font-mono text-[9px] uppercase tracking-[1px] text-muted-foreground">
+                        {t("fiscal.renta.sales.transmission")}
+                      </p>
+                      <p className="font-mono text-xs tabular-nums">
+                        {formatMoney(row.transmission)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-mono text-[9px] uppercase tracking-[1px] text-muted-foreground">
+                        {t("fiscal.renta.sales.acquisition")}
+                      </p>
+                      <p className="font-mono text-xs tabular-nums">
+                        {formatMoney(row.acquisition)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-mono text-[9px] uppercase tracking-[1px] text-muted-foreground">
+                        {t("fiscal.renta.sales.pnl")}
+                      </p>
+                      <p
+                        className={`font-mono text-xs tabular-nums ${parseFloat(row.pnl) >= 0 ? "text-green-500" : "text-red-500"}`}
                       >
                         {formatMoney(row.pnl)}
-                      </span>
-                    </TableCell>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop: declarable table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("fiscal.renta.sales.entity")}</TableHead>
+                    <TableHead className="text-right">
+                      {t("fiscal.renta.sales.transmission")}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {t("fiscal.renta.sales.acquisition")}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {t("fiscal.renta.sales.pnl")}
+                    </TableHead>
+                    <TableHead className="text-right w-[1%]"></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {block.rows.map((row, i) => (
+                    <TableRow key={`${row.date}-${row.asset_name}-${i}`}>
+                      <TableCell>
+                        <div className="font-medium">{row.asset_name}</div>
+                        {row.asset_ticker && (
+                          <div className="text-[11px] text-muted-foreground">
+                            {row.asset_ticker} · {row.date}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-mono tabular-nums">
+                        {formatMoney(row.transmission)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono tabular-nums">
+                        {formatMoney(row.acquisition)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono tabular-nums">
+                        <span
+                          className={
+                            parseFloat(row.pnl) >= 0
+                              ? "text-green-500"
+                              : "text-red-500"
+                          }
+                        >
+                          {formatMoney(row.pnl)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            copyRentaSaleRow(
+                              row.asset_name,
+                              row.transmission,
+                              row.acquisition,
+                              copiedTpl,
+                            )
+                          }
+                        >
+                          <Copy className="size-3.5" />
+                          <span className="ml-1.5 hidden lg:inline">
+                            {t("fiscal.renta.sales.copyRow")}
+                          </span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Totales agregados — secondary, collapsible, non-copyable */}
+            <details className="group rounded-md border border-dashed border-border/60">
+              <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground">
+                <span className="inline-block group-open:rotate-90 transition-transform mr-1.5">
+                  ▸
+                </span>
+                {t("fiscal.renta.sales.totalsTitle")}
+              </summary>
+              <div className="space-y-2 border-t border-border/40 px-3 py-3">
+                <p className="text-[11px] italic text-muted-foreground">
+                  {t("fiscal.renta.sales.totalsHint")}
+                </p>
+                <div className="grid gap-1.5 sm:grid-cols-2">
+                  <InfoField
+                    label={t("fiscal.renta.sales.transmissionTotal")}
+                    value={block.transmission_total}
+                  />
+                  <InfoField
+                    label={t("fiscal.renta.sales.acquisitionTotal")}
+                    value={block.acquisition_total}
+                  />
+                  <InfoField
+                    label={t("fiscal.renta.sales.totalGains")}
+                    value={block.total_gains}
+                  />
+                  <InfoField
+                    label={t("fiscal.renta.sales.totalLosses")}
+                    value={block.total_losses}
+                  />
+                  <InfoField
+                    label={t("fiscal.renta.sales.netResult")}
+                    value={block.net_result}
+                  />
+                </div>
+              </div>
+            </details>
+          </>
         ) : (
           <p className="text-sm text-muted-foreground">
             {t("fiscal.renta.sales.empty")}
@@ -610,7 +721,7 @@ function SummaryBlock({ t, data }: { t: T; data: TaxDeclaration }) {
     parts.push(`  ${t("fiscal.renta.doubleTaxation.foreignGross")}: ${formatForRenta(summary.double_taxation_foreign_gross)}`);
     parts.push(`  ${t("fiscal.renta.doubleTaxation.deductibleTotal")}: ${formatForRenta(summary.double_taxation_deductible)}`);
     parts.push("");
-    parts.push("VENTA DE ACCIONES");
+    parts.push(t("fiscal.renta.summary.salesHeader"));
     parts.push(`  ${t("fiscal.renta.sales.transmissionTotal")}: ${formatForRenta(summary.sales_transmission)}`);
     parts.push(`  ${t("fiscal.renta.sales.acquisitionTotal")}: ${formatForRenta(summary.sales_acquisition)}`);
     parts.push(`  ${t("fiscal.renta.sales.netResult")}: ${formatForRenta(summary.sales_net)}`);
@@ -669,19 +780,32 @@ function SummaryBlock({ t, data }: { t: T; data: TaxDeclaration }) {
             label={t("fiscal.renta.doubleTaxation.deductibleTotal")}
             value={summary.double_taxation_deductible}
           />
-          <SummaryRow
-            label={t("fiscal.renta.sales.transmissionTotal")}
-            value={summary.sales_transmission}
-          />
-          <SummaryRow
-            label={t("fiscal.renta.sales.acquisitionTotal")}
-            value={summary.sales_acquisition}
-          />
-          <SummaryRow
-            label={t("fiscal.renta.sales.netResult")}
-            value={summary.sales_net}
-          />
         </dl>
+
+        {/* Sales section is rendered apart so we can flag it as "control totals only".
+            Each individual sale must be declared row-by-row in Renta Web. */}
+        <div className="mt-4 rounded-md border border-dashed border-amber-500/30 bg-amber-500/5 px-3 py-2.5 space-y-1.5">
+          <p className="text-xs font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">
+            {t("fiscal.renta.summary.salesControlTitle")}
+          </p>
+          <p className="text-[11px] text-muted-foreground italic">
+            {t("fiscal.renta.summary.salesControlNote")}
+          </p>
+          <dl className="grid gap-1.5 sm:grid-cols-2 pt-1">
+            <SummaryRow
+              label={t("fiscal.renta.sales.transmissionTotal")}
+              value={summary.sales_transmission}
+            />
+            <SummaryRow
+              label={t("fiscal.renta.sales.acquisitionTotal")}
+              value={summary.sales_acquisition}
+            />
+            <SummaryRow
+              label={t("fiscal.renta.sales.netResult")}
+              value={summary.sales_net}
+            />
+          </dl>
+        </div>
       </CardContent>
     </Card>
   );

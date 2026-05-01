@@ -519,6 +519,17 @@
   "fiscal.renta.copy.button": "Copia importo",
   "fiscal.renta.copy.copied": "{label}: {value} copiato",
 
+  "fiscal.renta.sales.entity": "Emittente",
+  "fiscal.renta.sales.declarableTitle": "Operazioni dichiarabili",
+  "fiscal.renta.sales.declarableNote": "Ogni riga corrisponde a un'operazione dichiarabile nella dichiarazione spagnola. Devi inserire una riga per ogni titolo venduto.",
+  "fiscal.renta.sales.copyRow": "Copia riga",
+  "fiscal.renta.sales.rowCopied": "Riga copiata: {entity}",
+  "fiscal.renta.sales.totalsTitle": "Totali aggregati (informativi)",
+  "fiscal.renta.sales.totalsHint": "Questi totali NON vengono copiati nella dichiarazione. Servono solo per verificare i tuoi calcoli.",
+  "fiscal.renta.summary.salesHeader": "VENDITE DI AZIONI (totali di controllo · dichiarare riga per riga)",
+  "fiscal.renta.summary.salesControlTitle": "Vendite di azioni — totali di controllo",
+  "fiscal.renta.summary.salesControlNote": "Questi importi NON sono una riga dichiarabile. Ogni vendita si dichiara singolarmente nel blocco delle vendite.",
+
   "settings.title": "Impostazioni",
   "settings.generalSettings": "Impostazioni Generali",
   "settings.baseCurrency": "Valuta base",

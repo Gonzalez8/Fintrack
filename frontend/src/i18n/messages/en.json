@@ -519,6 +519,17 @@
   "fiscal.renta.copy.button": "Copy amount",
   "fiscal.renta.copy.copied": "{label}: {value} copied",
 
+  "fiscal.renta.sales.entity": "Issuing entity",
+  "fiscal.renta.sales.declarableTitle": "Declarable operations",
+  "fiscal.renta.sales.declarableNote": "Each row matches a declarable operation in the Spanish tax return. You must enter one line per sold security.",
+  "fiscal.renta.sales.copyRow": "Copy row",
+  "fiscal.renta.sales.rowCopied": "Row copied: {entity}",
+  "fiscal.renta.sales.totalsTitle": "Aggregated totals (informative)",
+  "fiscal.renta.sales.totalsHint": "These totals are NOT copied into the tax return. They are only for verifying your figures.",
+  "fiscal.renta.summary.salesHeader": "SHARE SALES (control totals · declare line by line)",
+  "fiscal.renta.summary.salesControlTitle": "Share sales — control totals",
+  "fiscal.renta.summary.salesControlNote": "These amounts are NOT a declarable line. Each sale is declared individually in the sales block.",
+
   "settings.title": "Settings",
   "settings.generalSettings": "General Settings",
   "settings.baseCurrency": "Base currency",

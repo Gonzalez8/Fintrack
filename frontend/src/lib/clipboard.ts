@@ -41,3 +41,23 @@ export async function copyRentaBlock(text: string, successMessage: string): Prom
     toast.error(successMessage);
   }
 }
+
+/**
+ * Copy a single declarable sale row in tab-separated format:
+ *   "Entity\tTransmission\tAcquisition"
+ * Tab separator is friendly for spreadsheet paste and for HTML form Tab navigation.
+ */
+export async function copyRentaSaleRow(
+  entity: string,
+  transmission: string | number,
+  acquisition: string | number,
+  copiedTemplate: string,
+): Promise<void> {
+  const text = `${entity}\t${formatForRenta(transmission)}\t${formatForRenta(acquisition)}`;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(copiedTemplate.replace("{entity}", entity));
+  } catch {
+    toast.error(copiedTemplate.replace("{entity}", entity));
+  }
+}
