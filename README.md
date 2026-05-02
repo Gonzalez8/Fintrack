@@ -54,8 +54,8 @@ Track your portfolio, transactions, dividends, interests and taxes from a single
 
 ### Transaction Tracking
 - **Buy / Sell / Gift** transactions with commission and tax support
-- **Dividend tracking** — Gross, tax, net, withholding rate per asset
-- **Interest income** — Date-range based tracking per account
+- **Dividend tracking** — Gross, withholding tax, administration / custody fees, net and withholding rate per asset
+- **Interest income** — Date-range based tracking per account, with optional explicit withholding tax (NULL = inferred from gross/net, 0 = confirmed no withholding) and fees
 - **Import deduplication** — Hash-based duplicate detection
 
 ### Accounts & Snapshots
@@ -72,6 +72,14 @@ Track your portfolio, transactions, dividends, interests and taxes from a single
 - **Annual savings** — Yearly savings aggregates and breakdown
 - **Savings goals** — Target-based goals with 3-scenario projections (conservative, average, optimistic)
 - **CSV exports** — Transactions, dividends, and interests
+
+### Tax Reporting (Modo Renta)
+- **Renta Web mapping** — Maps your data directly to the Spanish tax return boxes (Modelo 100): interests, dividends, foreign double-taxation deduction, and capital gains
+- **Per-country double-taxation deduction** — Computed country by country with the bilateral treaty cap (default 15%, configurable per country via `Settings.tax_treaty_limits`)
+- **Row-by-row declarable share sales** — One copyable line per realized sale with tab-separated payload (Entity / Transmission / Acquisition) ready to paste field-by-field
+- **Smart Spanish vs. foreign withholding split** — Spanish withholdings flow into the IRPF box; foreign withholdings feed the double-taxation deduction
+- **Final summary card** — One-click "Copy all" with a structured payload for the whole tax return
+- **Validation warnings** — Detects sales without cost basis, dividends without tax country, and `gross ≠ net + withholding + fees` mismatches
 
 ### Data Management
 - **Snapshot scheduling** — Configurable auto-snapshot frequency (15min to 24h)
@@ -348,6 +356,7 @@ GET     /api/reports/rv-evolution/
 GET     /api/reports/monthly-savings/
 GET     /api/reports/annual-savings/
 GET     /api/reports/snapshot-status/
+GET     /api/reports/tax-declaration/?year=YYYY   Renta Web payload (Modo Renta)
 
 CRUD    /api/savings-goals/
 GET     /api/savings-goals/{id}/projection/   Goal progress projection
