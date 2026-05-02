@@ -121,7 +121,9 @@ class InterestSerializer(_OwnershipValidationMixin, serializers.ModelSerializer)
         if obj.tax is not None:
             return str(obj.tax)
         inferred = (obj.gross or Decimal("0")) - (obj.net or Decimal("0")) - (obj.commission or Decimal("0"))
-        return str(inferred if inferred > Decimal("0") else Decimal("0"))
+        if inferred < Decimal("0"):
+            inferred = Decimal("0")
+        return str(inferred.quantize(Decimal("0.01")))
 
     def get_tax_is_inferred(self, obj):
         return obj.tax is None
