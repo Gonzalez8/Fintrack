@@ -46,6 +46,7 @@ class PayrollSerializer(_OwnershipValidationMixin, serializers.ModelSerializer):
             "id",
             "period_start",
             "period_end",
+            "concept",
             "employer",
             "employer_name",
             "employer_cif",

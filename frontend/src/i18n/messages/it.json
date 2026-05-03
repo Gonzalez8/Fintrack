@@ -840,6 +840,8 @@
   "payroll.new": "Nuova busta paga",
   "payroll.edit": "Modifica busta paga",
   "payroll.empty": "Nessuna busta paga registrata",
+  "payroll.concept": "Concetto",
+  "payroll.conceptPlaceholder": "Mensile, Arretrati, Bonus…",
   "payroll.period": "Periodo",
   "payroll.periodStart": "Inizio periodo",
   "payroll.periodEnd": "Fine periodo",

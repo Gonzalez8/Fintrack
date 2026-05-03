@@ -59,6 +59,7 @@ def test_parses_full_spanish_payslip():
 
     assert s["period_start"] == "2026-01-01"
     assert s["period_end"] == "2026-01-31"
+    assert s["concept"] == "Mensual"
 
     # The fixture mirrors the user's January 2026 payslip with anonymised
     # employer data. The numeric assertions track the real payslip values.
@@ -78,6 +79,57 @@ def test_parses_full_spanish_payslip():
 
     # All 7 numeric fields detected → confidence == 1.0
     assert result["confidence"] == 1.0
+
+
+def test_parses_concept_from_extras():
+    """Concept extraction works for non-monthly payslips: incentivos, atrasos…"""
+    incentivo = (
+        "0807907203 000098 INCENT. EMPRESA 1S - 1 Enero 2025 a 30 Junio 2025 180\n"
+        "Líquido a Percibir\n4435,33\n"
+        "REM. TOTAL\n6320,00\nTributación IRPF(28.28%) 1787,28\n"
+        "Base sujeta a retención I.R.P.F. 6320,00\n"
+    )
+    out = parse_payslip_text(incentivo)
+    assert out["suggested"]["concept"] == "INCENT. EMPRESA 1S"
+    assert out["suggested"]["period_start"] == "2025-01-01"
+    assert out["suggested"]["period_end"] == "2025-06-30"
+
+    atrasos = (
+        "000098 Atrasos Convenio - 1 Enero 2025 a 31 Agosto 2025 240\n"
+        "Líquido a Percibir\n318,86\n"
+        "REM. TOTAL\n453,90\nTributación IRPF(29.57%) 134,24\n"
+        "Base sujeta a retención I.R.P.F. 453,90\n"
+    )
+    out = parse_payslip_text(atrasos)
+    assert out["suggested"]["concept"] == "Atrasos Convenio"
+
+
+def test_base_cc_returns_none_when_line_has_no_real_base():
+    """Atrasos-style payslips collapse the IT line to a single number (the
+    empresa contribution). Parser must NOT mistake that for the base."""
+    text = (
+        "Mensual - 1 Enero 2025 a 31 Agosto 2025 240\n"
+        "Líquido a Percibir\n318,86\n"
+        "REM. TOTAL\n453,90\nTributación IRPF(29.57%) 134,24\n"
+        "Base Incapacidad Temporal Total 3,76\n"
+        "Base sujeta a retención I.R.P.F. 453,90\n"
+    )
+    out = parse_payslip_text(text)
+    assert out["suggested"]["base_cc"] is None
+
+
+def test_base_cc_extracted_when_line_has_rate_and_aportacion():
+    """Standard mensual line "<base> <rate>% <aportación>" → take the base."""
+    text = "Mensual - 1 Enero 2025 a 31 Agosto 2025\nBase Incapacidad Temporal Total 4909,50 23,60 % 1158,64\n"
+    out = parse_payslip_text(text)
+    assert out["suggested"]["base_cc"] == "4909.50"
+
+
+def test_base_cc_extracted_when_rate_is_variable():
+    """% Variable layout (incentives) still has 2 numbers → take the base."""
+    text = "Mensual - 1 Enero 2025 a 31 Agosto 2025\nBase Incapacidad Temporal Total 1380,85 % Variable 325,90\n"
+    out = parse_payslip_text(text)
+    assert out["suggested"]["base_cc"] == "1380.85"
 
 
 def test_parses_payslip_without_period_block():

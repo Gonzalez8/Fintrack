@@ -18,6 +18,7 @@ function makePayroll(year: number, month: number, gross: number): Payroll {
     id: `f2000000-${year}${String(month).padStart(2, "0")}-4000-f000-000000000001`,
     period_start: periodStart,
     period_end: periodEnd,
+    concept: "Mensual",
     employer: EMPLOYER_ID,
     employer_name: EMPLOYER_NAME,
     employer_cif: EMPLOYER_CIF,

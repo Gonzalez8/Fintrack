@@ -84,23 +84,57 @@ def _first_money_after(text: str, pattern: str) -> Decimal | None:
     return parse_es_decimal(match.group(1))
 
 
-def _parse_period(text: str) -> tuple[str, str] | tuple[None, None]:
-    """Try to extract (period_start, period_end) as ISO date strings.
+def _parse_period_and_concept(text: str) -> tuple[str | None, str | None, str | None]:
+    """Extract (period_start, period_end, concept) from the period line.
 
-    Looks for patterns like "1 Enero 2026 a 31 Enero 2026".
+    Spanish payslips include a line like::
+
+        Mensual - 1 Enero 2026 a 31 Enero 2026 30
+        Atrasos Convenio - 1 Enero 2025 a 31 Agosto 2025 240
+        INCENT. EMPRESA 1S - 1 Enero 2025 a 30 Junio 2025 180
+
+    where the text before the date span identifies the kind of payroll
+    (Mensual, Extra, Atrasos, Incentivo…). We capture both the date span
+    and that label so the user can tell the records apart at a glance.
     """
-    pattern = r"(\d{1,2})\s+(\w+)\s+(\d{4})\s+a\s+(\d{1,2})\s+(\w+)\s+(\d{4})"
-    match = re.search(pattern, text, re.IGNORECASE)
+    # Anchor concept matching on a non-word boundary so we don't start mid-token
+    # like inside an SS number "0807907203 000098 Mensual".
+    pattern = (
+        r"(?<![\w.])([A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ0-9.\s]*?)"
+        r"\s*-\s*"
+        r"(\d{1,2})\s+(\w+)\s+(\d{4})\s+a\s+(\d{1,2})\s+(\w+)\s+(\d{4})"
+    )
+    match = re.search(pattern, text)
     if not match:
-        return None, None
-    d1, m1, y1, d2, m2, y2 = match.groups()
+        # Fall back to the date span on its own (no concept captured).
+        date_only = re.search(
+            r"(\d{1,2})\s+(\w+)\s+(\d{4})\s+a\s+(\d{1,2})\s+(\w+)\s+(\d{4})",
+            text,
+            re.IGNORECASE,
+        )
+        if not date_only:
+            return None, None, None
+        d1, m1, y1, d2, m2, y2 = date_only.groups()
+        m1n = _SPANISH_MONTHS.get(m1.lower())
+        m2n = _SPANISH_MONTHS.get(m2.lower())
+        if not m1n or not m2n:
+            return None, None, None
+        return (
+            f"{int(y1):04d}-{m1n:02d}-{int(d1):02d}",
+            f"{int(y2):04d}-{m2n:02d}-{int(d2):02d}",
+            None,
+        )
+
+    concept_raw, d1, m1, y1, d2, m2, y2 = match.groups()
     m1n = _SPANISH_MONTHS.get(m1.lower())
     m2n = _SPANISH_MONTHS.get(m2.lower())
     if not m1n or not m2n:
-        return None, None
+        return None, None, None
+    concept = " ".join(concept_raw.split()).strip()
     return (
         f"{int(y1):04d}-{m1n:02d}-{int(d1):02d}",
         f"{int(y2):04d}-{m2n:02d}-{int(d2):02d}",
+        concept or None,
     )
 
 
@@ -125,6 +159,34 @@ def _parse_employer(text: str) -> tuple[str | None, str | None]:
     if name_match:
         name = name_match.group(1).strip()
     return name, cif
+
+
+def _extract_base_cc(text: str) -> Decimal | None:
+    """Extract the base de contingencias comunes from the bottom verbose block.
+
+    The expected line is::
+
+        Base Incapacidad Temporal Total <BASE> <RATE>% <APORTACIÓN>
+
+    On payslips that don't trigger SS contingencies (e.g. "atrasos
+    convenio") the line collapses to just::
+
+        Base Incapacidad Temporal Total <APORTACIÓN>
+
+    and there's no real base CC. We disambiguate by counting numbers on
+    the line: with two or more, the first is the base; with only one
+    (and no ``%`` separator), it's the empresa contribution and the base
+    is unknown — return ``None`` rather than misreport it.
+    """
+    for line in text.splitlines():
+        if "Base Incapacidad Temporal" not in line:
+            continue
+        numbers = re.findall(_MONEY_RE, line)
+        has_pct = "%" in line
+        if numbers and (len(numbers) >= 2 or has_pct):
+            return parse_es_decimal(numbers[0])
+        return None
+    return None
 
 
 def _sum_ss_employee(text: str) -> Decimal | None:
@@ -160,6 +222,7 @@ def parse_payslip_text(text: str) -> dict[str, Any]:
             "suggested": {
                 "period_start": str | None,
                 "period_end": str | None,
+                "concept": str | None,        # "Mensual" / "Atrasos Convenio" / …
                 "gross": str | None,
                 "ss_employee": str | None,
                 "irpf_withholding": str | None,
@@ -176,7 +239,7 @@ def parse_payslip_text(text: str) -> dict[str, Any]:
     """
     warnings: list[str] = []
 
-    period_start, period_end = _parse_period(text)
+    period_start, period_end, concept = _parse_period_and_concept(text)
     employer_name, employer_cif = _parse_employer(text)
 
     gross = _first_money_after(text, r"REM\.\s*TOTAL")
@@ -189,15 +252,18 @@ def parse_payslip_text(text: str) -> dict[str, Any]:
     irpf = _first_money_after(text, r"Tributación\s+IRPF")
     # Anchor on the verbose bottom block: "Base sujeta a retención I.R.P.F.  5523,40".
     base_irpf = _first_money_after(text, r"Base\s+sujeta\s+a\s+retención\s+I\.R\.P\.F\.")
-    # base_cc is tabular in most templates; the verbose bottom block usually
-    # repeats it as "Base Incapacidad Temporal  Total  NNNN,NN".
-    base_cc = _first_money_after(text, r"Base\s+Incapacidad\s+Temporal\s+Total")
+    # base_cc only appears with a real value when the line has 2+ monetary
+    # numbers (or a percentage) — see _extract_base_cc. On atrasos / extras
+    # without SS contingencies the line collapses and we report None instead
+    # of misreporting the empresa contribution.
+    base_cc = _extract_base_cc(text)
     employer_cost = _first_money_after(text, r"Coste\s+Empresa\s*:?")
     ss_employee = _sum_ss_employee(text)
 
     suggested: dict[str, str | None] = {
         "period_start": period_start,
         "period_end": period_end,
+        "concept": concept,
         "gross": str(gross) if gross is not None else None,
         "ss_employee": str(ss_employee) if ss_employee is not None else None,
         "irpf_withholding": str(irpf) if irpf is not None else None,

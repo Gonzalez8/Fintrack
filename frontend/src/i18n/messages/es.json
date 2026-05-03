@@ -840,6 +840,8 @@
   "payroll.new": "Nueva nómina",
   "payroll.edit": "Editar nómina",
   "payroll.empty": "Aún no hay nóminas registradas",
+  "payroll.concept": "Concepto",
+  "payroll.conceptPlaceholder": "Mensual, Atrasos, Extra…",
   "payroll.period": "Periodo",
   "payroll.periodStart": "Inicio del periodo",
   "payroll.periodEnd": "Fin del periodo",

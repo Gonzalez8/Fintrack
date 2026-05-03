@@ -840,6 +840,8 @@
   "payroll.new": "New payslip",
   "payroll.edit": "Edit payslip",
   "payroll.empty": "No payslips recorded yet",
+  "payroll.concept": "Concept",
+  "payroll.conceptPlaceholder": "Monthly, Back-pay, Bonus…",
   "payroll.period": "Period",
   "payroll.periodStart": "Period start",
   "payroll.periodEnd": "Period end",

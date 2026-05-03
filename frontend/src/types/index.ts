@@ -574,6 +574,7 @@ export interface Payroll {
   id: string;
   period_start: string;
   period_end: string;
+  concept: string;
   employer: string;
   employer_name: string;
   employer_cif: string;
@@ -594,6 +595,7 @@ export interface Payroll {
 export interface PayrollFormData {
   period_start: string;
   period_end: string;
+  concept: string;
   employer: string;
   gross: string;
   ss_employee: string;
@@ -610,6 +612,7 @@ export interface PayrollPdfSuggestion {
   suggested: {
     period_start: string | null;
     period_end: string | null;
+    concept: string | null;
     gross: string | null;
     ss_employee: string | null;
     irpf_withholding: string | null;

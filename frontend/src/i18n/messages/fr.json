@@ -840,6 +840,8 @@
   "payroll.new": "Nouveau bulletin",
   "payroll.edit": "Modifier le bulletin",
   "payroll.empty": "Aucun bulletin de paie enregistré",
+  "payroll.concept": "Concept",
+  "payroll.conceptPlaceholder": "Mensuel, Rappel, Prime…",
   "payroll.period": "Période",
   "payroll.periodStart": "Début de période",
   "payroll.periodEnd": "Fin de période",

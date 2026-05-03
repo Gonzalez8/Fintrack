@@ -840,6 +840,8 @@
   "payroll.new": "Neue Abrechnung",
   "payroll.edit": "Abrechnung bearbeiten",
   "payroll.empty": "Noch keine Abrechnungen erfasst",
+  "payroll.concept": "Bezeichnung",
+  "payroll.conceptPlaceholder": "Monatlich, Nachzahlung, Bonus…",
   "payroll.period": "Zeitraum",
   "payroll.periodStart": "Beginn des Zeitraums",
   "payroll.periodEnd": "Ende des Zeitraums",

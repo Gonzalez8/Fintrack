@@ -56,6 +56,7 @@ function emptyForm(): PayrollFormData {
   return {
     period_start: start,
     period_end: lastDayOfMonth(start),
+    concept: "Mensual",
     employer: "",
     gross: "",
     ss_employee: "0",
@@ -115,9 +116,14 @@ export function NominasContent() {
       key: "period",
       header: t("payroll.period"),
       render: (p) => (
-        <span className="font-mono text-xs">
-          {p.period_start} → {p.period_end}
-        </span>
+        <div className="flex flex-col">
+          {p.concept && (
+            <span className="text-sm font-medium">{p.concept}</span>
+          )}
+          <span className="font-mono text-xs text-muted-foreground">
+            {p.period_start} → {p.period_end}
+          </span>
+        </div>
       ),
     },
     {
@@ -254,7 +260,12 @@ export function NominasContent() {
           >
             <div className="space-y-1">
               <div className="flex justify-between items-start">
-                <p className="text-sm font-medium">{p.employer_name}</p>
+                <div>
+                  <p className="text-sm font-medium">{p.employer_name}</p>
+                  {p.concept && (
+                    <p className="text-xs text-cyan-600 dark:text-cyan-400">{p.concept}</p>
+                  )}
+                </div>
                 <span className="text-xs text-muted-foreground">
                   {p.period_start} → {p.period_end}
                 </span>
@@ -323,8 +334,9 @@ export function NominasContent() {
                 if (!v) setDetailItem(null);
               }}
               title={di.employer_name ?? ""}
-              subtitle={`${di.period_start} → ${di.period_end}`}
+              subtitle={`${di.concept ? `${di.concept} · ` : ""}${di.period_start} → ${di.period_end}`}
               rows={[
+                ...(di.concept ? [{ label: t("payroll.concept"), value: di.concept }] : []),
                 { label: t("payroll.gross"), value: formatMoney(di.gross) },
                 { label: t("payroll.ssEmployee"), value: formatMoney(di.ss_employee) },
                 {
@@ -373,6 +385,7 @@ function PayrollDialog({
       return {
         period_start: payroll.period_start,
         period_end: payroll.period_end,
+        concept: payroll.concept ?? "",
         employer: payroll.employer,
         gross: payroll.gross,
         ss_employee: payroll.ss_employee,
@@ -418,6 +431,7 @@ function PayrollDialog({
       const payload: Record<string, string | undefined> = {
         period_start: form.period_start,
         period_end: form.period_end,
+        concept: form.concept,
         employer: form.employer,
         gross: form.gross,
         ss_employee: form.ss_employee || "0",
@@ -464,6 +478,7 @@ function PayrollDialog({
                     ...f,
                     period_start: suggestion.suggested.period_start ?? f.period_start,
                     period_end: suggestion.suggested.period_end ?? f.period_end,
+                    concept: suggestion.suggested.concept ?? f.concept,
                     employer: matchedEmployerId ?? f.employer,
                     gross: suggestion.suggested.gross ?? f.gross,
                     ss_employee: suggestion.suggested.ss_employee ?? f.ss_employee,
@@ -499,6 +514,17 @@ function PayrollDialog({
                   }
                 />
               </div>
+            </div>
+
+            {/* Concept */}
+            <div className="space-y-1.5">
+              <Label>{t("payroll.concept")}</Label>
+              <Input
+                value={form.concept}
+                onChange={(e) => setForm((f) => ({ ...f, concept: e.target.value }))}
+                placeholder={t("payroll.conceptPlaceholder")}
+                maxLength={120}
+              />
             </div>
 
             {/* Employer */}

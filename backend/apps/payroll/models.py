@@ -63,6 +63,16 @@ class Payroll(UserOwnedModel):
     period_end = models.DateField(
         help_text="Último día del periodo. Se usa para filtrar por año (period_end__year).",
     )
+    concept = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        help_text=(
+            "Etiqueta del payslip tal como aparece en el PDF "
+            "(p. ej. 'Mensual', 'Atrasos Convenio', 'INCENT. EMPRESA 1S'). "
+            "Permite distinguir varias nóminas del mismo mes."
+        ),
+    )
 
     gross = models.DecimalField(
         max_digits=20,
