@@ -84,6 +84,28 @@ def _first_money_after(text: str, pattern: str) -> Decimal | None:
     return parse_es_decimal(match.group(1))
 
 
+def _normalize_for_period_search(text: str) -> str:
+    """Aggressively collapse whitespace and normalise dashes for period scan.
+
+    Real PDFs sometimes split the period across lines (e.g. "...31 Diciembre\n
+    2024 180") or use Unicode dashes (en-dash —, em-dash —). The strict regex
+    won't match those without help. This helper:
+
+      - Replaces Unicode dashes / hyphens with the ASCII '-' so the dash in
+        "Concept - DD Mes YYYY a DD Mes YYYY" lines up.
+      - Collapses any run of whitespace (spaces, tabs, newlines, NBSP) to a
+        single space, removing the line-break problem entirely.
+
+    We use this only for the period scan; the rest of the parser keeps
+    line-by-line semantics (needed for `_extract_base_cc`, ss_employee, …).
+    """
+    # Common Unicode dash variants → ASCII hyphen-minus.
+    for dash in ("–", "—", "−", "‒", "﹣", "－"):
+        text = text.replace(dash, "-")
+    # Collapse ANY whitespace (incl. NBSP  ) into a single space.
+    return re.sub(r"\s+", " ", text)
+
+
 def _parse_period_and_concept(text: str) -> tuple[str | None, str | None, str | None]:
     """Extract (period_start, period_end, concept) from the period line.
 
@@ -92,50 +114,63 @@ def _parse_period_and_concept(text: str) -> tuple[str | None, str | None, str | 
         Mensual - 1 Enero 2026 a 31 Enero 2026 30
         Atrasos Convenio - 1 Enero 2025 a 31 Agosto 2025 240
         INCENT. EMPRESA 1S - 1 Enero 2025 a 30 Junio 2025 180
+        INCENTIVO 2S 2024 - 1 Julio 2024 a 31 Diciembre 2024 180
 
     where the text before the date span identifies the kind of payroll
     (Mensual, Extra, Atrasos, Incentivo…). We capture both the date span
     and that label so the user can tell the records apart at a glance.
+
+    Strategy:
+      1. Try the concept-aware regex on the original text.
+      2. Try the bare date-span regex on the original text.
+      3. Fall back to the same two regexes on a whitespace-normalised
+         copy (collapses line breaks, normalises Unicode dashes). This
+         covers PDFs where pdfplumber splits the period across rows.
     """
-    # Anchor concept matching on a non-word boundary so we don't start mid-token
+    # The capture group for the concept allows letters, digits, dots and
+    # whitespace. Anchored on a non-word boundary so we don't start mid-token
     # like inside an SS number "0807907203 000098 Mensual".
-    pattern = (
+    concept_pattern = (
         r"(?<![\w.])([A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ0-9.\s]*?)"
         r"\s*-\s*"
         r"(\d{1,2})\s+(\w+)\s+(\d{4})\s+a\s+(\d{1,2})\s+(\w+)\s+(\d{4})"
     )
-    match = re.search(pattern, text)
-    if not match:
-        # Fall back to the date span on its own (no concept captured).
-        date_only = re.search(
-            r"(\d{1,2})\s+(\w+)\s+(\d{4})\s+a\s+(\d{1,2})\s+(\w+)\s+(\d{4})",
-            text,
-            re.IGNORECASE,
-        )
-        if not date_only:
-            return None, None, None
-        d1, m1, y1, d2, m2, y2 = date_only.groups()
+    date_only_pattern = r"(\d{1,2})\s+(\w+)\s+(\d{4})\s+a\s+(\d{1,2})\s+(\w+)\s+(\d{4})"
+
+    def _build(d1, m1, y1, d2, m2, y2):
         m1n = _SPANISH_MONTHS.get(m1.lower())
         m2n = _SPANISH_MONTHS.get(m2.lower())
         if not m1n or not m2n:
-            return None, None, None
+            return None, None
         return (
             f"{int(y1):04d}-{m1n:02d}-{int(d1):02d}",
             f"{int(y2):04d}-{m2n:02d}-{int(d2):02d}",
-            None,
         )
 
-    concept_raw, d1, m1, y1, d2, m2, y2 = match.groups()
-    m1n = _SPANISH_MONTHS.get(m1.lower())
-    m2n = _SPANISH_MONTHS.get(m2.lower())
-    if not m1n or not m2n:
-        return None, None, None
-    concept = " ".join(concept_raw.split()).strip()
-    return (
-        f"{int(y1):04d}-{m1n:02d}-{int(d1):02d}",
-        f"{int(y2):04d}-{m2n:02d}-{int(d2):02d}",
-        concept or None,
-    )
+    # Pass 1: try the concept-aware regex on both the original and the
+    # normalised text. We prefer this over a bare date match because it
+    # gives us the concept too.
+    for candidate in (text, _normalize_for_period_search(text)):
+        m = re.search(concept_pattern, candidate)
+        if not m:
+            continue
+        concept_raw, d1, m1, y1, d2, m2, y2 = m.groups()
+        start, end = _build(d1, m1, y1, d2, m2, y2)
+        if start is not None:
+            concept = " ".join(concept_raw.split()).strip() or None
+            return start, end, concept
+
+    # Pass 2: only the date span (no concept). Same two-text fallback.
+    for candidate in (text, _normalize_for_period_search(text)):
+        m = re.search(date_only_pattern, candidate, re.IGNORECASE)
+        if not m:
+            continue
+        d1, m1, y1, d2, m2, y2 = m.groups()
+        start, end = _build(d1, m1, y1, d2, m2, y2)
+        if start is not None:
+            return start, end, None
+
+    return None, None, None
 
 
 def _parse_employer(text: str) -> tuple[str | None, str | None]:

@@ -81,6 +81,48 @@ def test_parses_full_spanish_payslip():
     assert result["confidence"] == 1.0
 
 
+def test_period_split_across_lines():
+    """pdfplumber sometimes splits the period across rows. The fallback
+    normalises whitespace (collapses every \\s+ run to a single space) so the
+    regex still matches.
+
+    Real example from "Extra Febrero 2025": the year of the period_end ends
+    up on the next line.
+    """
+    text = "08/13216175-88 1 000098 INCENTIVO 2S 2024 - 1 Julio 2024 a 31 Diciembre\n2024 180\n"
+    out = parse_payslip_text(text)
+    assert out["suggested"]["concept"] == "INCENTIVO 2S 2024"
+    assert out["suggested"]["period_start"] == "2024-07-01"
+    assert out["suggested"]["period_end"] == "2024-12-31"
+
+
+def test_period_with_em_dash():
+    """Some templates use Unicode em-dash (—) instead of ASCII '-'. The
+    normaliser should map it before the regex runs."""
+    text = "Atrasos Convenio — 1 Enero 2025 a 31 Agosto 2025\n"
+    out = parse_payslip_text(text)
+    assert out["suggested"]["concept"] == "Atrasos Convenio"
+    assert out["suggested"]["period_start"] == "2025-01-01"
+
+
+def test_period_with_en_dash():
+    """En-dash variant (–) should also be normalised to '-'."""
+    text = "Mensual – 1 Agosto 2025 a 31 Agosto 2025\n"
+    out = parse_payslip_text(text)
+    assert out["suggested"]["concept"] == "Mensual"
+    assert out["suggested"]["period_start"] == "2025-08-01"
+
+
+def test_period_chaos_layout():
+    """If pdfplumber outputs every column as a separate line we still
+    recover both period and concept via whitespace normalisation."""
+    text = "08/13216175-88 1\n000098 Mensual -\n1 Junio 2025 a\n30 Junio 2025\n30\n"
+    out = parse_payslip_text(text)
+    assert out["suggested"]["concept"] == "Mensual"
+    assert out["suggested"]["period_start"] == "2025-06-01"
+    assert out["suggested"]["period_end"] == "2025-06-30"
+
+
 def test_parses_concept_from_extras():
     """Concept extraction works for non-monthly payslips: incentivos, atrasos…"""
     incentivo = (
