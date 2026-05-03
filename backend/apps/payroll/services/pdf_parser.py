@@ -1,0 +1,241 @@
+"""Best-effort parser for Spanish payslips (nóminas).
+
+Strategy:
+1. ``extract_text(file_obj)`` reads the PDF with pdfplumber and returns the
+   raw concatenated text. Plain wrapper around the library.
+2. ``parse_payslip_text(text)`` is a pure function that runs regex against
+   that text and returns a dict of suggested fields plus a confidence score.
+
+Both functions are exposed so tests can exercise the parsing logic with
+hand-written text fixtures, no real PDFs required.
+
+Reglas innegociables (ver ADR-008):
+- Este módulo NUNCA crea ni modifica registros. Sólo sugiere datos para que
+  el usuario los revise antes de pulsar "Crear".
+- Es experimental y best-effort. Si la confianza es baja, el endpoint que
+  consume este parser devuelve 422 y el usuario rellena la nómina a mano.
+- Solo cubre PDFs digitalmente generados (texto seleccionable). Los
+  payslips escaneados requieren OCR (pdf2image + pytesseract), fuera de
+  alcance del MVP.
+"""
+
+import re
+from decimal import Decimal, InvalidOperation
+from typing import Any
+
+# All numeric fields the parser tries to extract. confidence = found / total.
+_NUMERIC_FIELDS = (
+    "gross",
+    "ss_employee",
+    "irpf_withholding",
+    "net",
+    "base_irpf",
+    "base_cc",
+    "employer_cost",
+)
+
+_SPANISH_MONTHS = {
+    "enero": 1,
+    "febrero": 2,
+    "marzo": 3,
+    "abril": 4,
+    "mayo": 5,
+    "junio": 6,
+    "julio": 7,
+    "agosto": 8,
+    "septiembre": 9,
+    "setiembre": 9,
+    "octubre": 10,
+    "noviembre": 11,
+    "diciembre": 12,
+}
+
+
+def parse_es_decimal(raw: str) -> Decimal | None:
+    """Convert a Spanish-formatted number ("1.594,05") to a ``Decimal``.
+
+    Returns ``None`` if the string can't be parsed.
+    """
+    if not raw:
+        return None
+    cleaned = raw.strip().replace(" ", "").replace(" ", "")
+    # Spanish format: thousands "." and decimal ",". Drop "." and swap "," → ".".
+    cleaned = cleaned.replace(".", "").replace(",", ".")
+    try:
+        return Decimal(cleaned)
+    except InvalidOperation:
+        return None
+
+
+# Strict Spanish monetary number: optional sign, integer part with optional
+# thousand groups (e.g. "5.523" or just "5523"), REQUIRED comma decimal
+# ",NN". The leading negative lookbehind `(?<![\d.,])` prevents the engine
+# from starting a match in the middle of a longer number. This deliberately
+# avoids matching percentages like "28.86" (no comma decimal), so we don't
+# grab the IRPF rate when looking for the IRPF amount.
+_MONEY_RE = r"(?<![\d.,])-?\d+(?:\.\d{3})*,\d{2}"
+
+
+def _first_money_after(text: str, pattern: str) -> Decimal | None:
+    """Find the first Spanish-formatted monetary value after ``pattern``."""
+    match = re.search(pattern + r"[\s\S]*?(" + _MONEY_RE + r")", text, re.IGNORECASE)
+    if not match:
+        return None
+    return parse_es_decimal(match.group(1))
+
+
+def _parse_period(text: str) -> tuple[str, str] | tuple[None, None]:
+    """Try to extract (period_start, period_end) as ISO date strings.
+
+    Looks for patterns like "1 Enero 2026 a 31 Enero 2026".
+    """
+    pattern = r"(\d{1,2})\s+(\w+)\s+(\d{4})\s+a\s+(\d{1,2})\s+(\w+)\s+(\d{4})"
+    match = re.search(pattern, text, re.IGNORECASE)
+    if not match:
+        return None, None
+    d1, m1, y1, d2, m2, y2 = match.groups()
+    m1n = _SPANISH_MONTHS.get(m1.lower())
+    m2n = _SPANISH_MONTHS.get(m2.lower())
+    if not m1n or not m2n:
+        return None, None
+    return (
+        f"{int(y1):04d}-{m1n:02d}-{int(d1):02d}",
+        f"{int(y2):04d}-{m2n:02d}-{int(d2):02d}",
+    )
+
+
+def _parse_employer(text: str) -> tuple[str | None, str | None]:
+    """Extract employer name and CIF/NIF if present.
+
+    Heuristics: Spanish CIF is one letter + 8 digits, or 8 digits + one letter.
+    Employer name typically appears between the "EMPRESA" header and the
+    "DOMICILIO" header in template-style payslips.
+    """
+    name = None
+    cif = None
+
+    cif_match = re.search(r"\b([A-HJ-NP-SUVW]\d{8}|\d{8}[A-HJ-NP-TV-Z])\b", text)
+    if cif_match:
+        cif = cif_match.group(1)
+
+    name_match = re.search(
+        r"EMPRESA\s+DOMICILIO[\s\S]*?\n([A-Z0-9 .,\-&'\"ÑÁÉÍÓÚ]{3,})\s+(?:CL|C/|AV|AVDA|PASEO|P°|PLAZA)",
+        text,
+    )
+    if name_match:
+        name = name_match.group(1).strip()
+    return name, cif
+
+
+def _sum_ss_employee(text: str) -> Decimal | None:
+    """Sum every Cotización* line found in the deductions section.
+
+    Spanish payslips list the worker's SS contributions as separate lines:
+    Contingencias Comunes, MEI, Adicional Solidaridad, Formación Profesional,
+    Desempleo. We sum whichever ones we find.
+
+    We match only Spanish-formatted monetary values (with comma decimal) so
+    the parenthesised percentages like "(4.70%)" are skipped automatically.
+    """
+    found: list[Decimal] = []
+    for line in text.splitlines():
+        if "Cotización" in line:
+            numbers = re.findall(_MONEY_RE, line)
+            if numbers:
+                # The monetary amount is always the last on the line.
+                value = parse_es_decimal(numbers[-1])
+                if value is not None:
+                    found.append(value)
+    if not found:
+        return None
+    return sum(found, Decimal("0"))
+
+
+def parse_payslip_text(text: str) -> dict[str, Any]:
+    """Parse the raw text of a Spanish payslip.
+
+    Returns a dict shaped like::
+
+        {
+            "suggested": {
+                "period_start": str | None,
+                "period_end": str | None,
+                "gross": str | None,
+                "ss_employee": str | None,
+                "irpf_withholding": str | None,
+                "net": str | None,
+                "base_irpf": str | None,
+                "base_cc": str | None,
+                "employer_cost": str | None,
+                "employer_name": str | None,
+                "employer_cif": str | None,
+            },
+            "confidence": float,   # 0..1
+            "warnings": [str],
+        }
+    """
+    warnings: list[str] = []
+
+    period_start, period_end = _parse_period(text)
+    employer_name, employer_cif = _parse_employer(text)
+
+    gross = _first_money_after(text, r"REM\.\s*TOTAL")
+    if gross is None:
+        gross = _first_money_after(text, r"Total\s+devengado")
+
+    net = _first_money_after(text, r"Líquido\s+a\s+Percibir")
+    # IRPF amount appears after the parenthesised rate: "Tributación IRPF(28.86%)  1594,05".
+    # The strict monetary regex skips the rate (no comma decimal).
+    irpf = _first_money_after(text, r"Tributación\s+IRPF")
+    # Anchor on the verbose bottom block: "Base sujeta a retención I.R.P.F.  5523,40".
+    base_irpf = _first_money_after(text, r"Base\s+sujeta\s+a\s+retención\s+I\.R\.P\.F\.")
+    # base_cc is tabular in most templates; the verbose bottom block usually
+    # repeats it as "Base Incapacidad Temporal  Total  NNNN,NN".
+    base_cc = _first_money_after(text, r"Base\s+Incapacidad\s+Temporal\s+Total")
+    employer_cost = _first_money_after(text, r"Coste\s+Empresa\s*:?")
+    ss_employee = _sum_ss_employee(text)
+
+    suggested: dict[str, str | None] = {
+        "period_start": period_start,
+        "period_end": period_end,
+        "gross": str(gross) if gross is not None else None,
+        "ss_employee": str(ss_employee) if ss_employee is not None else None,
+        "irpf_withholding": str(irpf) if irpf is not None else None,
+        "net": str(net) if net is not None else None,
+        "base_irpf": str(base_irpf) if base_irpf is not None else None,
+        "base_cc": str(base_cc) if base_cc is not None else None,
+        "employer_cost": str(employer_cost) if employer_cost is not None else None,
+        "employer_name": employer_name,
+        "employer_cif": employer_cif,
+    }
+
+    found = sum(1 for f in _NUMERIC_FIELDS if suggested.get(f) is not None)
+    confidence = round(found / len(_NUMERIC_FIELDS), 2)
+
+    if confidence < 1.0:
+        missing = [f for f in _NUMERIC_FIELDS if suggested.get(f) is None]
+        warnings.append(f"Campos no detectados: {', '.join(missing)}.")
+    if period_start is None or period_end is None:
+        warnings.append("Periodo no detectado — rellénalo manualmente.")
+
+    return {"suggested": suggested, "confidence": confidence, "warnings": warnings}
+
+
+def extract_text(file_obj) -> str:
+    """Read a PDF and return the concatenated text of every page.
+
+    Imported lazily so the rest of the module is testable without
+    pdfplumber installed (CI mocks it for unit tests).
+    """
+    import pdfplumber
+
+    chunks: list[str] = []
+    with pdfplumber.open(file_obj) as pdf:
+        for page in pdf.pages:
+            chunks.append(page.extract_text() or "")
+    return "\n".join(chunks)
+
+
+def parse_payslip(file_obj) -> dict[str, Any]:
+    """Convenience wrapper: extract text from a PDF and parse it."""
+    return parse_payslip_text(extract_text(file_obj))

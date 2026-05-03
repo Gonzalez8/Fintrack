@@ -8,5 +8,10 @@ router.register("employers", views.EmployerViewSet)
 router.register("payrolls", views.PayrollViewSet)
 
 urlpatterns = [
+    path(
+        "payrolls/parse-pdf/",
+        views.PayrollParsePdfView.as_view(),
+        name="payroll-parse-pdf",
+    ),
     path("", include(router.urls)),
 ]
