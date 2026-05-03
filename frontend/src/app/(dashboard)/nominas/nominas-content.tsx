@@ -507,7 +507,7 @@ function PayrollDialog({
               <Label>{t("payroll.employer")}</Label>
               <div className="flex gap-2">
                 <Select
-                  value={form.employer || undefined}
+                  value={form.employer}
                   onValueChange={(v) => setForm((f) => ({ ...f, employer: v ? String(v) : "" }))}
                 >
                   <SelectTrigger className="flex-1">
