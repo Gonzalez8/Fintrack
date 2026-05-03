@@ -161,6 +161,66 @@ def _parse_employer(text: str) -> tuple[str | None, str | None]:
     return name, cif
 
 
+# Lines that typically appear in the "APORTACIÓN EMPRESA" column of the
+# verbose bottom block. The last monetary number on each is the employer
+# contribution for that concept; summing them yields the total employer cost.
+_EMPLOYER_COST_LINES = (
+    "Base Incapacidad Temporal",
+    "AT y EP",
+    "Desempleo",
+    "Formación Profesional",
+    "Fondo de garantía salarial",
+)
+
+
+def _extract_employer_cost(text: str) -> Decimal | None:
+    """Return the total employer cost for the payslip.
+
+    Some templates include an explicit footer ``Coste Empresa : NNNN,NN``;
+    we use that when present. When it isn't (most monthly templates from
+    common Spanish payrolls), we fall back to summing the per-concept
+    APORTACIÓN EMPRESA column inside the
+    "DETERMINACIÓN DE LAS BASES DE COTIZACIÓN" verbose block.
+
+    The summed concepts are the standard ones a Spanish payslip declares:
+    Contingencias Comunes (vía la línea "Base Incapacidad Temporal"), AT y
+    EP, Desempleo, Formación Profesional and Fondo de garantía salarial.
+    Each of those lines ends with the empresa contribution; we read the
+    last number on the line.
+    """
+    explicit = _first_money_after(text, r"Coste\s+Empresa\s*:?")
+    if explicit is not None:
+        return explicit
+
+    # Restrict the search to the bottom block so we don't accidentally pull
+    # numbers from the header tables.
+    parts = re.split(
+        r"DETERMINACIÓN\s+DE\s+LAS\s+BASES",
+        text,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )
+    if len(parts) < 2:
+        return None
+    bottom = parts[1]
+
+    found: list[Decimal] = []
+    for line in bottom.splitlines():
+        if not any(kw in line for kw in _EMPLOYER_COST_LINES):
+            continue
+        numbers = re.findall(_MONEY_RE, line)
+        if not numbers:
+            continue
+        # Last number on the line is the empresa contribution for that
+        # concept (the layout is "<concept> <base> <rate> <aportación>").
+        value = parse_es_decimal(numbers[-1])
+        if value is not None:
+            found.append(value)
+    if not found:
+        return None
+    return sum(found, Decimal("0"))
+
+
 def _extract_base_cc(text: str) -> Decimal | None:
     """Extract the base de contingencias comunes from the bottom verbose block.
 
@@ -257,7 +317,7 @@ def parse_payslip_text(text: str) -> dict[str, Any]:
     # without SS contingencies the line collapses and we report None instead
     # of misreporting the empresa contribution.
     base_cc = _extract_base_cc(text)
-    employer_cost = _first_money_after(text, r"Coste\s+Empresa\s*:?")
+    employer_cost = _extract_employer_cost(text)
     ss_employee = _sum_ss_employee(text)
 
     suggested: dict[str, str | None] = {

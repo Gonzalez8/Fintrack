@@ -125,6 +125,63 @@ def test_base_cc_extracted_when_line_has_rate_and_aportacion():
     assert out["suggested"]["base_cc"] == "4909.50"
 
 
+def test_employer_cost_uses_explicit_footer_when_present():
+    """If "Coste Empresa : NNNN,NN" is present we trust it directly."""
+    text = (
+        "Mensual - 1 Enero 2026 a 31 Enero 2026\n"
+        "Coste Empresa : 7195,54\n"
+        "DETERMINACIÓN DE LAS BASES DE COTIZACIÓN\n"
+        "Base Incapacidad Temporal Total 5101,20 23,60 % 1203,88\n"
+    )
+    out = parse_payslip_text(text)
+    assert out["suggested"]["employer_cost"] == "7195.54"
+
+
+def test_employer_cost_sums_aportacion_lines_when_footer_missing():
+    """Most monthly templates omit the explicit footer — sum APORTACIÓN
+    EMPRESA from the bottom block."""
+    text = (
+        "Mensual - 1 Agosto 2025 a 31 Agosto 2025\n"
+        "DETERMINACIÓN DE LAS BASES DE COTIZACIÓN\n"
+        "Base Incapacidad Temporal Total 4909,50 23,60 % 1158,64\n"
+        "AT y EP 4909,50 2,05 % 100,65\n"
+        "Desempleo 4909,50 5,50 % 270,02\n"
+        "Formación Profesional 4909,50 0,60 % 29,46\n"
+        "Fondo de garantía salarial 4909,50 0,20 % 9,82\n"
+    )
+    out = parse_payslip_text(text)
+    # 1158.64 + 100.65 + 270.02 + 29.46 + 9.82 = 1568.59
+    assert out["suggested"]["employer_cost"] == "1568.59"
+
+
+def test_employer_cost_supports_variable_rate_layout():
+    """Incentivo/extra payslips use "% Variable" instead of a numeric
+    percentage; the empresa contribution is still the last number on the line."""
+    text = (
+        "INCENT. EMPRESA 1S - 1 Enero 2025 a 30 Junio 2025\n"
+        "DETERMINACIÓN DE LAS BASES DE COTIZACIÓN\n"
+        "Base Incapacidad Temporal Total 1380,85 % Variable 325,90\n"
+        "AT y EP 1380,85 % Variable 28,30\n"
+        "Desempleo 1380,85 % Variable 75,95\n"
+        "Formación Profesional 1380,85 % Variable 8,30\n"
+        "Fondo de garantía salarial 1380,85 % Variable 2,75\n"
+    )
+    out = parse_payslip_text(text)
+    # 325.90 + 28.30 + 75.95 + 8.30 + 2.75 = 441.20
+    assert out["suggested"]["employer_cost"] == "441.20"
+
+
+def test_employer_cost_handles_atrasos_with_only_solidaridad():
+    """Atrasos collapse the bottom block to a single line — sum still works."""
+    text = (
+        "Atrasos Convenio - 1 Enero 2025 a 31 Agosto 2025\n"
+        "DETERMINACIÓN DE LAS BASES DE COTIZACIÓN\n"
+        "Base Incapacidad Temporal Total 3,76\n"
+    )
+    out = parse_payslip_text(text)
+    assert out["suggested"]["employer_cost"] == "3.76"
+
+
 def test_base_cc_extracted_when_rate_is_variable():
     """% Variable layout (incentives) still has 2 numbers → take the base."""
     text = "Mensual - 1 Enero 2025 a 31 Agosto 2025\nBase Incapacidad Temporal Total 1380,85 % Variable 325,90\n"
