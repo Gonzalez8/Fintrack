@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { createElement, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import {
@@ -63,7 +63,7 @@ export function TaxContent() {
         </TabsContent>
         {Adapter && (
           <TabsContent value={1} className="pt-4">
-            <Adapter year={year} />
+            {createElement(Adapter, { year })}
           </TabsContent>
         )}
       </Tabs>
