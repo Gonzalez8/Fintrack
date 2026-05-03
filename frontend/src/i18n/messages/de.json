@@ -852,5 +852,10 @@
   "payroll.employerCost": "Arbeitgeberkosten",
   "payroll.advancedShow": "Erweiterte Felder anzeigen",
   "payroll.advancedHide": "Erweiterte Felder ausblenden",
-  "payroll.mismatchWarning": "Hinweis: Brutto − SV − Steuer − Netto = {delta}. Erwartbar bei Vorschüssen, Pfändungen, steuerfreien Zulagen, Sachbezügen oder anderen Anpassungen; du kannst trotzdem speichern."
+  "payroll.mismatchWarning": "Hinweis: Brutto − SV − Steuer − Netto = {delta}. Erwartbar bei Vorschüssen, Pfändungen, steuerfreien Zulagen, Sachbezügen oder anderen Anpassungen; du kannst trotzdem speichern.",
+  "payroll.pdfUpload": "PDF hochladen",
+  "payroll.pdfProcessing": "Verarbeitung…",
+  "payroll.pdfHelp": "Experimentell: Lade die PDF deiner Abrechnung hoch und wir füllen die Felder. Überprüfe die Beträge vor dem Speichern — der Parser kann bei ungewöhnlichen Vorlagen oder gescannten PDFs fehlschlagen.",
+  "payroll.pdfRecognized": "PDF verarbeitet. Bitte Beträge vor dem Speichern überprüfen.",
+  "payroll.pdfNotRecognized": "PDF nicht als spanische Lohnabrechnung erkannt. Felder manuell ausfüllen."
 }

@@ -852,5 +852,10 @@
   "payroll.employerCost": "Coût employeur",
   "payroll.advancedShow": "Afficher les champs avancés",
   "payroll.advancedHide": "Masquer les champs avancés",
-  "payroll.mismatchWarning": "Information : brut − SS − impôt − net = {delta}. C'est attendu en cas d'avances, saisies, indemnités exonérées, avantages en nature ou autres ajustements ; vous pouvez enregistrer quand même."
+  "payroll.mismatchWarning": "Information : brut − SS − impôt − net = {delta}. C'est attendu en cas d'avances, saisies, indemnités exonérées, avantages en nature ou autres ajustements ; vous pouvez enregistrer quand même.",
+  "payroll.pdfUpload": "Téléverser un PDF",
+  "payroll.pdfProcessing": "Traitement…",
+  "payroll.pdfHelp": "Expérimental : téléversez le PDF de votre bulletin et nous remplirons les champs. Vérifiez les montants avant d'enregistrer — l'analyseur peut échouer sur des modèles inhabituels ou des PDF scannés.",
+  "payroll.pdfRecognized": "PDF traité. Vérifiez les montants avant d'enregistrer.",
+  "payroll.pdfNotRecognized": "PDF non reconnu comme bulletin de paie espagnol. Remplissez les champs manuellement."
 }

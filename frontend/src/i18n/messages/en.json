@@ -852,5 +852,10 @@
   "payroll.employerCost": "Employer cost",
   "payroll.advancedShow": "Show advanced fields",
   "payroll.advancedHide": "Hide advanced fields",
-  "payroll.mismatchWarning": "Heads-up: gross − SS − tax − net = {delta}. This is expected when the payslip includes advances, garnishments, exempt allowances, in-kind compensation or other adjustments; you can save anyway."
+  "payroll.mismatchWarning": "Heads-up: gross − SS − tax − net = {delta}. This is expected when the payslip includes advances, garnishments, exempt allowances, in-kind compensation or other adjustments; you can save anyway.",
+  "payroll.pdfUpload": "Upload PDF",
+  "payroll.pdfProcessing": "Processing…",
+  "payroll.pdfHelp": "Experimental: upload your payslip PDF and we'll fill in the fields. Review the amounts before saving — the parser may fail on unusual templates or scanned documents.",
+  "payroll.pdfRecognized": "PDF processed. Review the amounts before saving.",
+  "payroll.pdfNotRecognized": "PDF not recognised as a Spanish payslip. Fill in the fields manually."
 }

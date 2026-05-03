@@ -852,5 +852,10 @@
   "payroll.employerCost": "Costo datore di lavoro",
   "payroll.advancedShow": "Mostra campi avanzati",
   "payroll.advancedHide": "Nascondi campi avanzati",
-  "payroll.mismatchWarning": "Avviso: lordo − contributi − fisco − netto = {delta}. È normale in caso di anticipi, pignoramenti, indennità esenti, retribuzione in natura o altri adeguamenti; puoi salvare comunque."
+  "payroll.mismatchWarning": "Avviso: lordo − contributi − fisco − netto = {delta}. È normale in caso di anticipi, pignoramenti, indennità esenti, retribuzione in natura o altri adeguamenti; puoi salvare comunque.",
+  "payroll.pdfUpload": "Carica PDF",
+  "payroll.pdfProcessing": "Elaborazione…",
+  "payroll.pdfHelp": "Sperimentale: carica il PDF della busta paga e compileremo i campi. Verifica gli importi prima di salvare — il parser può fallire con modelli insoliti o PDF scansionati.",
+  "payroll.pdfRecognized": "PDF elaborato. Verifica gli importi prima di salvare.",
+  "payroll.pdfNotRecognized": "PDF non riconosciuto come busta paga spagnola. Compila i campi manualmente."
 }

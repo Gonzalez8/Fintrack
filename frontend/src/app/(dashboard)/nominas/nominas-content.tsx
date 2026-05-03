@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, FileUp, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
-import { api } from "@/lib/api-client";
+import { api, ApiClientError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,7 @@ import type {
   PaginatedResponse,
   Payroll,
   PayrollFormData,
+  PayrollPdfSuggestion,
 } from "@/types";
 
 const currentYear = new Date().getFullYear();
@@ -455,6 +456,30 @@ function PayrollDialog({
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* PDF upload — experimental, suggestion only */}
+            {!payroll && (
+              <PdfUploadSection
+                employers={employers}
+                onSuggested={(suggestion, matchedEmployerId) => {
+                  setForm((f) => ({
+                    ...f,
+                    period_start: suggestion.suggested.period_start ?? f.period_start,
+                    period_end: suggestion.suggested.period_end ?? f.period_end,
+                    employer: matchedEmployerId ?? f.employer,
+                    gross: suggestion.suggested.gross ?? f.gross,
+                    ss_employee: suggestion.suggested.ss_employee ?? f.ss_employee,
+                    irpf_withholding:
+                      suggestion.suggested.irpf_withholding ?? f.irpf_withholding,
+                    net: suggestion.suggested.net ?? f.net,
+                    base_irpf: suggestion.suggested.base_irpf ?? f.base_irpf,
+                    base_cc: suggestion.suggested.base_cc ?? f.base_cc,
+                    employer_cost:
+                      suggestion.suggested.employer_cost ?? f.employer_cost,
+                  }));
+                }}
+              />
+            )}
+
             {/* Period */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -698,5 +723,96 @@ function EmployerDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PdfUploadSection({
+  employers,
+  onSuggested,
+}: {
+  employers: Employer[];
+  onSuggested: (
+    suggestion: PayrollPdfSuggestion,
+    matchedEmployerId: string | null,
+  ) => void;
+}) {
+  const t = useTranslations();
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  function findMatchingEmployer(
+    suggestion: PayrollPdfSuggestion,
+  ): string | null {
+    const cif = suggestion.suggested.employer_cif?.trim();
+    const name = suggestion.suggested.employer_name?.trim();
+    if (cif) {
+      const byCif = employers.find(
+        (e) => e.cif && e.cif.toUpperCase() === cif.toUpperCase(),
+      );
+      if (byCif) return byCif.id;
+    }
+    if (name) {
+      const byName = employers.find(
+        (e) => e.name.toLowerCase() === name.toLowerCase(),
+      );
+      if (byName) return byName.id;
+    }
+    return null;
+  }
+
+  async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const result = await api.upload<PayrollPdfSuggestion>(
+        "/payrolls/parse-pdf/",
+        fd,
+      );
+      const matched = findMatchingEmployer(result);
+      onSuggested(result, matched);
+      toast.success(t("payroll.pdfRecognized"));
+    } catch (err) {
+      if (err instanceof ApiClientError && err.status === 422) {
+        toast.warning(t("payroll.pdfNotRecognized"));
+      } else {
+        const message =
+          err instanceof Error ? err.message : t("common.error");
+        toast.error(message);
+      }
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="rounded-md border border-dashed border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+        <p className="text-xs text-muted-foreground">{t("payroll.pdfHelp")}</p>
+      </div>
+      <div className="flex gap-2">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={onFileChange}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+        >
+          <FileUp className="h-4 w-4 mr-1" />
+          {uploading ? t("payroll.pdfProcessing") : t("payroll.pdfUpload")}
+        </Button>
+      </div>
+    </div>
   );
 }
